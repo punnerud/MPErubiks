@@ -70,35 +70,49 @@ pub fn srgb_patch_to_oklab(rgba: &[u8], width: usize, height: usize) -> Oklab {
     Oklab::from_srgb8(median(&mut r), median(&mut g), median(&mut b))
 }
 
-/// Six reference colors. Class indices are opaque to this crate: with
-/// `default_stickers` they follow [white, yellow, red, orange, green, blue];
-/// with `from_centers` they follow whatever order the centers were captured
-/// in — the app assigns meaning.
-#[derive(Clone, Copy, Debug)]
+/// Reference shades. Each CLASS (0..6: white yellow red orange green
+/// blue) may have SEVERAL shades — classic stickers and measured neon
+/// ring-cube shades both vote for the same class. Class indices are
+/// opaque to this crate; the app assigns meaning.
+#[derive(Clone, Debug)]
 pub struct Calibration {
-    pub refs: [Oklab; 6],
+    pub shades: Vec<(u8, Oklab)>,
 }
 
 impl Calibration {
-    /// Typical stickered-cube colors under neutral light; good enough for
-    /// the first pass until all six centers are captured.
+    /// Classic sticker shades PLUS neon ring-cube shades measured from
+    /// real captures (see the scan-eval dataset): greenish neon yellow,
+    /// yellowish neon green, salmon red, amber orange, sky blue.
     pub fn default_stickers() -> Calibration {
+        let s = Oklab::from_srgb8;
         Calibration {
-            refs: [
-                Oklab::from_srgb8(245, 245, 245), // white
-                Oklab::from_srgb8(255, 213, 0),   // yellow
-                Oklab::from_srgb8(196, 30, 58),   // red
-                Oklab::from_srgb8(255, 88, 0),    // orange
-                Oklab::from_srgb8(0, 158, 96),    // green
-                Oklab::from_srgb8(0, 81, 186),    // blue
+            shades: vec![
+                (0, s(245, 245, 245)), // white
+                (1, s(255, 213, 0)),   // yellow classic
+                (1, s(193, 204, 26)),  // yellow neon (greenish)
+                (2, s(196, 30, 58)),   // red classic
+                (2, s(215, 78, 51)),   // red neon (salmon)
+                (2, s(224, 125, 99)),  // red neon washed (bright light)
+                (3, s(255, 88, 0)),    // orange classic
+                (3, s(222, 140, 25)),  // orange neon (amber)
+                (4, s(0, 158, 96)),    // green classic
+                (4, s(150, 200, 80)),  // green neon (yellowish)
+                (5, s(0, 81, 186)),    // blue classic
+                (5, s(45, 165, 210)),  // blue neon (sky)
             ],
         }
     }
 
-    /// Recalibrate from the six captured center stickers: absorbs the
-    /// scene's actual white balance and exposure.
+    /// Recalibrate from six captured center stickers: absorbs the scene's
+    /// actual white balance (classes = capture order).
     pub fn from_centers(centers: [Oklab; 6]) -> Calibration {
-        Calibration { refs: centers }
+        Calibration {
+            shades: centers
+                .iter()
+                .enumerate()
+                .map(|(i, &c)| (i as u8, c))
+                .collect(),
+        }
     }
 }
 
@@ -134,18 +148,22 @@ pub fn classify_one(patch: Oklab, cal: &Calibration) -> Classified {
             true
         }
     };
-    let any_allowed = cal.refs.iter().any(|&r| allowed(r));
+    let any_allowed = cal.shades.iter().any(|&(_, r)| allowed(r));
     let mut best = (f32::INFINITY, 0u8);
+    // Runner-up distance from a DIFFERENT class: two shades of the same
+    // color must not depress confidence.
     let mut second = f32::INFINITY;
-    for (i, &r) in cal.refs.iter().enumerate() {
+    for &(class, r) in &cal.shades {
         if any_allowed && !allowed(r) {
             continue;
         }
         let d = sticker_distance(patch, r);
         if d < best.0 {
-            second = best.0;
-            best = (d, i as u8);
-        } else if d < second {
+            if class != best.1 {
+                second = best.0;
+            }
+            best = (d, class);
+        } else if class != best.1 && d < second {
             second = d;
         }
     }
@@ -190,8 +208,24 @@ pub fn vote_cell(rgba: &[u8], width: usize, height: usize, cal: &Calibration) ->
     for px in rgba.chunks_exact(4).step_by(2) {
         total += 1;
         let c = Oklab::from_srgb8(px[0], px[1], px[2]);
+        // Dead-zone gate: skin/shadow sits at warm LOW chroma (~0.06-0.09)
+        // and poisons both white and orange votes. Only decisively gray
+        // pixels may vote white; only decisively saturated ones a color.
+        let chroma = c.chroma();
+        let decisive_white = chroma < 0.04 && c.l > 0.70;
+        let decisive_color = chroma > 0.10;
+        if !decisive_white && !decisive_color {
+            continue;
+        }
         if let Some(k) = classify_one(c, cal).color {
-            votes[k as usize] += 1;
+            let is_white_class = k == 0
+                || cal
+                    .shades
+                    .iter()
+                    .any(|&(cls, r)| cls == k && r.chroma() < 0.08);
+            if (decisive_white && is_white_class) || (decisive_color && !is_white_class) {
+                votes[k as usize] += 1;
+            }
         }
     }
     if total == 0 {
@@ -200,22 +234,41 @@ pub fn vote_cell(rgba: &[u8], width: usize, height: usize, cal: &Calibration) ->
             confidence: 0.0,
         };
     }
-    let mut order: Vec<usize> = (0..6).collect();
-    order.sort_by_key(|&i| std::cmp::Reverse(votes[i]));
-    let (win, win_votes) = (order[0], votes[order[0]]);
-    let runner_votes = votes[order[1]];
-    let share = win_votes as f32 / total as f32;
-    let clear_margin = win_votes >= runner_votes.saturating_mul(3) / 2 + 1;
-    if share >= MIN_VOTE_SHARE && clear_margin {
-        Classified {
-            color: Some(win as u8),
-            confidence: (share * 4.0).clamp(0.0, 1.0),
+    // COLOR TRUMPS WHITE: overexposure, dotted textures and gray
+    // backgrounds all masquerade as white votes, but a real white sticker
+    // has essentially zero saturated votes. So decide among the color
+    // classes first; white only wins when no color qualifies.
+    let whitish = |k: usize| {
+        cal.shades
+            .iter()
+            .any(|&(cls, r)| cls as usize == k && r.chroma() < WHITISH_CHROMA)
+    };
+    let mut color_order: Vec<usize> = (0..6).filter(|&k| !whitish(k)).collect();
+    color_order.sort_by_key(|&i| std::cmp::Reverse(votes[i]));
+    if let (Some(&win), runner) = (color_order.first(), color_order.get(1)) {
+        let win_votes = votes[win];
+        let runner_votes = runner.map(|&r| votes[r]).unwrap_or(0);
+        let share = win_votes as f32 / total as f32;
+        if share >= MIN_VOTE_SHARE && win_votes >= runner_votes.saturating_mul(7) / 6 + 1 {
+            return Classified {
+                color: Some(win as u8),
+                confidence: (share * 4.0).clamp(0.0, 1.0),
+            };
         }
-    } else {
-        Classified {
-            color: None,
-            confidence: 0.0,
+    }
+    let white_class = (0..6).filter(|&k| whitish(k)).max_by_key(|&k| votes[k]);
+    if let Some(win) = white_class {
+        let share = votes[win] as f32 / total as f32;
+        if share >= 0.08 {
+            return Classified {
+                color: Some(win as u8),
+                confidence: (share * 3.0).clamp(0.0, 1.0),
+            };
         }
+    }
+    Classified {
+        color: None,
+        confidence: 0.0,
     }
 }
 

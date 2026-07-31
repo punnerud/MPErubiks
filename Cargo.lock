@@ -838,6 +838,9 @@ dependencies = [
 [[package]]
 name = "cube-vision"
 version = "0.1.0"
+dependencies = [
+ "miniz_oxide",
+]
 
 [[package]]
 name = "cursor-icon"
