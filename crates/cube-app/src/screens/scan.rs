@@ -323,22 +323,45 @@ fn scan_ui(
     // --- mini rotation guide (top center, overlaid) ---
     mini_guide(app, ui, screen, outer, now);
 
-    // --- small manual fallback, bottom center ---
-    let fallback = Rect::from_center_size(
-        Pos2::new(outer.center().x, outer.bottom() - 34.0),
-        Vec2::new(200.0, 40.0),
-    );
-    let resp = ui.interact(fallback, ui.id().with("manual"), Sense::click());
-    ui.painter()
-        .rect_filled(fallback, 10.0, Color32::from_black_alpha(140));
-    ui.painter().text(
-        fallback.center(),
-        egui::Align2::CENTER_CENTER,
-        app.t(TextKey::EnterManually),
-        egui::FontId::proportional(16.0),
-        Color32::from_gray(200),
-    );
-    if resp.clicked() {
+    // --- bottom row: restart | force-capture | type it in ---
+    let slot = |i: i32| {
+        Rect::from_center_size(
+            Pos2::new(outer.center().x + i as f32 * 150.0, outer.bottom() - 34.0),
+            Vec2::new(136.0, 42.0),
+        )
+    };
+    let small_button = |ui: &Ui, rect: Rect, id: &str, text: &str, accent: bool| -> bool {
+        let resp = ui.interact(rect, ui.id().with(id), Sense::click());
+        let fill = if accent {
+            Color32::from_rgba_unmultiplied(0x1E, 0x88, 0x50, 210)
+        } else {
+            Color32::from_black_alpha(140)
+        };
+        ui.painter().rect_filled(rect, 10.0, fill);
+        ui.painter().text(
+            rect.center(),
+            egui::Align2::CENTER_CENTER,
+            text,
+            egui::FontId::proportional(16.0),
+            Color32::from_gray(230),
+        );
+        resp.clicked()
+    };
+    // Restart the whole scan from side one.
+    if small_button(ui, slot(-1), "restart", app.t(TextKey::Reset), false) {
+        screen.captured = [None; 6];
+        screen.face_idx = 0;
+        screen.stable_ticks = 0;
+        screen.flash = None;
+        screen.mini_base = FaceletCube::SOLVED;
+        screen.mini_cube = FaceletCube::SOLVED;
+        screen.mini_anim.clear();
+    }
+    // Force-capture when auto won't bite (tricky stickers).
+    if small_button(ui, slot(0), "force", app.t(TextKey::Capture), true) && !in_flash {
+        capture(screen, now);
+    }
+    if small_button(ui, slot(1), "manual", app.t(TextKey::EnterManually), false) {
         *next = Some(Screen::Solve(super::solve::SolveScreen::new_input(
             FaceletCube::SOLVED,
         )));
