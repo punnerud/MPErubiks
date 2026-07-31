@@ -26,19 +26,7 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
         color_override: None,
     }
     .show(ui, cube_size);
-    // Tap a sticker: select (and pulse) its whole layer; tap it again to
-    // deselect. Much easier for kids than letter buttons.
-    if response.clicked() {
-        if let Some(pos) = response.interact_pointer_pos() {
-            let rect = response.rect;
-            let ndc = (
-                (pos.x - rect.left()) / rect.width() * 2.0 - 1.0,
-                -((pos.y - rect.top()) / rect.height() * 2.0 - 1.0),
-            );
-            let hit = cube_render::pick_face(&app.orbit, rect.aspect_ratio(), ndc);
-            app.selected_face = if hit == app.selected_face { None } else { hit };
-        }
-    }
+    handle_tap_select(app, &response);
 
     ui.vertical_centered(|ui| {
         ui.horizontal_wrapped(|ui| {
@@ -86,10 +74,26 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
     });
 }
 
+/// Tap a sticker: select (and pulse) its whole layer; tap again to
+/// deselect. Shared by Play and the lessons sandbox.
+pub fn handle_tap_select(app: &mut RubiksApp, response: &egui::Response) {
+    if response.clicked() {
+        if let Some(pos) = response.interact_pointer_pos() {
+            let rect = response.rect;
+            let ndc = (
+                (pos.x - rect.left()) / rect.width() * 2.0 - 1.0,
+                -((pos.y - rect.top()) / rect.height() * 2.0 - 1.0),
+            );
+            let hit = cube_render::pick_face(&app.orbit, rect.aspect_ratio(), ndc);
+            app.selected_face = if hit == app.selected_face { None } else { hit };
+        }
+    }
+}
+
 /// Two big arrows that turn the tap-selected layer (animated). Colored
 /// like the selected face so button and pulsing layer visibly belong
 /// together.
-fn turn_arrows(app: &mut RubiksApp, ui: &mut Ui) {
+pub fn turn_arrows(app: &mut RubiksApp, ui: &mut Ui) {
     let Some(face) = app.selected_face else {
         return;
     };

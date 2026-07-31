@@ -182,6 +182,7 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
     if view.pending {
         view.pending = false;
         app.animator.clear();
+        app.selected_face = None;
         app.cube = cube_core::FaceletCube::SOLVED;
         if let Some(setup) = step.setup {
             if let Ok(alg) = cube_core::Alg::parse(setup) {
@@ -204,20 +205,28 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
         ui.available_width(),
         (ui.available_height() - controls_height).max(120.0),
     );
-    CubeView {
+    // The lesson cube is a SANDBOX: tap a sticker to select its layer and
+    // turn it with the arrows — exploring is how kids learn. Replay
+    // restores the step.
+    let highlight = app
+        .selected_face
+        .map(|f| cube_core::Move::Face(f, cube_core::Turns::Cw));
+    let response = CubeView {
         cube: &app.cube,
         animator: &app.animator,
         orbit: &mut app.orbit,
-        highlight: None,
+        highlight,
         color_override: None,
     }
     .show(ui, cube_size);
+    super::play::handle_tap_select(app, &response);
 
     ui.vertical_centered(|ui| {
         ui.label(RichText::new(app.t(step.text)).size(22.0));
         ui.add_space(6.0);
         ui.horizontal(|ui| {
-            ui.add_space((ui.available_width() - 3.0 * 108.0).max(0.0) / 2.0);
+            ui.add_space((ui.available_width() - 5.0 * 108.0).max(0.0) / 2.0);
+            super::play::turn_arrows(app, ui);
             let size = Vec2::new(96.0, 64.0);
             let gray = Color32::from_gray(70);
             if icons::big_icon_button(ui, size, gray, "", icons::draw_back_arrow).clicked() {
