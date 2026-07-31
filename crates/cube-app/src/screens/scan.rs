@@ -16,7 +16,7 @@ use crate::platform::web::camera::Camera;
 use crate::widgets::cube_view::CubeView;
 use cube_core::{Alg, Face, FaceletCube};
 use cube_render::{MoveAnimator, OrbitCamera};
-use cube_vision::{vote_cell, Calibration, Classified};
+use cube_vision::{vote_cell, vote_histogram, Calibration, Classified};
 use egui::{Color32, Pos2, Rect, RichText, Sense, Stroke, StrokeKind, Ui, Vec2};
 
 /// Capture order (Morten's hand sequence: left, left, tilt-AWAY, left,
@@ -59,6 +59,9 @@ pub struct ScanScreen {
     preview: Option<PreviewTex>,
     /// Voted class per cell for each captured face (display order).
     captured: [Option<[Option<u8>; 9]>; 6],
+    /// Retained evidence: full vote histogram per cell per face — the
+    /// constraint resolver ranks candidates from this after capture.
+    evidence: [Option<[[f32; 6]; 9]>; 6],
     face_idx: usize,
     live: [Classified; 9],
     /// Raw cell buffers from the latest sampling tick (for upload).
@@ -98,6 +101,7 @@ impl ScanScreen {
             camera: CameraState::Requesting,
             preview: None,
             captured: [None; 6],
+            evidence: [None; 6],
             face_idx: 0,
             live: [Classified {
                 color: None,
@@ -225,8 +229,9 @@ fn scan_ui(
                 let (buf, w, h) = &cells[i];
                 vote_cell(buf, *w, *h, &screen.cal)
             });
-            // ALL nine must detect, and agree with the previous tick.
-            let all_detected = live.iter().all(|c| c.color.is_some());
+            // Seven of nine suffice: the constraint resolver analyses
+            // the uncertain rest from retained evidence.
+            let all_detected = live.iter().filter(|c| c.color.is_some()).count() >= 7;
             let same = screen
                 .live
                 .iter()
@@ -405,11 +410,52 @@ fn scan_ui(
         )));
     }
 
-    // --- all six captured: rebuild and hand off to review ---
+    // --- all six captured: constraint-resolve and hand off to review ---
     if screen.face_idx >= 6 && screen.flash.is_none() {
-        let state = assemble(screen);
+        let state = match cube_solver::resolve_scan(&face_shares(screen)) {
+            Ok(resolved) => resolved,
+            // Unresolvable even after analysis: show the argmax cube in
+            // the review net; validation will point at the problem there.
+            Err(_) => assemble(screen),
+        };
         *next = Some(Screen::Solve(super::solve::SolveScreen::new_input(state)));
     }
+}
+
+/// Evidence histograms mapped into FACE space for the resolver: palette
+/// class -> face via the voted centers (capture order fallback).
+fn face_shares(screen: &ScanScreen) -> cube_solver::Shares {
+    let mut class_to_face: [Option<Face>; 6] = [None; 6];
+    for (k, &face) in ORDER.iter().enumerate() {
+        if let Some(classes) = screen.captured[k] {
+            if let Some(c) = classes[4] {
+                if class_to_face[c as usize].is_none() {
+                    class_to_face[c as usize] = Some(face);
+                }
+            }
+        }
+    }
+    // Unmapped classes fall back to palette-order faces (identity-ish).
+    for (c, slot) in class_to_face.iter_mut().enumerate() {
+        if slot.is_none() {
+            *slot = Some(ORDER[c]);
+        }
+    }
+    let mut shares: cube_solver::Shares = [[0.0; 6]; 54];
+    for (k, &face) in ORDER.iter().enumerate() {
+        let Some(hists) = screen.evidence[k] else {
+            continue;
+        };
+        for (grid_pos, &facelet_off) in CAPTURE_GRID_TO_FACELET[k].iter().enumerate() {
+            let facelet = face as usize * 9 + facelet_off as usize;
+            for class in 0..6 {
+                if let Some(target) = class_to_face[class] {
+                    shares[facelet][target as usize] += hists[grid_pos][class];
+                }
+            }
+        }
+    }
+    shares
 }
 
 fn capture(screen: &mut ScanScreen, now: f64, source: &str) {
@@ -418,6 +464,14 @@ fn capture(screen: &mut ScanScreen, now: f64, source: &str) {
     }
     {
         let classes: [Option<u8>; 9] = core::array::from_fn(|i| screen.live[i].color);
+        // Retain the evidence histograms for constraint resolution.
+        if let Some(cells) = &screen.last_cells {
+            let hists: [[f32; 6]; 9] = core::array::from_fn(|i| {
+                let (buf, w, h) = &cells[i];
+                vote_histogram(buf, *w, *h, &screen.cal)
+            });
+            screen.evidence[screen.face_idx] = Some(hists);
+        }
         // Flash what was detected in the grid for a moment.
         screen.flash = Some((now + 0.9, classes));
         screen.captured[screen.face_idx] = Some(classes);

@@ -1,0 +1,224 @@
+//! Constraint-resolution of a scanned cube: "analyze your way to correct".
+//!
+//! The camera delivers vote-share EVIDENCE per facelet, not certainties.
+//! The cube itself is a hard constraint system — exactly nine stickers of
+//! each color, every one of the 26 physical pieces exactly once, twist/
+//! flip/parity solvable — so uncertain cells don't need better optics:
+//! rank each cell's candidates by votes and let the constraints choose.
+//! If even the confident assignment is invalid, progressively free the
+//! lowest-margin cells and search their alternatives.
+
+use crate::validate;
+use cube_core::{Face, FaceletCube};
+
+/// Vote share per class, already mapped into FACE space (class -> Face by
+/// the capture order), indexed by facelet.
+pub type Shares = [[f32; 6]; 54];
+
+/// A cell is treated as UNCERTAIN below this winning share.
+const CONFIDENT_SHARE: f32 = 0.10;
+/// Cells with NO usable evidence (top share below EVIDENCE_FLOOR) are
+/// fully unconstrained and try all six colors.
+const EVIDENCE_FLOOR: f32 = 0.05;
+/// A class is a PLAUSIBLE candidate only with meaningful evidence:
+/// at least this fraction of the winner's share (a clearly-not-red cell
+/// never gets red as a candidate).
+const PLAUSIBLE_FRACTION: f32 = 0.15;
+/// How many extra low-margin cells may be freed when the confident
+/// assignment is invalid.
+const MAX_FREED: usize = 4;
+/// Search budget (complete-assignment validations).
+const MAX_CHECKS: usize = 20_000;
+
+pub fn resolve_scan(shares: &Shares) -> Result<FaceletCube, crate::ValidationError> {
+    // Initial assignment: argmax per cell; centers are authoritative
+    // (facelet 9f+4 is forced to its face by the scan flow).
+    let ranked: Vec<Vec<Face>> = shares
+        .iter()
+        .map(|cell| {
+            let mut order: Vec<usize> = (0..6).collect();
+            order.sort_by(|&a, &b| cell[b].partial_cmp(&cell[a]).unwrap());
+            order.into_iter().map(Face::from_index).collect()
+        })
+        .collect();
+    let margin = |i: usize| -> f32 {
+        let c = &shares[i];
+        let mut v: Vec<f32> = c.to_vec();
+        v.sort_by(|a, b| b.partial_cmp(a).unwrap());
+        v[0] - v[1]
+    };
+
+    let mut base = FaceletCube::SOLVED;
+    let mut uncertain: Vec<usize> = Vec::new();
+    for i in 0..54 {
+        if i % 9 == 4 {
+            base.0[i] = Face::from_index(i / 9);
+            continue;
+        }
+        base.0[i] = ranked[i][0];
+        if shares[i][ranked[i][0] as usize] < CONFIDENT_SHARE {
+            uncertain.push(i);
+        }
+    }
+
+    // Round 0: only the uncertain cells are free. If that fails, free the
+    // lowest-margin confident cells too, a few at a time.
+    let widths: [usize; 54] = core::array::from_fn(|i| {
+        let winner = shares[i][ranked[i][0] as usize];
+        if winner < EVIDENCE_FLOOR {
+            6 // no evidence: anything goes
+        } else {
+            // Only classes with real evidence stay candidates.
+            let floor = (winner * PLAUSIBLE_FRACTION).max(0.02);
+            ranked[i]
+                .iter()
+                .filter(|&&f| shares[i][f as usize] >= floor)
+                .count()
+                .max(1)
+        }
+    });
+
+    let mut confident: Vec<usize> = (0..54)
+        .filter(|&i| i % 9 != 4 && !uncertain.contains(&i))
+        .collect();
+    confident.sort_by(|&a, &b| margin(a).partial_cmp(&margin(b)).unwrap());
+
+    let mut checks = 0usize;
+    for extra in 0..=MAX_FREED {
+        let mut free: Vec<usize> = uncertain.clone();
+        free.extend(confident.iter().take(extra));
+        free.sort_unstable();
+        if let Some(found) = search(&base, &free, &ranked, &widths, &mut checks) {
+            return Ok(found);
+        }
+        if checks >= MAX_CHECKS {
+            break;
+        }
+    }
+    // Nothing legal found: hand back the argmax cube's specific error so
+    // the review net can show it.
+    Err(validate(&base).err().unwrap_or(crate::ValidationError::Unsolvable))
+}
+
+/// Depth-first over the free cells' ranked candidates with color-count
+/// pruning; full validation only on complete assignments.
+fn search(
+    base: &FaceletCube,
+    free: &[usize],
+    ranked: &[Vec<Face>],
+    widths: &[usize; 54],
+    checks: &mut usize,
+) -> Option<FaceletCube> {
+    fn counts(state: &FaceletCube, skip: &[usize]) -> [u8; 6] {
+        let mut c = [0u8; 6];
+        for i in 0..54 {
+            if !skip.contains(&i) {
+                c[state.0[i] as usize] += 1;
+            }
+        }
+        c
+    }
+    fn rec(
+        state: &mut FaceletCube,
+        free: &[usize],
+        pos: usize,
+        counts: &mut [u8; 6],
+        ranked: &[Vec<Face>],
+        widths: &[usize; 54],
+        checks: &mut usize,
+    ) -> Option<FaceletCube> {
+        if *checks >= MAX_CHECKS {
+            return None;
+        }
+        if pos == free.len() {
+            *checks += 1;
+            return validate(state).is_ok().then_some(*state);
+        }
+        let cell = free[pos];
+        for &cand in ranked[cell].iter().take(widths[cell]) {
+            if counts[cand as usize] >= 9 {
+                continue; // color already fully placed
+            }
+            state.0[cell] = cand;
+            counts[cand as usize] += 1;
+            if let Some(found) = rec(state, free, pos + 1, counts, ranked, widths, checks) {
+                return Some(found);
+            }
+            counts[cand as usize] -= 1;
+        }
+        None
+    }
+
+    let mut state = *base;
+    let mut cnt = counts(base, free);
+    rec(&mut state, free, 0, &mut cnt, ranked, widths, checks)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cube_core::{Alg, SplitMix64};
+
+    fn shares_from(state: &FaceletCube, hidden: &[usize], wrong: &[(usize, Face)]) -> Shares {
+        let mut shares = [[0.0f32; 6]; 54];
+        for i in 0..54 {
+            shares[i][state.0[i] as usize] = 0.4; // solid evidence
+        }
+        for &h in hidden {
+            shares[h] = [0.02; 6]; // no usable evidence
+        }
+        for &(i, f) in wrong {
+            shares[i] = [0.0; 6];
+            shares[i][f as usize] = 0.12; // confidently WRONG
+            shares[i][state.0[i] as usize] = 0.08; // truth is runner-up
+        }
+        shares
+    }
+
+    #[test]
+    fn fills_hidden_cells_to_a_legal_cube() {
+        let mut rng = SplitMix64::new(11);
+        for round in 0..30 {
+            let mut state = FaceletCube::SOLVED;
+            for _ in 0..15 {
+                state.apply(cube_core::Move::from_index(rng.below(18) as usize));
+            }
+            // Hide a few random non-center cells.
+            let mut hidden = Vec::new();
+            while hidden.len() < 4 {
+                let i = rng.below(54) as usize;
+                if i % 9 != 4 && !hidden.contains(&i) {
+                    hidden.push(i);
+                }
+            }
+            let shares = shares_from(&state, &hidden, &[]);
+            let resolved = resolve_scan(&shares)
+                .unwrap_or_else(|e| panic!("round {round}: unresolvable: {e}"));
+            assert!(crate::validate(&resolved).is_ok(), "round {round}");
+            // With this few hidden cells the reconstruction is exact.
+            assert_eq!(resolved, state, "round {round}: hidden {hidden:?}");
+        }
+    }
+
+    #[test]
+    fn recovers_from_a_confidently_wrong_cell() {
+        let state = FaceletCube::SOLVED
+            .applied_alg(&Alg::parse("R U F2 L' D B U2 R' F").unwrap());
+        // Cell 7 (a U-face edge sticker) claims the wrong color with the
+        // truth as runner-up: count/piece constraints must flip it back.
+        let wrong_color = if state.0[7] == Face::R { Face::L } else { Face::R };
+        let shares = shares_from(&state, &[], &[(7, wrong_color)]);
+        let resolved = resolve_scan(&shares).expect("resolvable");
+        assert_eq!(resolved, state, "constraints must correct the lie");
+    }
+
+    #[test]
+    fn hopeless_evidence_reports_a_validation_error() {
+        // All cells claim white: no legal cube exists near this evidence.
+        let mut shares = [[0.0f32; 6]; 54];
+        for cell in shares.iter_mut() {
+            cell[0] = 0.5;
+        }
+        assert!(resolve_scan(&shares).is_err());
+    }
+}

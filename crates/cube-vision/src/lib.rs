@@ -201,11 +201,27 @@ fn angular_distance(a: f32, b: f32) -> f32 {
     d.min(std::f32::consts::TAU - d)
 }
 
+/// Full vote histogram for a cell: the retained EVIDENCE — share of
+/// pixels voting for each class. Downstream constraint-solving ranks
+/// candidates from this when the winner is uncertain.
+pub fn vote_histogram(rgba: &[u8], width: usize, height: usize, cal: &Calibration) -> [f32; 6] {
+    let (votes, total) = raw_votes(rgba, width, height, cal);
+    if total == 0 {
+        return [0.0; 6];
+    }
+    core::array::from_fn(|i| votes[i] as f32 / total as f32)
+}
+
 /// Robust cell classification by per-pixel VOTING: every pixel close to
 /// one of the six reference colors votes; the winner needs `MIN_VOTE_SHARE`
 /// of all pixels and a clear margin over the runner-up. Survives grid
 /// misalignment, plastic borders and background inside the cell.
 pub fn vote_cell(rgba: &[u8], width: usize, height: usize, cal: &Calibration) -> Classified {
+    let (votes, total) = raw_votes(rgba, width, height, cal);
+    decide(&votes, total, cal)
+}
+
+fn raw_votes(rgba: &[u8], width: usize, height: usize, cal: &Calibration) -> ([u32; 6], u32) {
     assert_eq!(rgba.len(), width * height * 4, "cell buffer size");
     let mut votes = [0u32; 6];
     let mut total = 0u32;
@@ -256,6 +272,10 @@ pub fn vote_cell(rgba: &[u8], width: usize, height: usize, cal: &Calibration) ->
             }
         }
     }
+    (votes, total)
+}
+
+fn decide(votes: &[u32; 6], total: u32, cal: &Calibration) -> Classified {
     if total == 0 {
         return Classified {
             color: None,
