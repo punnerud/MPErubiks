@@ -11,7 +11,7 @@
 
 use crate::solve::{solve, solve_bounded};
 use crate::SolveError;
-use cube_core::{Alg, CaseSet, FaceletCube, Match, Recognizer};
+use cube_core::{Alg, CaseSet, Face, FaceletCube, Match, Move, Recognizer, Turns};
 
 #[derive(Clone, Debug)]
 pub struct HintAt {
@@ -43,6 +43,55 @@ pub struct GuidedSolution {
     pub segments: Vec<Segment>,
     pub total_htm: usize,
     pub trained_used: usize,
+    /// Ergonomic cost of the whole solution: moves are "paths" and not all
+    /// paths are equal — R/U turns are cheapest in the hand, D/B awkward,
+    /// off-frame matches cost a regrip, and untrained filler moves weigh
+    /// more than practiced algorithm moves. Lower = smoother to perform.
+    pub ergo_cost: u32,
+    /// Ergonomic cost spent BEFORE the first trained segment: 0 means the
+    /// solution opens with something the user knows (placement objective —
+    /// demonstrate knowledge as early as possible).
+    pub first_trained_ergo: u32,
+}
+
+/// Ergonomic cost of physically performing a sequence, ~10 per comfortable
+/// quarter turn. Face weights follow speedcubing ergonomics (R/U flow, B is
+/// a regrip); half turns cost 1.5x; whole-cube rotations move no pieces but
+/// cost a regrip.
+fn ergonomic_cost(alg: &Alg) -> u32 {
+    alg.0
+        .iter()
+        .map(|m| {
+            let (base, turns) = match m {
+                Move::Face(Face::U | Face::R, t) => (10, *t),
+                Move::Face(Face::F | Face::L, t) => (12, *t),
+                Move::Face(Face::D, t) => (14, *t),
+                Move::Face(Face::B, t) => (16, *t),
+                Move::Wide(_, t) => (14, *t),
+                Move::Slice(_, t) => (15, *t),
+                Move::Rot(_, t) => (8, *t),
+            };
+            if matches!(turns, Turns::Half) {
+                base * 3 / 2
+            } else {
+                base
+            }
+        })
+        .sum()
+}
+
+/// Regrip cost of executing a match in a rotated y frame: the user works
+/// "from a different angle" — one quarter of reorientation per step away
+/// from their current front.
+fn frame_regrip_cost(y_frame: u8) -> u32 {
+    let j = u32::from(y_frame % 4);
+    j.min(4 - j) * 8
+}
+
+/// Filler (kewb) moves are unpracticed reading-and-turning; trained
+/// algorithm moves are muscle memory. Weight filler 25% heavier.
+fn filler_ergo(alg: &Alg) -> u32 {
+    ergonomic_cost(alg) * 5 / 4
 }
 
 #[derive(Clone, Debug)]
@@ -104,6 +153,10 @@ struct Node {
     state: FaceletCube,
     segments: Vec<Segment>,
     used_htm: usize,
+    /// Accumulated ergonomic cost (trained segments + setups + regrips).
+    ergo: u32,
+    /// Ergo spent before the first trained segment (None until one is used).
+    first_trained_ergo: Option<u32>,
     trained_used: usize,
 }
 
@@ -122,6 +175,8 @@ fn guided_solution(
         state: *s,
         segments: Vec::new(),
         used_htm: 0,
+        ergo: 0,
+        first_trained_ergo: None,
         trained_used: 0,
     }];
     let mut best: Option<GuidedSolution> = None;
@@ -129,30 +184,67 @@ fn guided_solution(
     for _depth in 0..MAX_CHAIN_DEPTH {
         let mut next = Vec::new();
         for node in &frontier {
-            for m in trained_matches(&node.state, trained, rec) {
-                let exec = rec.execution_alg(m);
-                let cost = exec.len_htm();
-                if node.used_htm + cost > budget {
+            let mut children = Vec::new();
+            // Direct matches, plus matches enabled by ONE setup move —
+            // "R makes your T-Perm applicable" teaches more than a raw
+            // filler sequence would. (U-turn setups are already folded
+            // into matches as pre-AUF, so setups skip the U face.)
+            let mut consider = |setup: Option<Move>, state: &FaceletCube| {
+                for m in trained_matches(state, trained, rec) {
+                    // Reduce to face moves: rotation-free by construction,
+                    // so segments chain in one fixed frame and the kewb
+                    // tail always sees home-oriented centers.
+                    let exec = rec.execution_alg(m).face_moves_only();
+                    let cost = exec.len_htm() + usize::from(setup.is_some());
+                    if node.used_htm + cost > budget {
+                        continue;
+                    }
+                    // Path cost: the setup is unpracticed (filler weight),
+                    // the alg itself is muscle memory, and matching in a
+                    // rotated frame costs a regrip.
+                    let setup_ergo = setup
+                        .map(|mv| filler_ergo(&Alg::new(vec![mv])))
+                        .unwrap_or(0);
+                    let exec_ergo = ergonomic_cost(&exec) + frame_regrip_cost(m.y_frame);
+                    let child_state = state.applied_alg(&exec).normalize_orientation();
+                    let mut segments = node.segments.clone();
+                    if let Some(setup) = setup {
+                        segments.push(Segment::Raw(Alg::new(vec![setup])));
+                    }
+                    segments.push(Segment::Trained {
+                        case_idx: m.case_idx,
+                        exec,
+                    });
+                    children.push(Node {
+                        state: child_state,
+                        segments,
+                        used_htm: node.used_htm + cost,
+                        ergo: node.ergo + setup_ergo + exec_ergo,
+                        first_trained_ergo: node
+                            .first_trained_ergo
+                            .or(Some(node.ergo + setup_ergo)),
+                        trained_used: node.trained_used + 1,
+                    });
+                }
+            };
+            consider(None, &node.state);
+            for mv_idx in 0..18 {
+                let mv = Move::from_index(mv_idx);
+                if matches!(mv, Move::Face(Face::U, _)) {
                     continue;
                 }
-                let child_state = node.state.applied_alg(&exec).normalize_orientation();
-                let mut segments = node.segments.clone();
-                segments.push(Segment::Trained {
-                    case_idx: m.case_idx,
-                    exec,
-                });
-                next.push(Node {
-                    state: child_state,
-                    segments,
-                    used_htm: node.used_htm + cost,
-                    trained_used: node.trained_used + 1,
-                });
+                consider(Some(mv), &node.state.applied(mv));
             }
+            // Cap per-node fan-out so one node can't flood the frontier;
+            // rank by path cost, not raw move count.
+            children.sort_by_key(|n| n.ergo);
+            children.truncate(6);
+            next.extend(children);
         }
         if next.is_empty() {
             break;
         }
-        next.sort_by_key(|n| n.used_htm);
+        next.sort_by_key(|n| n.ergo);
         next.truncate(MAX_FRONTIER);
 
         // Evaluate every node with >= 1 trained segment: kewb solves the rest.
@@ -171,6 +263,7 @@ fn guided_solution(
             };
             let Some(tail) = tail else { continue };
             let total = node.used_htm + tail.len_htm();
+            let ergo_cost = node.ergo + filler_ergo(&tail);
             let mut segments = node.segments.clone();
             if !tail.is_empty() {
                 segments.push(Segment::Raw(tail));
@@ -178,16 +271,21 @@ fn guided_solution(
             let candidate = GuidedSolution {
                 total_htm: total,
                 trained_used: node.trained_used,
+                ergo_cost,
+                first_trained_ergo: node.first_trained_ergo.unwrap_or(node.ergo),
                 segments,
             };
-            let better = match &best {
-                None => true,
-                Some(b) => {
-                    (candidate.trained_used, std::cmp::Reverse(candidate.total_htm))
-                        > (b.trained_used, std::cmp::Reverse(b.total_htm))
-                }
+            // Objective, lexicographic (the MPEE-style multi-criteria):
+            // most trained algorithms used; among those, knowledge shown
+            // earliest; among those, smoothest path in the hands.
+            let key = |g: &GuidedSolution| {
+                (
+                    std::cmp::Reverse(g.trained_used),
+                    g.first_trained_ergo,
+                    g.ergo_cost,
+                )
             };
-            if better {
+            if best.as_ref().is_none_or(|b| key(&candidate) < key(b)) {
                 best = Some(candidate);
             }
         }
@@ -259,6 +357,80 @@ mod tests {
             (0..4).any(|k| s.rotate_u(k).is_solved()),
             "guided solution must solve (up to final AUF)"
         );
+    }
+
+    #[test]
+    fn ergonomic_cost_orders_paths_like_a_hand_would() {
+        let cost = |s: &str| ergonomic_cost(&Alg::parse(s).unwrap());
+        // Same move count, different hands: R/U flow beats B/D grinding.
+        assert!(cost("R U R' U'") < cost("B D B' D'"));
+        // Half turns cost more than quarters, less than two moves.
+        assert!(cost("R2") > cost("R") && cost("R2") < cost("R R"));
+        // A rotation costs something (regrip) even though no pieces move.
+        assert!(cost("y") > 0);
+        // Filler weighting: identical moves cost more as unpracticed filler.
+        let alg = Alg::parse("R U R' U'").unwrap();
+        assert!(filler_ergo(&alg) > ergonomic_cost(&alg));
+        // Off-frame matches cost a regrip, symmetric around the cube.
+        assert_eq!(frame_regrip_cost(0), 0);
+        assert_eq!(frame_regrip_cost(1), frame_regrip_cost(3));
+        assert!(frame_regrip_cost(2) > frame_regrip_cost(1));
+    }
+
+    #[test]
+    fn direct_use_is_preferred_and_placement_is_reported() {
+        ensure_table();
+        let rec = rec_with(&[(
+            "pll-t",
+            CaseSet::Pll,
+            "R U R' U' R' F R2 U' R' U' R U R' F'",
+            RecogKind::Pll,
+        )]);
+        let t_idx = rec.find_by_id("pll-t").unwrap();
+        let mut rng = SplitMix64::new(11);
+        let state = rec.setup_state(t_idx, &mut rng);
+
+        let guided = solve_with_hints(&state, &[t_idx], &rec)
+            .unwrap()
+            .guided
+            .expect("guided");
+        // The T-Perm applies directly: the solution must OPEN with it (no
+        // setup/filler first), and say so via the placement metric.
+        assert!(
+            matches!(guided.segments[0], Segment::Trained { .. }),
+            "solution must open with the trained algorithm"
+        );
+        assert_eq!(
+            guided.first_trained_ergo, 0,
+            "knowledge demonstrated at the very start"
+        );
+        assert!(guided.ergo_cost > 0);
+    }
+
+    #[test]
+    fn setup_move_enables_trained_alg() {
+        ensure_table();
+        let rec = rec_with(&[(
+            "pll-t",
+            CaseSet::Pll,
+            "R U R' U' R' F R2 U' R' U' R U R' F'",
+            RecogKind::Pll,
+        )]);
+        let t_idx = rec.find_by_id("pll-t").unwrap();
+        // State = R' applied after creating a T-perm case: solving needs
+        // the setup move R first, then the trained T-Perm.
+        let mut state = FaceletCube::SOLVED;
+        state.apply_alg(&Alg::parse("R U R' U' R' F R2 U' R' U' R U R' F'").unwrap().inverse());
+        state.apply_alg(&Alg::parse("R'").unwrap());
+
+        let out = solve_with_hints(&state, &[t_idx], &rec).unwrap();
+        let guided = out.guided.expect("guided solution with setup");
+        assert_eq!(guided.trained_used, 1, "T-Perm woven in after a setup move");
+        let mut s = state;
+        for seg in &guided.segments {
+            s.apply_alg(seg.alg());
+        }
+        assert!((0..4).any(|k| s.rotate_u(k).is_solved()));
     }
 
     #[test]
