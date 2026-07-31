@@ -50,6 +50,24 @@ pub struct RubiksApp {
     rx: Receiver<AsyncMsg>,
 }
 
+fn table_disabled() -> bool {
+    #[cfg(target_arch = "wasm32")]
+    {
+        crate::platform::web::query_flag("notable")
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    false
+}
+
+fn store_disabled() -> bool {
+    #[cfg(target_arch = "wasm32")]
+    {
+        crate::platform::web::query_flag("nostore")
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    false
+}
+
 impl RubiksApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         if let Some(rs) = cc.wgpu_render_state.as_ref() {
@@ -62,8 +80,22 @@ impl RubiksApp {
         let (tx, rx) = std::sync::mpsc::channel();
         let seed = (cc.egui_ctx.input(|i| i.time).to_bits()).wrapping_mul(0x9E37_79B9);
 
-        let table = install_table_for_platform(&cc.egui_ctx, &tx);
-        let store = crate::persist::open_store();
+        #[cfg(target_arch = "wasm32")]
+        crate::platform::web::crumb("new(): renderer+style ready");
+        let table = if cfg!(target_arch = "wasm32") && table_disabled() {
+            TableState::Failed("disabled via ?notable".into())
+        } else {
+            install_table_for_platform(&cc.egui_ctx, &tx)
+        };
+        #[cfg(target_arch = "wasm32")]
+        crate::platform::web::crumb("new(): table fetch kicked off");
+        let store = if cfg!(target_arch = "wasm32") && store_disabled() {
+            None
+        } else {
+            crate::persist::open_store()
+        };
+        #[cfg(target_arch = "wasm32")]
+        crate::platform::web::crumb("new(): store opened");
 
         let mut app = RubiksApp {
             screen: Screen::Menu,
@@ -82,6 +114,8 @@ impl RubiksApp {
             rx,
         };
         crate::persist::warm_app(&mut app);
+        #[cfg(target_arch = "wasm32")]
+        crate::platform::web::crumb("new(): app warmed — startup complete");
         app
     }
 
@@ -161,6 +195,8 @@ impl RubiksApp {
         while let Ok(msg) = self.rx.try_recv() {
             match msg {
                 AsyncMsg::TableBytes(Ok(bytes)) => {
+                    #[cfg(target_arch = "wasm32")]
+                    crate::platform::web::crumb("table bytes received; decoding");
                     self.table = match cube_solver::install_table(&bytes) {
                         Ok(()) => TableState::Ready,
                         Err(e) => TableState::Failed(e.to_string()),

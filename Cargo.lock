@@ -2130,6 +2130,7 @@ dependencies = [
  "js-sys",
  "libc",
  "mpedb-types",
+ "wasmtimer",
  "xxhash-rust",
 ]
 

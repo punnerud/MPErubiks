@@ -20,3 +20,18 @@ pub async fn fetch_bytes(url: &str) -> Result<Vec<u8>, String> {
 }
 
 pub mod camera;
+
+/// Startup breadcrumb straight to the JS console — survives where the UI
+/// can't render yet.
+pub fn crumb(msg: &str) {
+    web_sys::console::log_1(&format!("[rubiks] {msg}").into());
+}
+
+/// `?flag=1`-style kill-switches for bisecting startup crashes on devices
+/// without a console.
+pub fn query_flag(flag: &str) -> bool {
+    web_sys::window()
+        .and_then(|w| w.location().search().ok())
+        .map(|s| s.contains(flag))
+        .unwrap_or(false)
+}

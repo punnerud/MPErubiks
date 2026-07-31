@@ -40,6 +40,7 @@ web-sys = { workspace = true, features = [
     "HtmlElement",
     "CssStyleDeclaration",
     "console",
+    "Location",
     "Storage",
     "Request",
     "RequestInit",
