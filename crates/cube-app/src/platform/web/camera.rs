@@ -172,6 +172,22 @@ impl Camera {
         out.try_into().ok()
     }
 
+    /// The entire current sampling canvas (drawn at SAMPLE_WIDTH), for
+    /// diagnostics uploads: lets us see exactly where the grid sampled
+    /// relative to the cube.
+    pub fn frame_rgba(&self) -> Option<(Vec<u8>, usize, usize)> {
+        let w = self.canvas.width() as usize;
+        let h = self.canvas.height() as usize;
+        if w == 0 || h == 0 {
+            return None;
+        }
+        let data = self
+            .ctx
+            .get_image_data(0.0, 0.0, w as f64, h as f64)
+            .ok()?;
+        Some((data.data().to_vec(), w, h))
+    }
+
     pub fn stop(&self) {
         for track in self.stream.get_tracks().iter() {
             if let Ok(track) = track.dyn_into::<web_sys::MediaStreamTrack>() {

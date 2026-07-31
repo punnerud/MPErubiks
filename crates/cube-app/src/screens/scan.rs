@@ -375,6 +375,17 @@ fn scan_ui(
     // Force-capture when auto won't bite (tricky stickers).
     if small_button(ui, slot(0), "force", app.t(TextKey::Capture), true) && !in_flash {
         capture(screen, now, "manual");
+        // Manual snaps also ship the WHOLE frame: ground truth for where
+        // the grid sampled relative to the cube.
+        if let CameraState::Ready(cam) = &screen.camera {
+            if let Some((buf, w, h)) = cam.frame_rgba() {
+                let body = format!(
+                    "{{\"source\":\"frame\",\"rotation\":{rotation},\"cells\":[{{\"w\":{w},\"h\":{h},\"rgba_hex\":\"{}\"}}]}}",
+                    crate::platform::web::hex_encode(&buf)
+                );
+                crate::platform::web::post_json_forget("upload", body);
+            }
+        }
     }
     if small_button(ui, slot(1), "manual", app.t(TextKey::EnterManually), false) {
         *next = Some(Screen::Solve(super::solve::SolveScreen::new_input(
