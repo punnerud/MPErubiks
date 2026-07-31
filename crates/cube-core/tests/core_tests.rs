@@ -206,6 +206,15 @@ fn normalize_orientation_undoes_any_rotation() {
 }
 
 #[test]
+fn normalize_survives_illegal_centers() {
+    // A bad scan can duplicate centers; normalization must not panic and
+    // must leave the state untouched for validation to report.
+    let mut s = FaceletCube::SOLVED;
+    s.0[4] = Face::R; // U center painted red: no rotation can fix this
+    assert_eq!(s.normalize_orientation(), s);
+}
+
+#[test]
 fn stage_predicates() {
     assert!(SOLVED.is_solved());
     assert!(SOLVED.is_f2l_solved());

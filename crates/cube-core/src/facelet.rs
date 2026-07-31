@@ -350,8 +350,9 @@ impl FaceletCube {
     }
 
     /// Rotate the whole cube so every center is on its home face.
-    /// Always succeeds: the centers of a legal cube form one of 24
-    /// rotations of the solved arrangement.
+    /// For any legal cube the centers form one of 24 rotations of solved;
+    /// ILLEGAL center arrangements (a bad camera scan) return the state
+    /// unchanged — validation reports them properly, panicking must not.
     #[must_use]
     pub fn normalize_orientation(&self) -> FaceletCube {
         let centers_home =
@@ -382,7 +383,8 @@ impl FaceletCube {
                 }
             }
         }
-        unreachable!("center arrangement is not a rotation of solved");
+        // Scanned garbage (duplicate centers): leave as-is for validation.
+        *self
     }
 }
 

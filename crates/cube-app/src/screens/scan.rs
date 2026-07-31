@@ -465,6 +465,10 @@ fn assemble(screen: &ScanScreen) -> FaceletCube {
                 .unwrap_or(face);
             cube.0[face as usize * 9 + facelet_off as usize] = mapped;
         }
+        // The center DEFINES the face in this flow (capture order), no
+        // matter what the votes said — guarantees six distinct centers
+        // so review/validation always start from a sane frame.
+        cube.0[face as usize * 9 + 4] = face;
     }
     cube
 }
