@@ -8,9 +8,24 @@ use crate::widgets::{case_diagram, cube_view::CubeView, icons};
 use cube_core::{CaseSet, RecogKind};
 use egui::{Color32, Rect, RichText, ScrollArea, Sense, Stroke, StrokeKind, Ui, Vec2};
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum PickerTab {
+    /// Beginner lessons — the "start here" tab.
+    Intro,
+    Set(CaseSet),
+}
+
 pub enum TrainScreen {
-    Picker { set: CaseSet },
+    Picker { tab: PickerTab },
     Session(SessionState),
+    Lesson(LessonView),
+}
+
+pub struct LessonView {
+    pub lesson: usize,
+    pub step: usize,
+    /// The step's setup+demo still needs to be applied to the cube.
+    pub pending: bool,
 }
 
 pub struct SessionState {
@@ -38,8 +53,9 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
     let mut next: Option<Screen> = None;
 
     match &mut screen {
-        TrainScreen::Picker { set } => picker(app, ui, set, &mut next),
+        TrainScreen::Picker { tab } => picker(app, ui, tab, &mut next),
         TrainScreen::Session(session) => session_ui(app, ui, session, &mut next),
+        TrainScreen::Lesson(view) => lesson_ui(app, ui, view, &mut next),
     }
 
     app.screen = next.unwrap_or(Screen::Train(screen));
@@ -54,14 +70,25 @@ fn set_tab_label(set: CaseSet) -> &'static str {
     }
 }
 
-fn picker(app: &mut RubiksApp, ui: &mut Ui, set: &mut CaseSet, next: &mut Option<Screen>) {
+fn picker(app: &mut RubiksApp, ui: &mut Ui, tab: &mut PickerTab, next: &mut Option<Screen>) {
     ui.vertical_centered(|ui| {
         ui.horizontal(|ui| {
-            ui.add_space((ui.available_width() - 4.0 * 96.0).max(0.0) / 2.0);
-            for s in [CaseSet::Lbl, CaseSet::F2l, CaseSet::Oll, CaseSet::Pll] {
-                let active = *set == s;
+            ui.add_space((ui.available_width() - 5.0 * 96.0).max(0.0) / 2.0);
+            let tabs = [
+                (PickerTab::Intro, "123"),
+                (PickerTab::Set(CaseSet::Lbl), "ABC"),
+                (PickerTab::Set(CaseSet::F2l), "F2L"),
+                (PickerTab::Set(CaseSet::Oll), "OLL"),
+                (PickerTab::Set(CaseSet::Pll), "PLL"),
+            ];
+            for (t, label) in tabs {
+                let active = *tab == t;
                 let color = if active {
-                    Color32::from_rgb(0xC7, 0x51, 0x08)
+                    if t == PickerTab::Intro {
+                        Color32::from_rgb(0x1E, 0x88, 0x50)
+                    } else {
+                        Color32::from_rgb(0xC7, 0x51, 0x08)
+                    }
                 } else {
                     Color32::from_gray(60)
                 };
@@ -71,28 +98,166 @@ fn picker(app: &mut RubiksApp, ui: &mut Ui, set: &mut CaseSet, next: &mut Option
                 ui.painter().text(
                     rect.center(),
                     egui::Align2::CENTER_CENTER,
-                    set_tab_label(s),
+                    label,
                     egui::FontId::proportional(22.0),
                     Color32::WHITE,
                 );
                 if response.clicked() {
-                    *set = s;
+                    *tab = t;
                 }
             }
         });
     });
     ui.add_space(8.0);
 
-    let cases = app.library.cases_in_set(*set);
+    match *tab {
+        PickerTab::Intro => intro_picker(app, ui, next),
+        PickerTab::Set(set) => {
+            let cases = app.library.cases_in_set(set);
+            ScrollArea::vertical().show(ui, |ui| {
+                ui.horizontal_wrapped(|ui| {
+                    for case_idx in cases {
+                        if case_card(app, ui, case_idx) {
+                            new_case_state(app, case_idx);
+                            *next = Some(Screen::Train(TrainScreen::Session(SessionState {
+                                case_idx,
+                                phase: Phase::Ready,
+                            })));
+                        }
+                    }
+                });
+            });
+        }
+    }
+}
+
+/// Lesson cards: a huge number badge + short title. Ordered 1..7 so a
+/// child can follow along without reading.
+fn intro_picker(app: &mut RubiksApp, ui: &mut Ui, next: &mut Option<Screen>) {
+    ui.vertical_centered(|ui| {
+        ui.label(RichText::new(app.t(TextKey::LessonsTabCaption)).size(20.0).weak());
+    });
     ScrollArea::vertical().show(ui, |ui| {
         ui.horizontal_wrapped(|ui| {
-            for case_idx in cases {
-                if case_card(app, ui, case_idx) {
-                    new_case_state(app, case_idx);
-                    *next = Some(Screen::Train(TrainScreen::Session(SessionState {
-                        case_idx,
-                        phase: Phase::Ready,
+            for (i, lesson) in crate::lessons::LESSONS.iter().enumerate() {
+                let size = Vec2::new(132.0, 150.0);
+                let (rect, response) = ui.allocate_exact_size(size, Sense::click());
+                let p = ui.painter();
+                p.rect_filled(rect, 12.0, Color32::from_gray(38));
+                if response.hovered() {
+                    p.rect_stroke(rect, 12.0, Stroke::new(2.0, Color32::WHITE), StrokeKind::Inside);
+                }
+                p.text(
+                    egui::Pos2::new(rect.center().x, rect.top() + 52.0),
+                    egui::Align2::CENTER_CENTER,
+                    lesson.badge,
+                    egui::FontId::proportional(56.0),
+                    Color32::from_rgb(0x4C, 0xD9, 0x64),
+                );
+                p.text(
+                    egui::Pos2::new(rect.center().x, rect.bottom() - 26.0),
+                    egui::Align2::CENTER_CENTER,
+                    app.t(lesson.title),
+                    egui::FontId::proportional(15.0),
+                    Color32::WHITE,
+                );
+                if response.clicked() {
+                    *next = Some(Screen::Train(TrainScreen::Lesson(LessonView {
+                        lesson: i,
+                        step: 0,
+                        pending: true,
                     })));
+                }
+            }
+        });
+    });
+}
+
+/// One lesson step: the cube DEMONSTRATES, one big sentence reinforces,
+/// giant replay/next controls.
+fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut Option<Screen>) {
+    let lesson = &crate::lessons::LESSONS[view.lesson];
+    let step = &lesson.steps[view.step];
+
+    if view.pending {
+        view.pending = false;
+        app.animator.clear();
+        app.cube = cube_core::FaceletCube::SOLVED;
+        if let Some(setup) = step.setup {
+            if let Ok(alg) = cube_core::Alg::parse(setup) {
+                app.cube.apply_alg(&alg);
+            }
+        }
+        if let Some(demo) = step.demo {
+            if let Ok(alg) = cube_core::Alg::parse(demo) {
+                app.animator.enqueue_all(&alg.0);
+            }
+        }
+    }
+
+    ui.vertical_centered(|ui| {
+        ui.label(RichText::new(app.t(lesson.title)).size(24.0).strong());
+    });
+
+    let controls_height = 170.0;
+    let cube_size = Vec2::new(
+        ui.available_width(),
+        (ui.available_height() - controls_height).max(120.0),
+    );
+    CubeView {
+        cube: &app.cube,
+        animator: &app.animator,
+        orbit: &mut app.orbit,
+        highlight: None,
+        color_override: None,
+    }
+    .show(ui, cube_size);
+
+    ui.vertical_centered(|ui| {
+        ui.label(RichText::new(app.t(step.text)).size(22.0));
+        ui.add_space(6.0);
+        ui.horizontal(|ui| {
+            ui.add_space((ui.available_width() - 3.0 * 108.0).max(0.0) / 2.0);
+            let size = Vec2::new(96.0, 64.0);
+            let gray = Color32::from_gray(70);
+            if icons::big_icon_button(ui, size, gray, "", icons::draw_back_arrow).clicked() {
+                if view.step > 0 {
+                    view.step -= 1;
+                    view.pending = true;
+                } else {
+                    *next = Some(Screen::Train(TrainScreen::Picker {
+                        tab: PickerTab::Intro,
+                    }));
+                }
+            }
+            if icons::big_icon_button(
+                ui,
+                size,
+                Color32::from_rgb(0x2A, 0x5C, 0xC2),
+                app.t(TextKey::Replay),
+                icons::draw_reset,
+            )
+            .clicked()
+            {
+                view.pending = true;
+            }
+            let last = view.step + 1 >= lesson.steps.len();
+            if icons::big_icon_button(
+                ui,
+                size,
+                Color32::from_rgb(0x1E, 0x88, 0x50),
+                "",
+                if last { icons::draw_check } else { icons::draw_next_arrow },
+            )
+            .clicked()
+            {
+                if last {
+                    *next = Some(Screen::Train(TrainScreen::Picker {
+                        tab: PickerTab::Intro,
+                    }));
+                } else {
+                    view.step += 1;
+                    view.pending = true;
                 }
             }
         });

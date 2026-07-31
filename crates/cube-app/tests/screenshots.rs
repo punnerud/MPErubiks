@@ -57,7 +57,7 @@ fn menu_norwegian() {
 fn train_picker_pll() {
     let mut h = harness();
     h.state_mut().screen = Screen::Train(cube_app::screens::train::TrainScreen::Picker {
-        set: cube_core::CaseSet::Pll,
+        tab: cube_app::screens::train::PickerTab::Set(cube_core::CaseSet::Pll),
     });
     h.run();
     h.snapshot("train_picker_pll");
@@ -67,10 +67,39 @@ fn train_picker_pll() {
 fn train_picker_oll() {
     let mut h = harness();
     h.state_mut().screen = Screen::Train(cube_app::screens::train::TrainScreen::Picker {
-        set: cube_core::CaseSet::Oll,
+        tab: cube_app::screens::train::PickerTab::Set(cube_core::CaseSet::Oll),
     });
     h.run();
     h.snapshot("train_picker_oll");
+}
+
+#[test]
+fn train_intro_tab() {
+    let mut h = harness();
+    h.state_mut().screen = Screen::Train(cube_app::screens::train::TrainScreen::Picker {
+        tab: cube_app::screens::train::PickerTab::Intro,
+    });
+    h.run();
+    h.snapshot("train_intro");
+}
+
+#[test]
+fn lesson_daisy_screen() {
+    let mut h = harness();
+    h.state_mut().screen = Screen::Train(cube_app::screens::train::TrainScreen::Lesson(
+        cube_app::screens::train::LessonView { lesson: 2, step: 0, pending: true },
+    ));
+    h.step(); // applies the step's setup and queues the demo
+    {
+        // Jump to the demo's end state so the snapshot is deterministic
+        // (a running animation would keep the harness stepping).
+        let app = h.state_mut();
+        app.animator.clear();
+        let demo = cube_app::lessons::LESSONS[2].steps[0].demo.unwrap();
+        app.cube.apply_alg(&cube_core::Alg::parse(demo).unwrap());
+    }
+    h.run();
+    h.snapshot("lesson_daisy");
 }
 
 #[test]

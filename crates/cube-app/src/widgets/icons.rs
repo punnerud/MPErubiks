@@ -167,6 +167,26 @@ pub fn draw_turn_left(p: &egui::Painter, r: Rect) {
     }
 }
 
+/// Curved arrow pointing right (mirror of turn-left).
+pub fn draw_turn_right(p: &egui::Painter, r: Rect) {
+    let c = r.center();
+    let radius = r.width() * 0.36;
+    let stroke = Stroke::new(r.height() * 0.12, Color32::WHITE);
+    let n = 16;
+    let mut prev: Option<Pos2> = None;
+    for i in 0..=n {
+        let a = std::f32::consts::PI + 0.3 - 3.4 * (i as f32 / n as f32);
+        let pt = Pos2::new(c.x + radius * a.cos(), c.y - radius * a.sin());
+        if let Some(prev) = prev {
+            p.line_segment([prev, pt], stroke);
+        }
+        prev = Some(pt);
+    }
+    if let Some(end) = prev {
+        arrow_head_dir(p, end, Vec2::new(r.width() * 0.2, r.height() * 0.12), stroke.color);
+    }
+}
+
 /// Arrow tilting up-toward-viewer.
 pub fn draw_tilt_up(p: &egui::Painter, r: Rect) {
     let s = Stroke::new(r.height() * 0.12, Color32::WHITE);

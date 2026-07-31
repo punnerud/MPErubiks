@@ -5,8 +5,8 @@
 use crate::app::{RubiksApp, Screen};
 use crate::i18n::TextKey;
 use crate::widgets::{cube_view::CubeView, icons};
-use cube_core::{Face, FaceletCube, Move, Turns};
-use egui::{Color32, Rect, Sense, Ui, Vec2};
+use cube_core::{FaceletCube, Move, Turns};
+use egui::{Color32, Sense, Ui, Vec2};
 
 pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
     top_bar(app, ui);
@@ -17,14 +17,28 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
         ui.available_width(),
         (ui.available_height() - controls_height).max(120.0),
     );
-    CubeView {
+    let highlight = app.selected_face.map(|f| Move::Face(f, Turns::Cw));
+    let response = CubeView {
         cube: &app.cube,
         animator: &app.animator,
         orbit: &mut app.orbit,
-        highlight: None,
+        highlight,
         color_override: None,
     }
     .show(ui, cube_size);
+    // Tap a sticker: select (and pulse) its whole layer; tap it again to
+    // deselect. Much easier for kids than letter buttons.
+    if response.clicked() {
+        if let Some(pos) = response.interact_pointer_pos() {
+            let rect = response.rect;
+            let ndc = (
+                (pos.x - rect.left()) / rect.width() * 2.0 - 1.0,
+                -((pos.y - rect.top()) / rect.height() * 2.0 - 1.0),
+            );
+            let hit = cube_render::pick_face(&app.orbit, rect.aspect_ratio(), ndc);
+            app.selected_face = if hit == app.selected_face { None } else { hit };
+        }
+    }
 
     ui.vertical_centered(|ui| {
         ui.horizontal_wrapped(|ui| {
@@ -67,9 +81,30 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
                 }
             }
             ui.add_space(16.0);
-            face_turn_buttons(app, ui);
+            turn_arrows(app, ui);
         });
     });
+}
+
+/// Two big arrows that turn the tap-selected layer (animated). Colored
+/// like the selected face so button and pulsing layer visibly belong
+/// together.
+fn turn_arrows(app: &mut RubiksApp, ui: &mut Ui) {
+    let Some(face) = app.selected_face else {
+        return;
+    };
+    let color = crate::widgets::net2d::face_color32(face);
+    let size = Vec2::new(96.0, 76.0);
+    for (turns, draw) in [
+        (Turns::Ccw, icons::draw_turn_left as fn(&egui::Painter, egui::Rect)),
+        (Turns::Cw, icons::draw_turn_right as fn(&egui::Painter, egui::Rect)),
+    ] {
+        if icons::big_icon_button(ui, size, color, &face.letter().to_string(), draw).clicked() {
+            let m = Move::Face(face, turns);
+            app.history.push(m);
+            app.animator.enqueue(m);
+        }
+    }
 }
 
 pub fn top_bar(app: &mut RubiksApp, ui: &mut Ui) {
@@ -85,52 +120,3 @@ pub fn top_bar(app: &mut RubiksApp, ui: &mut Ui) {
     });
 }
 
-/// Six face buttons colored like the sticker they turn, each with a small
-/// rotation arrow. Tap = clockwise; the ⟲ toggle switches direction.
-fn face_turn_buttons(app: &mut RubiksApp, ui: &mut Ui) {
-    let colors = [
-        (Face::U, Color32::from_rgb(0xF5, 0xF5, 0xF5)),
-        (Face::R, Color32::from_rgb(0xE0, 0x1B, 0x2E)),
-        (Face::F, Color32::from_rgb(0x00, 0xA8, 0x60)),
-        (Face::D, Color32::from_rgb(0xFF, 0xD5, 0x00)),
-        (Face::L, Color32::from_rgb(0xFF, 0x61, 0x00)),
-        (Face::B, Color32::from_rgb(0x0D, 0x5C, 0xC7)),
-    ];
-    for (face, color) in colors {
-        let (rect, response) = ui.allocate_exact_size(Vec2::splat(58.0), Sense::click());
-        let p = ui.painter();
-        p.rect_filled(rect, 12.0, color);
-        let text_color = if face == Face::U || face == Face::D {
-            Color32::BLACK
-        } else {
-            Color32::WHITE
-        };
-        p.text(
-            rect.center(),
-            egui::Align2::CENTER_CENTER,
-            face.letter(),
-            egui::FontId::proportional(30.0),
-            text_color,
-        );
-        if response.hovered() {
-            p.rect_stroke(
-                rect,
-                12.0,
-                egui::Stroke::new(2.5, Color32::WHITE),
-                egui::StrokeKind::Outside,
-            );
-        }
-        if response.clicked() {
-            // Plain tap: clockwise. Secondary (long-press/right-click): ccw.
-            let m = Move::Face(face, Turns::Cw);
-            app.history.push(m);
-            app.animator.enqueue(m);
-        }
-        if response.secondary_clicked() {
-            let m = Move::Face(face, Turns::Ccw);
-            app.history.push(m);
-            app.animator.enqueue(m);
-        }
-        let _ = Rect::NOTHING;
-    }
-}

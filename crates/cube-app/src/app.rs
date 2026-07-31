@@ -39,6 +39,9 @@ pub struct RubiksApp {
     pub rng: SplitMix64,
     /// Play-mode move history for undo.
     pub history: Vec<Move>,
+    /// Tap-selected face layer in Play mode (highlighted; turned by the
+    /// on-screen arrows).
+    pub selected_face: Option<cube_core::Face>,
     pub table: TableState,
     pub library: Library,
     /// Cases the user marks as "trained" (drives solver hints).
@@ -105,6 +108,7 @@ impl RubiksApp {
             orbit: OrbitCamera::default(),
             rng: SplitMix64::new(seed | 1),
             history: Vec::new(),
+            selected_face: None,
             table,
             library: Library::load(),
             trained: HashSet::new(),

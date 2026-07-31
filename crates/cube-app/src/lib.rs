@@ -3,6 +3,7 @@
 
 pub mod app;
 pub mod i18n;
+pub mod lessons;
 pub mod library;
 pub mod persist;
 pub mod platform;

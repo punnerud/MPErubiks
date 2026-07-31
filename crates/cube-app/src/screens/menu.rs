@@ -70,7 +70,9 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
         )
         .clicked()
         {
-            app.screen = Screen::Train(crate::screens::train::TrainScreen::Picker { set: cube_core::CaseSet::Pll });
+            app.screen = Screen::Train(crate::screens::train::TrainScreen::Picker {
+                tab: crate::screens::train::PickerTab::Intro,
+            });
         }
 
         if icons::big_icon_button(
