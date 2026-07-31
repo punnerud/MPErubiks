@@ -1,0 +1,12 @@
+[package]
+name = "cube-solver"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+cube-core.workspace = true
+kewb.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom.workspace = true

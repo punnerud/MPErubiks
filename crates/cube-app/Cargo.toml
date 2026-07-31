@@ -1,0 +1,47 @@
+[package]
+name = "cube-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+cube-core.workspace = true
+cube-solver.workspace = true
+cube-vision.workspace = true
+cube-render.workspace = true
+cube-store.workspace = true
+eframe.workspace = true
+egui.workspace = true
+egui-wgpu.workspace = true
+wgpu.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+log.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen.workspace = true
+wasm-bindgen-futures.workspace = true
+js-sys.workspace = true
+web-sys = { workspace = true, features = [
+    "Window",
+    "Navigator",
+    "MediaDevices",
+    "MediaStream",
+    "MediaStreamConstraints",
+    "MediaStreamTrack",
+    "MediaTrackConstraints",
+    "HtmlVideoElement",
+    "HtmlCanvasElement",
+    "CanvasRenderingContext2d",
+    "ContextAttributes2d",
+    "ImageData",
+    "Document",
+    "Element",
+    "HtmlElement",
+    "CssStyleDeclaration",
+    "Storage",
+    "Request",
+    "RequestInit",
+    "Response",
+] }
+getrandom.workspace = true

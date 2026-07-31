@@ -1,0 +1,12 @@
+[package]
+name = "cube-render"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+cube-core.workspace = true
+egui.workspace = true
+egui-wgpu.workspace = true
+wgpu.workspace = true
+bytemuck.workspace = true
