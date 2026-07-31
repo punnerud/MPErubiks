@@ -14,9 +14,12 @@ pub struct Camera {
     stream: web_sys::MediaStream,
 }
 
-/// Sampling resolution: frames are downscaled to this width before cell
-/// reads (cheap, and plenty for color voting).
-const SAMPLE_WIDTH: u32 = 480;
+/// Working resolution: frames land on the canvas at this width — the SAME
+/// canvas feeds both the on-screen preview and the color voting, so what
+/// you see is exactly what is sampled (orientation included: 2D canvas
+/// drawImage applies the platform's frame orientation, unlike raw GPU
+/// copies from the <video> element, which bypass it on iOS).
+const SAMPLE_WIDTH: u32 = 720;
 
 fn js_err(e: JsValue) -> String {
     e.as_string().unwrap_or_else(|| format!("{e:?}"))
@@ -111,15 +114,15 @@ impl Camera {
         &self.video
     }
 
-    /// Read the nine WHOLE grid cells (with a small inset against the
-    /// grid lines) from the current frame. The grid square is centered,
-    /// side = 0.6 * min(video dimensions), matching the overlay. Cell
-    /// order is remapped by `rotation` so index 0 is the overlay's
-    /// top-left. Full cells (not center points) feed the color-VOTING
-    /// classifier, which survives misalignment.
-    pub fn sample_cells(&self, rotation: u8) -> Option<[(Vec<u8>, usize, usize); 9]> {
+    pub fn canvas(&self) -> &web_sys::HtmlCanvasElement {
+        &self.canvas
+    }
+
+    /// Draw the current video frame onto the working canvas. Call once per
+    /// UI frame; preview and sampling both read this canvas afterwards.
+    pub fn draw_frame(&self) -> bool {
         if !self.ready() {
-            return None;
+            return false;
         }
         let (vw, vh) = self.dims();
         let scale = f64::from(SAMPLE_WIDTH) / f64::from(vw);
@@ -136,8 +139,24 @@ impl Camera {
                 f64::from(w),
                 f64::from(h),
             )
-            .ok()?;
+            .is_ok()
+    }
 
+    pub fn canvas_dims(&self) -> (u32, u32) {
+        (self.canvas.width(), self.canvas.height())
+    }
+
+    /// Read the nine WHOLE grid cells (with a small inset against the
+    /// grid lines) from the current frame. The grid square is centered,
+    /// side = 0.6 * min(video dimensions), matching the overlay. Cell
+    /// order is remapped by `rotation` so index 0 is the overlay's
+    /// top-left. Full cells (not center points) feed the color-VOTING
+    /// classifier, which survives misalignment.
+    pub fn sample_cells(&self, rotation: u8) -> Option<[(Vec<u8>, usize, usize); 9]> {
+        let (w, h) = self.canvas_dims();
+        if w == 0 || h == 0 {
+            return None;
+        }
         let side = 0.6 * f64::from(w.min(h));
         let left = (f64::from(w) - side) / 2.0;
         let top = (f64::from(h) - side) / 2.0;

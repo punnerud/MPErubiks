@@ -107,9 +107,10 @@ impl ScanScreen {
             rotation: app
                 .store
                 .as_ref()
-                .and_then(|s| s.setting("cam_rot").ok().flatten())
+                // Fresh key: pre-canvas-source rotations are obsolete.
+                .and_then(|s| s.setting("cam_rot2").ok().flatten())
                 .and_then(|v| v.parse().ok())
-                .unwrap_or(255),
+                .unwrap_or(0),
             flash: None,
             mini_cube: FaceletCube::SOLVED,
             mini_base: FaceletCube::SOLVED,
@@ -191,24 +192,19 @@ fn scan_ui(
     ui.ctx().request_repaint();
 
     let avail = ui.available_rect_before_wrap();
-    // CW quarter turns to display upright. Auto mode uses the Screen
-    // Orientation API: if frames arrive landscape while the screen is
-    // rotated by `angle`, the upright correction is (90 - angle)/90
-    // quarter-turns (sensors are landscape-mounted in natural portrait).
-    // Safari sometimes pre-rotates frames (dims match the screen) — then
-    // no correction is needed. The ↻ button overrides odd devices.
-    let rotation = if screen.rotation == 255 {
-        let angle = crate::platform::web::screen_angle() as i32;
-        let frames_landscape = dims.0 > dims.1;
-        let screen_portrait = avail.height() > avail.width();
-        if frames_landscape && screen_portrait {
-            (((450 - angle) % 360) / 90) as u8 % 4
-        } else {
-            0
-        }
-    } else {
-        screen.rotation % 4
+    // The working canvas is the single source for preview AND sampling,
+    // and canvas drawImage applies platform orientation — so the default
+    // is no extra rotation. The ↻ button remains for odd devices.
+    let rotation = screen.rotation % 4;
+    // Refresh the canvas with the current frame (preview + sampling read it).
+    let (canvas, canvas_dims) = {
+        let CameraState::Ready(cam) = &screen.camera else {
+            return;
+        };
+        cam.draw_frame();
+        (cam.canvas().clone(), cam.canvas_dims())
     };
+    let _ = (dims, video);
 
     // --- classification tick at 10 Hz (internal only: drives auto-snap) ---
     let in_flash = screen.flash.is_some_and(|(until, _)| now < until);
@@ -248,8 +244,9 @@ fn scan_ui(
         screen.flash = None;
     }
 
-    // --- zero-copy preview texture ---
+    // --- preview texture from the working canvas ---
     if let (Some(rs), true) = (frame.wgpu_render_state(), cam_ready) {
+        let dims = canvas_dims;
         let recreate = screen.preview.as_ref().map_or(true, |p| p.size != dims);
         if recreate {
             let texture = rs.device.create_texture(&wgpu::TextureDescriptor {
@@ -283,7 +280,7 @@ fn scan_ui(
         if let Some(preview) = &screen.preview {
             rs.queue.copy_external_image_to_texture(
                 &wgpu::CopyExternalImageSourceInfo {
-                    source: wgpu::ExternalImageSource::HTMLVideoElement(video.clone()),
+                    source: wgpu::ExternalImageSource::HTMLCanvasElement(canvas.clone()),
                     origin: wgpu::Origin2d::ZERO,
                     flip_y: false,
                 },
@@ -329,7 +326,7 @@ fn scan_ui(
             screen.rotation = (rotation + 1) % 4;
             screen.stable_ticks = 0;
             if let Some(store) = &app.store {
-                let _ = store.set_setting("cam_rot", &screen.rotation.to_string());
+                let _ = store.set_setting("cam_rot2", &screen.rotation.to_string());
                 crate::persist::persist(store);
             }
         }
