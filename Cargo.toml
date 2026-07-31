@@ -24,7 +24,7 @@ egui = "0.35.0"
 egui-wgpu = "0.35"
 wgpu = "29"
 kewb = "0.4.3"
-mpedb = { path = "/home/morten/mpedb/crates/mpedb" }
+mpedb = { path = "../mpedb/crates/mpedb" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 bytemuck = { version = "1", features = ["derive"] }

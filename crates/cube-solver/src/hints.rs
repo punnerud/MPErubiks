@@ -94,6 +94,58 @@ fn filler_ergo(alg: &Alg) -> u32 {
     ergonomic_cost(alg) * 5 / 4
 }
 
+/// Every algorithm start costs a "look": the human pauses to recognize
+/// the case before the hands move. Roughly one comfortable turn.
+const RECOGNITION_PAUSE: i64 = 8;
+
+fn single_move_ergo(m: Move) -> i64 {
+    i64::from(ergonomic_cost(&Alg::new(vec![m])))
+}
+
+/// Junction cost between two consecutive segments — the routing "turn
+/// penalty", computed from the algs themselves (no hand-kept ID matrix):
+///
+/// - **Cancellation bonus** (negative): same-face moves at the seam merge
+///   (`R' | R` vanishes entirely, `R | R` becomes one `R2`) — the classic
+///   FMC trick, rewarded so chains that flow into each other win.
+/// - **Grip penalty** (positive): awkward hand-position changes at the
+///   seam (B is a regrip for most grips, D a wrist turn, F↔L crossings).
+fn junction_cost(prev_last: Option<Move>, next_first: Option<Move>) -> i64 {
+    let (Some(prev), Some(next)) = (prev_last, next_first) else {
+        return 0;
+    };
+    let (Move::Face(pf, pt), Move::Face(nf, nt)) = (prev, next) else {
+        return 0; // seams with slice/wide/rot moves: no model yet
+    };
+
+    if pf == nf {
+        // Merge at the seam: quarters add mod 4.
+        let q = (pt.quarters() + nt.quarters()) % 4;
+        let separate = single_move_ergo(prev) + single_move_ergo(next);
+        let merged = match q {
+            0 => 0, // full cancellation: both moves vanish
+            1 => single_move_ergo(Move::Face(pf, Turns::Cw)),
+            2 => single_move_ergo(Move::Face(pf, Turns::Half)),
+            _ => single_move_ergo(Move::Face(pf, Turns::Ccw)),
+        };
+        return merged - separate; // <= 0: never worse than executing both
+    }
+
+    // Grip discontinuities at the seam.
+    let involves = |f: Face| pf == f || nf == f;
+    let mut penalty = 0;
+    if involves(Face::B) {
+        penalty += 6;
+    }
+    if involves(Face::D) {
+        penalty += 3;
+    }
+    if (pf == Face::F && nf == Face::L) || (pf == Face::L && nf == Face::F) {
+        penalty += 2;
+    }
+    penalty
+}
+
 #[derive(Clone, Debug)]
 pub struct SolveOutput {
     /// The plain optimal-ish solution (≤ 21, fallback 23).
@@ -195,6 +247,7 @@ fn guided_solution(
             // "R makes your T-Perm applicable" teaches more than a raw
             // filler sequence would. (U-turn setups are already folded
             // into matches as pre-AUF, so setups skip the U face.)
+            let prev_last_move = node.segments.last().and_then(|s| s.alg().0.last().copied());
             let mut consider = |setup: Option<Move>, state: &FaceletCube| {
                 for m in trained_matches(state, trained, rec) {
                     // Reduce to face moves: rotation-free by construction,
@@ -206,12 +259,24 @@ fn guided_solution(
                         continue;
                     }
                     // Path cost: the setup is unpracticed (filler weight),
-                    // the alg itself is muscle memory, and matching in a
-                    // rotated frame costs a regrip.
+                    // the alg itself is muscle memory, matching in a
+                    // rotated frame costs a regrip, and every seam pays a
+                    // junction cost (cancellation bonus / grip penalty).
                     let setup_ergo = setup
-                        .map(|mv| filler_ergo(&Alg::new(vec![mv])))
+                        .map(|mv| i64::from(filler_ergo(&Alg::new(vec![mv]))))
                         .unwrap_or(0);
-                    let exec_ergo = ergonomic_cost(&exec) + frame_regrip_cost(m.y_frame);
+                    let seam_before_exec = match setup {
+                        Some(mv) => {
+                            junction_cost(prev_last_move, Some(mv))
+                                + junction_cost(Some(mv), exec.0.first().copied())
+                        }
+                        None => junction_cost(prev_last_move, exec.0.first().copied()),
+                    };
+                    let pre_exec_ergo =
+                        (i64::from(node.ergo) + setup_ergo + seam_before_exec).max(0);
+                    let exec_ergo = i64::from(ergonomic_cost(&exec))
+                        + i64::from(frame_regrip_cost(m.y_frame))
+                        + RECOGNITION_PAUSE;
                     let child_state = state.applied_alg(&exec).normalize_orientation();
                     let mut segments = node.segments.clone();
                     if let Some(setup) = setup {
@@ -225,10 +290,10 @@ fn guided_solution(
                         state: child_state,
                         segments,
                         used_htm: node.used_htm + cost,
-                        ergo: node.ergo + setup_ergo + exec_ergo,
+                        ergo: (pre_exec_ergo + exec_ergo).max(0) as u32,
                         first_trained_ergo: node
                             .first_trained_ergo
-                            .or(Some(node.ergo + setup_ergo)),
+                            .or(Some((i64::from(node.ergo) + setup_ergo).max(0) as u32)),
                         trained_used: node.trained_used + 1,
                     });
                 }
@@ -280,7 +345,12 @@ fn guided_solution(
             };
             let Some(tail) = tail else { continue };
             let total = node.used_htm + tail.len_htm();
-            let ergo_cost = node.ergo + filler_ergo(&tail);
+            let tail_seam = junction_cost(
+                node.segments.last().and_then(|s| s.alg().0.last().copied()),
+                tail.0.first().copied(),
+            );
+            let ergo_cost =
+                (i64::from(node.ergo) + i64::from(filler_ergo(&tail)) + tail_seam).max(0) as u32;
             let mut segments = node.segments.clone();
             if !tail.is_empty() {
                 segments.push(Segment::Raw(tail));
@@ -422,6 +492,26 @@ mod tests {
             "knowledge demonstrated at the very start"
         );
         assert!(guided.ergo_cost > 0);
+    }
+
+    #[test]
+    fn junction_costs_model_seams_hints() {
+        use cube_core::{Face, Move, Turns};
+        let m = |f, t| Move::Face(f, t);
+        // Full cancellation (R' | R): strongly negative — both moves vanish.
+        let cancel = junction_cost(Some(m(Face::R, Turns::Ccw)), Some(m(Face::R, Turns::Cw)));
+        assert!(cancel < -15, "full cancel should refund both moves, got {cancel}");
+        // Merge (R | R -> R2): refunds part of the pair.
+        let merge = junction_cost(Some(m(Face::R, Turns::Cw)), Some(m(Face::R, Turns::Cw)));
+        assert!(merge < 0 && merge > cancel, "merge refunds less than full cancel");
+        // B at the seam is a regrip; R->U flows free.
+        assert!(junction_cost(Some(m(Face::F, Turns::Cw)), Some(m(Face::B, Turns::Cw))) > 0);
+        assert_eq!(
+            junction_cost(Some(m(Face::R, Turns::Cw)), Some(m(Face::U, Turns::Cw))),
+            0
+        );
+        // Open seams cost nothing.
+        assert_eq!(junction_cost(None, Some(m(Face::R, Turns::Cw))), 0);
     }
 
     #[test]
