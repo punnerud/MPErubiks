@@ -119,7 +119,7 @@ impl Camera {
     /// overlay the scan screen draws. With `rotated` (portrait phones show
     /// the landscape sensor frame turned 90° CW on screen), the patch
     /// order is remapped so index 0 is still the overlay's top-left.
-    pub fn sample_patches(&self, rotated: bool) -> Option<[Oklab; 9]> {
+    pub fn sample_patches(&self, rotation: u8) -> Option<[Oklab; 9]> {
         if !self.ready() {
             return None;
         }
@@ -149,12 +149,12 @@ impl Camera {
         for display_row in 0..3usize {
             for display_col in 0..3usize {
                 // Screen cell -> raw-frame cell (inverse of the CW display
-                // rotation when rotated).
-                let (row, col) = if rotated {
-                    (2 - display_col, display_row)
-                } else {
-                    (display_row, display_col)
-                };
+                // rotation, applied `rotation` quarter-turns).
+                let (mut row, mut col) = (display_row, display_col);
+                for _ in 0..(rotation % 4) {
+                    let (r, c) = (row, col);
+                    (row, col) = (2 - c, r);
+                }
                 let cx = left + (col as f64 + 0.5) * cell;
                 let cy = top + (row as f64 + 0.5) * cell;
                 let data = self

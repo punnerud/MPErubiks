@@ -51,6 +51,10 @@ pub struct ScanScreen {
     stable_ticks: u8,
     last_sample: f64,
     cal: Calibration,
+    /// Preview rotation in CW quarter turns; 255 = auto-guess. User can
+    /// cycle it with the on-screen button (sensor orientation varies by
+    /// device); persisted as the "cam_rot" setting.
+    rotation: u8,
     /// Post-capture color flash: (show until, detected class per cell).
     flash: Option<(f64, [Option<u8>; 9])>,
     // Mini 3D rotation guide.
@@ -85,6 +89,12 @@ impl ScanScreen {
             stable_ticks: 0,
             last_sample: 0.0,
             cal: Calibration::default_stickers(),
+            rotation: app
+                .store
+                .as_ref()
+                .and_then(|s| s.setting("cam_rot").ok().flatten())
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(255),
             flash: None,
             mini_cube: FaceletCube::SOLVED,
             mini_base: FaceletCube::SOLVED,
@@ -166,15 +176,19 @@ fn scan_ui(
     ui.ctx().request_repaint();
 
     let avail = ui.available_rect_before_wrap();
-    // Portrait phone + landscape sensor: show the frame turned 90° CW.
-    let rotated = avail.height() > avail.width() && dims.0 > dims.1;
+    // CW quarter turns to display upright; auto-guess until the user picks.
+    let rotation = if screen.rotation == 255 {
+        u8::from(avail.height() > avail.width() && dims.0 > dims.1)
+    } else {
+        screen.rotation % 4
+    };
 
     // --- classification tick at 10 Hz (internal only: drives auto-snap) ---
     let in_flash = screen.flash.is_some_and(|(until, _)| now < until);
     if cam_ready && !in_flash && screen.face_idx < 6 && now - screen.last_sample > 0.1 {
         screen.last_sample = now;
         let patches = match &screen.camera {
-            CameraState::Ready(cam) => cam.sample_patches(rotated),
+            CameraState::Ready(cam) => cam.sample_patches(rotation),
             _ => None,
         };
         if let Some(patches) = patches {
@@ -261,12 +275,31 @@ fn scan_ui(
     let (outer, _) = ui.allocate_exact_size(avail.size(), Sense::hover());
     if let Some(preview) = &screen.preview {
         let (vw, vh) = (preview.size.0 as f32, preview.size.1 as f32);
-        let (sw, sh) = if rotated { (vh, vw) } else { (vw, vh) };
+        let (sw, sh) = if rotation % 2 == 1 { (vh, vw) } else { (vw, vh) };
         let scale = (outer.width() / sw).min(outer.height() / sh);
         let shown = Vec2::new(sw * scale, sh * scale);
         let rect = Rect::from_center_size(outer.center(), shown);
-        draw_preview(ui, preview.id, rect, rotated);
+        draw_preview(ui, preview.id, rect, rotation);
         draw_overlay(ui, rect, screen, now);
+
+        // Rotation cycle button (top-right of the preview): sensor
+        // orientation differs per device — one tap fixes it, remembered.
+        let btn = Rect::from_center_size(
+            Pos2::new(rect.right() - 34.0, rect.top() + 34.0),
+            Vec2::splat(48.0),
+        );
+        let resp = ui.interact(btn, ui.id().with("rot"), Sense::click());
+        ui.painter()
+            .rect_filled(btn, 12.0, Color32::from_black_alpha(150));
+        crate::widgets::icons::draw_reset(ui.painter(), btn.shrink(12.0));
+        if resp.clicked() {
+            screen.rotation = (rotation + 1) % 4;
+            screen.stable_ticks = 0;
+            if let Some(store) = &app.store {
+                let _ = store.set_setting("cam_rot", &screen.rotation.to_string());
+                crate::persist::persist(store);
+            }
+        }
     }
 
     // --- mini rotation guide (top center, overlaid) ---
@@ -338,9 +371,9 @@ fn assemble(screen: &ScanScreen) -> FaceletCube {
     cube
 }
 
-/// Textured quad, optionally turned 90° CW so portrait phones see the
-/// world upright (raw getUserMedia frames arrive in sensor orientation).
-fn draw_preview(ui: &Ui, id: egui::TextureId, rect: Rect, rotated: bool) {
+/// Textured quad turned `rotation` CW quarter-turns so any device's
+/// sensor orientation can be displayed upright.
+fn draw_preview(ui: &Ui, id: egui::TextureId, rect: Rect, rotation: u8) {
     let mut mesh = egui::Mesh::with_texture(id);
     let corners = [
         rect.left_top(),
@@ -348,12 +381,9 @@ fn draw_preview(ui: &Ui, id: egui::TextureId, rect: Rect, rotated: bool) {
         rect.right_bottom(),
         rect.left_bottom(),
     ];
-    let uvs = if rotated {
-        // screen TL <- raw BL, TR <- raw TL, BR <- raw TR, BL <- raw BR
-        [(0.0, 1.0), (0.0, 0.0), (1.0, 0.0), (1.0, 1.0)]
-    } else {
-        [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]
-    };
+    let base = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)];
+    let r = rotation as usize % 4;
+    let uvs: [(f32, f32); 4] = core::array::from_fn(|i| base[(i + 4 - r) % 4]);
     for (pos, uv) in corners.iter().zip(uvs.iter()) {
         mesh.vertices.push(egui::epaint::Vertex {
             pos: *pos,
