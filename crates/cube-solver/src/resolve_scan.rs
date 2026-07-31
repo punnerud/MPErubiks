@@ -31,6 +31,47 @@ const MAX_FREED: usize = 4;
 /// resolver must never freeze the UI thread.
 const MAX_CHECKS: usize = 60_000;
 
+/// Optimal class -> face assignment from the six CENTER histograms
+/// (`centers[k][class]` = capture k's center share of `class`): the
+/// permutation maximizing total evidence. Handles unreadable centers and
+/// duplicate center votes, which greedy first-wins mapping cannot.
+pub fn assign_classes(centers: &[[f32; 6]; 6]) -> [usize; 6] {
+    // Brute-force over all 6! = 720 permutations: perm[k] = class of
+    // capture k's center.
+    let mut best = [0, 1, 2, 3, 4, 5];
+    let mut best_score = f32::NEG_INFINITY;
+    let mut perm = [0usize; 6];
+    let mut used = [false; 6];
+    fn rec(
+        k: usize,
+        centers: &[[f32; 6]; 6],
+        perm: &mut [usize; 6],
+        used: &mut [bool; 6],
+        score: f32,
+        best: &mut [usize; 6],
+        best_score: &mut f32,
+    ) {
+        if k == 6 {
+            if score > *best_score {
+                *best_score = score;
+                *best = *perm;
+            }
+            return;
+        }
+        for class in 0..6 {
+            if used[class] {
+                continue;
+            }
+            used[class] = true;
+            perm[k] = class;
+            rec(k + 1, centers, perm, used, score + centers[k][class], best, best_score);
+            used[class] = false;
+        }
+    }
+    rec(0, centers, &mut perm, &mut used, 0.0, &mut best, &mut best_score);
+    best
+}
+
 pub fn resolve_scan(shares: &Shares) -> Result<FaceletCube, crate::ValidationError> {
     // Initial assignment: argmax per cell; centers are authoritative
     // (facelet 9f+4 is forced to its face by the scan flow).
@@ -212,6 +253,31 @@ mod tests {
         let shares = shares_from(&state, &[], &[(7, wrong_color)]);
         let resolved = resolve_scan(&shares).expect("resolvable");
         assert_eq!(resolved, state, "constraints must correct the lie");
+    }
+
+    #[test]
+    fn center_assignment_survives_collisions_and_blanks() {
+        // Captures 1 and 5 both claim class 1; capture 3's center is
+        // unreadable. The optimal assignment still gives each capture a
+        // distinct class, preferring the stronger claims.
+        let mut centers = [[0.0f32; 6]; 6];
+        centers[0][2] = 0.30; // red, clear
+        centers[1][1] = 0.28; // yellow, strong
+        centers[2][3] = 0.25; // orange
+        // capture 3: nothing readable
+        centers[4][5] = 0.30; // blue
+        centers[5][1] = 0.10; // ALSO claims yellow, weakly
+        centers[5][4] = 0.06; // green as runner-up
+        let assigned = assign_classes(&centers);
+        // Distinct classes for all six captures.
+        let mut sorted = assigned;
+        sorted.sort_unstable();
+        assert_eq!(sorted, [0, 1, 2, 3, 4, 5]);
+        // The strong yellow keeps yellow; the weak one gets its runner-up.
+        assert_eq!(assigned[1], 1);
+        assert_eq!(assigned[5], 4);
+        assert_eq!(assigned[0], 2);
+        assert_eq!(assigned[4], 5);
     }
 
     #[test]

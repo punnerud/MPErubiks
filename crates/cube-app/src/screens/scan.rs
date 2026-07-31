@@ -425,21 +425,15 @@ fn scan_ui(
 /// Evidence histograms mapped into FACE space for the resolver: palette
 /// class -> face via the voted centers (capture order fallback).
 fn face_shares(screen: &ScanScreen) -> cube_solver::Shares {
+    // Class -> face by OPTIMAL assignment over the retained center
+    // evidence (survives unreadable centers and duplicate center votes).
+    let center_hists: [[f32; 6]; 6] = core::array::from_fn(|k| {
+        screen.evidence[k].map(|h| h[4]).unwrap_or([0.0; 6])
+    });
+    let capture_class = cube_solver::assign_classes(&center_hists);
     let mut class_to_face: [Option<Face>; 6] = [None; 6];
     for (k, &face) in ORDER.iter().enumerate() {
-        if let Some(classes) = screen.captured[k] {
-            if let Some(c) = classes[4] {
-                if class_to_face[c as usize].is_none() {
-                    class_to_face[c as usize] = Some(face);
-                }
-            }
-        }
-    }
-    // Unmapped classes fall back to palette-order faces (identity-ish).
-    for (c, slot) in class_to_face.iter_mut().enumerate() {
-        if slot.is_none() {
-            *slot = Some(ORDER[c]);
-        }
+        class_to_face[capture_class[k]] = Some(face);
     }
     let mut shares: cube_solver::Shares = [[0.0; 6]; 54];
     for (k, &face) in ORDER.iter().enumerate() {
