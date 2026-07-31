@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "comment": "Case library. 'recognition' drives automatic matching: oll = U-face orientation pattern, pll = LL side permutation, f2l = FR-slot pair location, none = drill/playback only. All algs are validated mechanically at test time: an alg that does not produce a state of its claimed kind fails the build.",
+  "cases": [
+    { "id": "pll-aa", "set": "PLL", "name": "Aa-Perm", "group": "corner 3-cycle", "moves": "x R' U R' D2 R U' R' D2 R2 x'", "recognition": "pll" },
+    { "id": "pll-ab", "set": "PLL", "name": "Ab-Perm", "group": "corner 3-cycle", "moves": "x R2 D2 R U R' D2 R U' R x'", "recognition": "pll" },
+    { "id": "pll-e", "set": "PLL", "name": "E-Perm", "group": "corner swap", "moves": "x' R U' R' D R U R' D' R U R' D R U' R' D' x", "recognition": "pll" },
+    { "id": "pll-f", "set": "PLL", "name": "F-Perm", "group": "adjacent", "moves": "R' U' F' R U R' U' R' F R2 U' R' U' R U R' U R", "recognition": "pll" },
+    { "id": "pll-ga", "set": "PLL", "name": "Ga-Perm", "group": "G", "moves": "R2 U R' U R' U' R U' R2 U' D R' U R D'", "recognition": "pll" },
+    { "id": "pll-gb", "set": "PLL", "name": "Gb-Perm", "group": "G", "moves": "R' U' R U D' R2 U R' U R U' R U' R2 D", "recognition": "pll" },
+    { "id": "pll-gc", "set": "PLL", "name": "Gc-Perm", "group": "G", "moves": "R2 U' R U' R U R' U R2 U D' R U' R' D", "recognition": "pll" },
+    { "id": "pll-gd", "set": "PLL", "name": "Gd-Perm", "group": "G", "moves": "R U R' U' D R2 U' R U' R' U R' U R2 D'", "recognition": "pll" },
+    { "id": "pll-h", "set": "PLL", "name": "H-Perm", "group": "edges only", "moves": "M2 U M2 U2 M2 U M2", "recognition": "pll" },
+    { "id": "pll-ja", "set": "PLL", "name": "Ja-Perm", "group": "adjacent", "moves": "R' U L' U2 R U' R' U2 R L", "recognition": "pll" },
+    { "id": "pll-jb", "set": "PLL", "name": "Jb-Perm", "group": "adjacent", "moves": "R U R' F' R U R' U' R' F R2 U' R'", "recognition": "pll" },
+    { "id": "pll-na", "set": "PLL", "name": "Na-Perm", "group": "N", "moves": "R U R' U R U R' F' R U R' U' R' F R2 U' R' U2 R U' R'", "recognition": "pll" },
+    { "id": "pll-nb", "set": "PLL", "name": "Nb-Perm", "group": "N", "moves": "R' U R U' R' F' U' F R U R' F R' F' R U' R", "recognition": "pll" },
+    { "id": "pll-ra", "set": "PLL", "name": "Ra-Perm", "group": "R", "moves": "R U' R' U' R U R D R' U' R D' R' U2 R'", "recognition": "pll" },
+    { "id": "pll-rb", "set": "PLL", "name": "Rb-Perm", "group": "R", "moves": "R2 F R U R U' R' F' R U2 R' U2 R", "recognition": "pll" },
+    { "id": "pll-t", "set": "PLL", "name": "T-Perm", "group": "adjacent", "moves": "R U R' U' R' F R2 U' R' U' R U R' F'", "recognition": "pll" },
+    { "id": "pll-ua", "set": "PLL", "name": "Ua-Perm", "group": "edges only", "moves": "M2 U M U2 M' U M2", "recognition": "pll" },
+    { "id": "pll-ub", "set": "PLL", "name": "Ub-Perm", "group": "edges only", "moves": "M2 U' M U2 M' U' M2", "recognition": "pll" },
+    { "id": "pll-v", "set": "PLL", "name": "V-Perm", "group": "diagonal", "moves": "R' U R' d' R' F' R2 U' R' U R' F R F", "recognition": "pll" },
+    { "id": "pll-y", "set": "PLL", "name": "Y-Perm", "group": "diagonal", "moves": "F R U' R' U' R U R' F' R U R' U' R' F R F'", "recognition": "pll" },
+    { "id": "pll-z", "set": "PLL", "name": "Z-Perm", "group": "edges only", "moves": "M' U M2 U M2 U M' U2 M2", "recognition": "pll" },
+
+    { "id": "oll-27", "set": "OLL", "name": "Sune", "group": "OCLL", "moves": "R U R' U R U2 R'", "recognition": "oll" },
+    { "id": "oll-26", "set": "OLL", "name": "Anti-Sune", "group": "OCLL", "moves": "R U2 R' U' R U' R'", "recognition": "oll" },
+    { "id": "oll-21", "set": "OLL", "name": "H / Double Sune", "group": "OCLL", "moves": "R U2 R' U' R U R' U' R U' R'", "recognition": "oll" },
+
+    { "id": "f2l-01", "set": "F2L", "name": "Basic insert (back)", "group": "basic", "moves": "U R U' R'", "recognition": "f2l" },
+    { "id": "f2l-02", "set": "F2L", "name": "Basic insert (front)", "group": "basic", "moves": "U' F' U F", "recognition": "f2l" },
+
+    { "id": "lbl-cross-flip", "set": "LBL", "name": "Cross edge flip", "group": "cross", "moves": "F U' R U", "recognition": "none" },
+    { "id": "lbl-corner-insert", "set": "LBL", "name": "Corner insert (repeat as needed)", "group": "first layer", "moves": "R' D' R D", "recognition": "none" },
+    { "id": "lbl-second-layer-right", "set": "LBL", "name": "Second layer edge right", "group": "second layer", "moves": "U R U' R' U' F' U F", "recognition": "f2l" },
+    { "id": "lbl-second-layer-left", "set": "LBL", "name": "Second layer edge left", "group": "second layer", "moves": "U' L' U L U F U' F'", "recognition": "none" },
+    { "id": "lbl-top-cross", "set": "LBL", "name": "Top cross (repeat as needed)", "group": "last layer", "moves": "F R U R' U' F'", "recognition": "none" },
+    { "id": "lbl-sune", "set": "LBL", "name": "Orient corners (Sune)", "group": "last layer", "moves": "R U R' U R U2 R'", "recognition": "none" },
+    { "id": "lbl-corner-cycle", "set": "LBL", "name": "Cycle corners", "group": "last layer", "moves": "U R U' L' U R' U' L", "recognition": "none" },
+    { "id": "lbl-edge-cycle", "set": "LBL", "name": "Cycle edges (Ua)", "group": "last layer", "moves": "M2 U M U2 M' U M2", "recognition": "none" }
+  ]
+}

@@ -142,15 +142,38 @@ fn f2l_key(s: &FaceletCube) -> Option<u16> {
 
 pub struct Recognizer {
     defs: Vec<CaseDef>,
+    /// Per case: y-frame correction for execution. An algorithm with a net
+    /// whole-cube y rotation (wide/slice moves that don't cancel) solves its
+    /// case in a rotated frame; canonical states are center-normalized, so
+    /// the alg must be conjugated back by this amount when executed.
+    frame_fix: Vec<u8>,
     oll: HashMap<u32, (u16, u8)>,
     pll: HashMap<u32, (u16, u8)>,
     f2l: HashMap<u16, (u16, u8)>,
+}
+
+/// Net whole-cube rotation of the algorithm, if it is a pure y rotation:
+/// the number of y quarter-turns the cube ends up rotated by. `None` when
+/// the net rotation tilts the cube (U/D leave the vertical axis).
+fn net_y_rotation(alg: &Alg) -> Option<u8> {
+    let t = FaceletCube::SOLVED.applied_alg(alg);
+    if t.center(Face::U) != Face::U || t.center(Face::D) != Face::D {
+        return None;
+    }
+    // Under y^1, F content shows at L.
+    for (k, f) in [Face::F, Face::L, Face::B, Face::R].into_iter().enumerate() {
+        if t.center(f) == Face::F {
+            return Some(k as u8);
+        }
+    }
+    None
 }
 
 impl Recognizer {
     pub fn new(library: Vec<CaseDef>) -> Result<Recognizer, LibraryError> {
         let mut rec = Recognizer {
             defs: Vec::new(),
+            frame_fix: Vec::new(),
             oll: HashMap::new(),
             pll: HashMap::new(),
             f2l: HashMap::new(),
@@ -179,6 +202,13 @@ impl Recognizer {
             id: def.id.clone(),
             reason: reason.into(),
         };
+
+        let Some(net_y) = net_y_rotation(&def.alg) else {
+            return Err(bad(
+                "net whole-cube rotation tilts the cube — append rotations (x/z) so only a y rotation remains",
+            ));
+        };
+        let frame_fix = (4 - net_y) % 4;
 
         // A case is a class of 4x4 states: the solve may end with any final
         // AUF (`a`, applied before the inverse when generating) and the
@@ -239,6 +269,7 @@ impl Recognizer {
         }
 
         self.defs.push(def);
+        self.frame_fix.push(frame_fix);
         Ok(())
     }
 
@@ -334,17 +365,19 @@ impl Recognizer {
     }
 
     /// The moves to physically perform for a match: optional U pre-turn,
-    /// then the case algorithm, relabeled into the matched y frame.
+    /// then the case algorithm (frame-corrected for any net y rotation of
+    /// the alg itself), relabeled into the matched y frame.
     pub fn execution_alg(&self, m: Match) -> Alg {
         let def = &self.defs[m.case_idx as usize];
-        let mut moves = Vec::with_capacity(def.alg.0.len() + 1);
+        let corrected = def.alg.in_y_frame(self.frame_fix[m.case_idx as usize]);
+        let mut moves = Vec::with_capacity(corrected.0.len() + 1);
         match m.pre_auf % 4 {
             1 => moves.push(Move::Face(Face::U, Turns::Cw)),
             2 => moves.push(Move::Face(Face::U, Turns::Half)),
             3 => moves.push(Move::Face(Face::U, Turns::Ccw)),
             _ => {}
         }
-        moves.extend(def.alg.0.iter().copied());
+        moves.extend(corrected.0);
         Alg::new(moves).in_y_frame(m.y_frame)
     }
 
