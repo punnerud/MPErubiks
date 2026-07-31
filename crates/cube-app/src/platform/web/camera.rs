@@ -116,8 +116,10 @@ impl Camera {
 
     /// Read the nine grid patches from the current frame. The grid square
     /// is centered, with side = 0.6 * min(video dimensions) — matching the
-    /// overlay the scan screen draws.
-    pub fn sample_patches(&self) -> Option<[Oklab; 9]> {
+    /// overlay the scan screen draws. With `rotated` (portrait phones show
+    /// the landscape sensor frame turned 90° CW on screen), the patch
+    /// order is remapped so index 0 is still the overlay's top-left.
+    pub fn sample_patches(&self, rotated: bool) -> Option<[Oklab; 9]> {
         if !self.ready() {
             return None;
         }
@@ -144,10 +146,17 @@ impl Camera {
         let cell = side / 3.0;
 
         let mut out = [Oklab::default(); 9];
-        for row in 0..3 {
-            for col in 0..3 {
-                let cx = left + (f64::from(col) + 0.5) * cell;
-                let cy = top + (f64::from(row) + 0.5) * cell;
+        for display_row in 0..3usize {
+            for display_col in 0..3usize {
+                // Screen cell -> raw-frame cell (inverse of the CW display
+                // rotation when rotated).
+                let (row, col) = if rotated {
+                    (2 - display_col, display_row)
+                } else {
+                    (display_row, display_col)
+                };
+                let cx = left + (col as f64 + 0.5) * cell;
+                let cy = top + (row as f64 + 0.5) * cell;
                 let data = self
                     .ctx
                     .get_image_data(
@@ -158,7 +167,7 @@ impl Camera {
                     )
                     .ok()?;
                 let rgba = data.data();
-                out[(row * 3 + col) as usize] =
+                out[display_row * 3 + display_col] =
                     cube_vision::srgb_patch_to_oklab(&rgba, PATCH as usize, PATCH as usize);
             }
         }

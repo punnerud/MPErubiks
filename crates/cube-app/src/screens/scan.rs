@@ -1,24 +1,32 @@
-//! Camera scan flow (browser only): live preview with a 3x3 grid overlay
-//! and per-sticker color indicators, one face captured at a time in the
-//! order F R B L U D, with pictogram instructions for how to turn the cube
-//! between captures. After six faces the state is rebuilt (colors assigned
-//! from centers, so kids can hold the cube any way they like) and handed to
-//! the solve flow's review net.
+//! Camera scan flow (browser only), photo-first and centered:
+//!
+//! - fullscreen preview (rotated upright on portrait phones), a plain 3x3
+//!   grid mid-screen and a thin progress line that fills while you hold
+//!   still — NO buttons, capture is automatic
+//! - after each auto-snap the detected colors flash briefly in the grid
+//! - a mini 3D cube (top center) shows scan progress — captured sides
+//!   green, the side to show next blue — and ANIMATES the rotation you
+//!   should perform between captures, on loop
+//! - colors are assigned from centers after all six sides, so the cube can
+//!   be held any way; a small "type it in" fallback sits at the bottom
 
 use crate::app::{AsyncMsg, RubiksApp, Screen};
 use crate::i18n::TextKey;
 use crate::platform::web::camera::Camera;
-use crate::widgets::icons;
-use cube_core::{Face, FaceletCube};
+use crate::widgets::cube_view::CubeView;
+use cube_core::{Alg, Face, FaceletCube};
+use cube_render::{MoveAnimator, OrbitCamera};
 use cube_vision::{classify_face, Calibration, Classified, Oklab};
 use egui::{Color32, Pos2, Rect, RichText, Sense, Stroke, StrokeKind, Ui, Vec2};
 
 /// Capture order and the face each capture becomes.
 const ORDER: [Face; 6] = [Face::F, Face::R, Face::B, Face::L, Face::U, Face::D];
 
+/// The physical rotation the user performs BEFORE capture k (mini-cube
+/// demo loops this until the hold-steady snap fires).
+const MINI_ALGS: [&str; 6] = ["", "y'", "y'", "y'", "y' x'", "x x"];
+
 /// Camera-grid position (row-major) -> facelet offset within the face.
-/// With the prescribed rotation sequence every face maps identity; kept as
-/// data so a physical-cube discrepancy is a table fix, not a code hunt.
 const CAPTURE_GRID_TO_FACELET: [[u8; 9]; 6] = [[0, 1, 2, 3, 4, 5, 6, 7, 8]; 6];
 
 pub enum CameraState {
@@ -36,7 +44,6 @@ struct PreviewTex {
 pub struct ScanScreen {
     camera: CameraState,
     preview: Option<PreviewTex>,
-    /// Sampled sticker colors (Oklab) per captured face, capture order.
     captured: [Option<[Oklab; 9]>; 6],
     face_idx: usize,
     live: [Classified; 9],
@@ -44,6 +51,14 @@ pub struct ScanScreen {
     stable_ticks: u8,
     last_sample: f64,
     cal: Calibration,
+    /// Post-capture color flash: (show until, detected class per cell).
+    flash: Option<(f64, [Option<u8>; 9])>,
+    // Mini 3D rotation guide.
+    mini_cube: FaceletCube,
+    mini_base: FaceletCube,
+    mini_anim: MoveAnimator,
+    mini_orbit: OrbitCamera,
+    mini_last_loop: f64,
 }
 
 impl ScanScreen {
@@ -52,9 +67,11 @@ impl ScanScreen {
         let ctx = ctx.clone();
         wasm_bindgen_futures::spawn_local(async move {
             let result = Camera::open().await;
-            let _ = tx.send(AsyncMsg::CameraReady(result.map_err(|e| e)));
+            let _ = tx.send(AsyncMsg::CameraReady(result));
             ctx.request_repaint();
         });
+        let mut mini_anim = MoveAnimator::default();
+        mini_anim.secs_per_quarter = 0.5; // calm, readable demo
         ScanScreen {
             camera: CameraState::Requesting,
             preview: None,
@@ -68,6 +85,12 @@ impl ScanScreen {
             stable_ticks: 0,
             last_sample: 0.0,
             cal: Calibration::default_stickers(),
+            flash: None,
+            mini_cube: FaceletCube::SOLVED,
+            mini_base: FaceletCube::SOLVED,
+            mini_anim,
+            mini_orbit: OrbitCamera::default(),
+            mini_last_loop: 0.0,
         }
     }
 
@@ -105,8 +128,8 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui, frame: &mut eframe::Frame) {
                 ui.add_space(40.0);
                 ui.colored_label(Color32::LIGHT_RED, RichText::new("📷 ✘").size(40.0));
                 ui.label(e.clone());
-                // Fall back to manual entry.
-                if big_button(ui, app.t(TextKey::EnterManually), Color32::from_rgb(0x2A, 0x5C, 0xC2)) {
+                if big_button(ui, app.t(TextKey::EnterManually), Color32::from_rgb(0x2A, 0x5C, 0xC2))
+                {
                     next = Some(Screen::Solve(super::solve::SolveScreen::new_input(
                         FaceletCube::SOLVED,
                     )));
@@ -133,7 +156,6 @@ fn scan_ui(
     screen: &mut ScanScreen,
     next: &mut Option<Screen>,
 ) {
-    // Scoped camera reads: the mutations below must not overlap the borrow.
     let (cam_ready, dims, video) = {
         let CameraState::Ready(cam) = &screen.camera else {
             return;
@@ -141,45 +163,47 @@ fn scan_ui(
         (cam.ready(), cam.dims(), cam.video().clone())
     };
     let now = ui.input(|i| i.time);
-    ui.ctx().request_repaint(); // live preview
+    ui.ctx().request_repaint();
 
-    // --- classification tick at 10 Hz ---
-    if cam_ready && now - screen.last_sample > 0.1 {
+    let avail = ui.available_rect_before_wrap();
+    // Portrait phone + landscape sensor: show the frame turned 90° CW.
+    let rotated = avail.height() > avail.width() && dims.0 > dims.1;
+
+    // --- classification tick at 10 Hz (internal only: drives auto-snap) ---
+    let in_flash = screen.flash.is_some_and(|(until, _)| now < until);
+    if cam_ready && !in_flash && screen.face_idx < 6 && now - screen.last_sample > 0.1 {
         screen.last_sample = now;
         let patches = match &screen.camera {
-            CameraState::Ready(cam) => cam.sample_patches(),
+            CameraState::Ready(cam) => cam.sample_patches(rotated),
             _ => None,
         };
         if let Some(patches) = patches {
             let live = classify_face(&patches, &screen.cal);
-            let all_confident = live
-                .iter()
-                .all(|c| c.color.is_some() && c.confidence > 0.5);
-            let same_as_before = screen
+            let all_confident = live.iter().all(|c| c.color.is_some() && c.confidence > 0.5);
+            let same = screen
                 .live
                 .iter()
                 .zip(live.iter())
                 .all(|(a, b)| a.color == b.color);
-            screen.stable_ticks = if all_confident && same_as_before {
+            screen.stable_ticks = if all_confident && same {
                 screen.stable_ticks.saturating_add(1)
             } else {
                 0
             };
             screen.live = live;
             screen.live_patches = Some(patches);
-            // Auto-capture after ~1s of stability.
             if screen.stable_ticks >= 10 {
-                capture(screen);
+                capture(screen, now);
             }
         }
+    }
+    if screen.flash.is_some_and(|(until, _)| now >= until) {
+        screen.flash = None;
     }
 
     // --- zero-copy preview texture ---
     if let (Some(rs), true) = (frame.wgpu_render_state(), cam_ready) {
-        let recreate = screen
-            .preview
-            .as_ref()
-            .map_or(true, |p| p.size != dims);
+        let recreate = screen.preview.as_ref().map_or(true, |p| p.size != dims);
         if recreate {
             let texture = rs.device.create_texture(&wgpu::TextureDescriptor {
                 label: Some("camera preview"),
@@ -233,108 +257,120 @@ fn scan_ui(
         }
     }
 
-    // --- layout: preview (aspect-fit) + overlay, then controls ---
-    let controls_height = 150.0;
-    let avail = Vec2::new(
-        ui.available_width(),
-        (ui.available_height() - controls_height).max(160.0),
-    );
-    let (outer, _) = ui.allocate_exact_size(avail, Sense::hover());
-
+    // --- fullscreen preview (aspect-fit, upright) ---
+    let (outer, _) = ui.allocate_exact_size(avail.size(), Sense::hover());
     if let Some(preview) = &screen.preview {
         let (vw, vh) = (preview.size.0 as f32, preview.size.1 as f32);
-        let scale = (outer.width() / vw).min(outer.height() / vh);
-        let shown = Vec2::new(vw * scale, vh * scale);
+        let (sw, sh) = if rotated { (vh, vw) } else { (vw, vh) };
+        let scale = (outer.width() / sw).min(outer.height() / sh);
+        let shown = Vec2::new(sw * scale, sh * scale);
         let rect = Rect::from_center_size(outer.center(), shown);
-        ui.painter().image(
-            preview.id,
-            rect,
-            Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-            Color32::WHITE,
-        );
-        draw_overlay(ui, rect, screen);
+        draw_preview(ui, preview.id, rect, rotated);
+        draw_overlay(ui, rect, screen, now);
     }
 
-    // --- bottom controls ---
-    ui.vertical_centered(|ui| {
-        face_progress_row(ui, screen);
-        instruction_row(app, ui, screen);
-        ui.horizontal(|ui| {
-            ui.add_space((ui.available_width() - 240.0).max(0.0) / 2.0);
-            // Manual capture (always available).
-            if icons::big_icon_button(
-                ui,
-                Vec2::new(110.0, 58.0),
-                Color32::from_rgb(0x1E, 0x88, 0x50),
-                app.t(TextKey::Capture),
-                icons::draw_camera,
-            )
-            .clicked()
-            {
-                capture(screen);
-            }
-            // Skip to manual entry.
-            if icons::big_icon_button(
-                ui,
-                Vec2::new(110.0, 58.0),
-                Color32::from_gray(60),
-                app.t(TextKey::EnterManually),
-                |p, r| icons::draw_mini_cube(p, r.shrink(6.0), icons::scrambled_face()),
-            )
-            .clicked()
-            {
-                *next = Some(Screen::Solve(super::solve::SolveScreen::new_input(
-                    FaceletCube::SOLVED,
-                )));
-            }
-        });
-    });
+    // --- mini rotation guide (top center, overlaid) ---
+    mini_guide(app, ui, screen, outer, now);
 
-    // --- all six captured: rebuild the cube and hand off to review ---
-    if screen.face_idx >= 6 {
+    // --- small manual fallback, bottom center ---
+    let fallback = Rect::from_center_size(
+        Pos2::new(outer.center().x, outer.bottom() - 34.0),
+        Vec2::new(200.0, 40.0),
+    );
+    let resp = ui.interact(fallback, ui.id().with("manual"), Sense::click());
+    ui.painter()
+        .rect_filled(fallback, 10.0, Color32::from_black_alpha(140));
+    ui.painter().text(
+        fallback.center(),
+        egui::Align2::CENTER_CENTER,
+        app.t(TextKey::EnterManually),
+        egui::FontId::proportional(16.0),
+        Color32::from_gray(200),
+    );
+    if resp.clicked() {
+        *next = Some(Screen::Solve(super::solve::SolveScreen::new_input(
+            FaceletCube::SOLVED,
+        )));
+    }
+
+    // --- all six captured: rebuild and hand off to review ---
+    if screen.face_idx >= 6 && screen.flash.is_none() {
         let state = assemble(screen);
         *next = Some(Screen::Solve(super::solve::SolveScreen::new_input(state)));
     }
 }
 
-fn capture(screen: &mut ScanScreen) {
+fn capture(screen: &mut ScanScreen, now: f64) {
     if screen.face_idx >= 6 {
         return;
     }
     if let Some(patches) = screen.live_patches {
+        // Flash what was detected in the grid for a moment.
+        let classes = classify_face(&patches, &screen.cal).map(|c| c.color);
+        screen.flash = Some((now + 0.9, classes));
         screen.captured[screen.face_idx] = Some(patches);
+        // Bake the rotation the user just performed into the mini guide.
+        if let Ok(alg) = Alg::parse(MINI_ALGS[screen.face_idx]) {
+            screen.mini_base.apply_alg(&alg);
+        }
+        screen.mini_cube = screen.mini_base;
+        screen.mini_anim.clear();
         screen.face_idx += 1;
         screen.stable_ticks = 0;
     }
 }
 
-/// Rebuild the facelet cube from the six captured faces: recalibrate on
-/// the six centers, classify every sticker against them, and map classes
-/// to faces via the capture order.
+/// Rebuild the facelet cube: recalibrate on the six centers, classify all
+/// stickers against them, map classes to faces via capture order.
 fn assemble(screen: &ScanScreen) -> FaceletCube {
-    let centers: [Oklab; 6] = core::array::from_fn(|k| {
-        screen.captured[k].expect("all captured")[4]
-    });
+    let centers: [Oklab; 6] = core::array::from_fn(|k| screen.captured[k].expect("captured")[4]);
     let cal = Calibration::from_centers(centers);
     let mut cube = FaceletCube::SOLVED;
     for (k, &face) in ORDER.iter().enumerate() {
-        let patches = screen.captured[k].expect("all captured");
+        let patches = screen.captured[k].expect("captured");
         for (grid_pos, &facelet_off) in CAPTURE_GRID_TO_FACELET[k].iter().enumerate() {
             let class = cube_vision::classify_one(patches[grid_pos], &cal)
                 .color
-                .unwrap_or(k as u8); // hopeless sticker: guess this face
+                .unwrap_or(k as u8);
             cube.0[face as usize * 9 + facelet_off as usize] = ORDER[class as usize];
         }
     }
     cube
 }
 
-fn draw_overlay(ui: &Ui, rect: Rect, screen: &ScanScreen) {
+/// Textured quad, optionally turned 90° CW so portrait phones see the
+/// world upright (raw getUserMedia frames arrive in sensor orientation).
+fn draw_preview(ui: &Ui, id: egui::TextureId, rect: Rect, rotated: bool) {
+    let mut mesh = egui::Mesh::with_texture(id);
+    let corners = [
+        rect.left_top(),
+        rect.right_top(),
+        rect.right_bottom(),
+        rect.left_bottom(),
+    ];
+    let uvs = if rotated {
+        // screen TL <- raw BL, TR <- raw TL, BR <- raw TR, BL <- raw BR
+        [(0.0, 1.0), (0.0, 0.0), (1.0, 0.0), (1.0, 1.0)]
+    } else {
+        [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]
+    };
+    for (pos, uv) in corners.iter().zip(uvs.iter()) {
+        mesh.vertices.push(egui::epaint::Vertex {
+            pos: *pos,
+            uv: Pos2::new(uv.0, uv.1),
+            color: Color32::WHITE,
+        });
+    }
+    mesh.indices.extend([0, 1, 2, 0, 2, 3]);
+    ui.painter().add(egui::Shape::mesh(mesh));
+}
+
+fn draw_overlay(ui: &Ui, rect: Rect, screen: &ScanScreen, now: f64) {
     let p = ui.painter();
     let side = rect.width().min(rect.height()) * 0.6;
     let square = Rect::from_center_size(rect.center(), Vec2::splat(side));
 
-    // Dim everything outside the guide square.
+    // Dim outside the guide square.
     for r in [
         Rect::from_min_max(rect.min, Pos2::new(rect.max.x, square.min.y)),
         Rect::from_min_max(Pos2::new(rect.min.x, square.max.y), rect.max),
@@ -345,7 +381,7 @@ fn draw_overlay(ui: &Ui, rect: Rect, screen: &ScanScreen) {
     }
 
     let cell = side / 3.0;
-    let grid_stroke = Stroke::new(2.0, Color32::from_white_alpha(180));
+    let grid_stroke = Stroke::new(2.0, Color32::from_white_alpha(190));
     for i in 0..=3 {
         let x = square.left() + i as f32 * cell;
         p.line_segment([Pos2::new(x, square.top()), Pos2::new(x, square.bottom())], grid_stroke);
@@ -353,53 +389,107 @@ fn draw_overlay(ui: &Ui, rect: Rect, screen: &ScanScreen) {
         p.line_segment([Pos2::new(square.left(), y), Pos2::new(square.right(), y)], grid_stroke);
     }
 
-    // Per-cell classification dot + confidence ring.
-    for row in 0..3 {
-        for col in 0..3 {
-            let c = &screen.live[row * 3 + col];
-            let center = Pos2::new(
-                square.left() + (col as f32 + 0.5) * cell,
-                square.top() + (row as f32 + 0.5) * cell,
-            );
-            let color = c
-                .color
-                .map(|cls| class_color(cls))
-                .unwrap_or(Color32::from_gray(120));
-            p.circle_filled(center, cell * 0.14, color);
-            p.circle_stroke(
-                center,
-                cell * 0.2,
-                Stroke::new(
-                    3.0,
-                    if c.confidence > 0.5 && c.color.is_some() {
-                        Color32::from_rgb(0x4C, 0xD9, 0x64)
-                    } else {
-                        Color32::from_white_alpha(60)
-                    },
-                ),
-            );
+    // Post-capture flash: show the detected colors inside the cells.
+    if let Some((until, classes)) = screen.flash {
+        if now < until {
+            for row in 0..3 {
+                for col in 0..3 {
+                    let cr = Rect::from_min_size(
+                        Pos2::new(
+                            square.left() + col as f32 * cell,
+                            square.top() + row as f32 * cell,
+                        ),
+                        Vec2::splat(cell),
+                    )
+                    .shrink(cell * 0.12);
+                    let color = classes[row * 3 + col]
+                        .map(class_color)
+                        .unwrap_or(Color32::from_gray(120));
+                    p.rect_filled(cr, cell * 0.15, color.gamma_multiply(0.9));
+                }
+            }
+            return;
         }
     }
 
-    // Stability ring: fills as the hold-steady counter climbs.
+    // Hold-steady progress: a thin line above the square that fills up.
     let t = f32::from(screen.stable_ticks.min(10)) / 10.0;
+    let bar_bg = Rect::from_min_size(
+        Pos2::new(square.left(), square.top() - 16.0),
+        Vec2::new(side, 6.0),
+    );
+    p.rect_filled(bar_bg, 3.0, Color32::from_black_alpha(140));
     if t > 0.0 && screen.face_idx < 6 {
-        let radius = side * 0.52;
-        let n = (t * 40.0) as usize;
-        let pts: Vec<Pos2> = (0..=n)
-            .map(|i| {
-                let a = -std::f32::consts::FRAC_PI_2
-                    + std::f32::consts::TAU * (i as f32 / 40.0);
-                Pos2::new(
-                    rect.center().x + radius * a.cos(),
-                    rect.center().y + radius * a.sin(),
-                )
-            })
-            .collect();
-        for w in pts.windows(2) {
-            p.line_segment([w[0], w[1]], Stroke::new(5.0, Color32::from_rgb(0x4C, 0xD9, 0x64)));
-        }
+        let bar = Rect::from_min_size(bar_bg.min, Vec2::new(side * t, 6.0));
+        p.rect_filled(bar, 3.0, Color32::from_rgb(0x4C, 0xD9, 0x64));
     }
+}
+
+/// Mini 3D cube, top center: white cube, captured sides green, the side to
+/// show next blue; loops the rotation the user should perform.
+fn mini_guide(app: &mut RubiksApp, ui: &mut Ui, screen: &mut ScanScreen, outer: Rect, now: f64) {
+    // Advance + loop the demo animation.
+    for m in screen.mini_anim.tick(now) {
+        screen.mini_cube.apply(m);
+    }
+    let alg_str = MINI_ALGS[screen.face_idx.min(5)];
+    if screen.face_idx < 6
+        && !alg_str.is_empty()
+        && screen.mini_anim.is_idle()
+        && now - screen.mini_last_loop > 1.6
+    {
+        screen.mini_cube = screen.mini_base;
+        if let Ok(alg) = Alg::parse(alg_str) {
+            screen.mini_anim.enqueue_all(&alg.0);
+        }
+        screen.mini_last_loop = now;
+    }
+
+    // Status colors by ORIGINAL face label (survives mini rotations).
+    let mut palette_of = [0u32; 54];
+    for (i, &label) in screen.mini_cube.0.iter().enumerate() {
+        let k = ORDER.iter().position(|&f| f == label).unwrap_or(0);
+        palette_of[i] = if k < screen.face_idx {
+            2 // green: captured
+        } else if k == screen.face_idx {
+            5 // blue: show this side now
+        } else {
+            0 // white: later
+        };
+    }
+
+    let size = 132.0;
+    let pos = Pos2::new(outer.center().x - size / 2.0, outer.top() + 8.0);
+    egui::Area::new(ui.id().with("mini-guide"))
+        .fixed_pos(pos)
+        .show(ui.ctx(), |ui| {
+            let override_fn = |facelet: usize| Some(palette_of[facelet]);
+            CubeView {
+                cube: &screen.mini_cube,
+                animator: &screen.mini_anim,
+                orbit: &mut screen.mini_orbit,
+                highlight: None,
+                dim_others: 1.0,
+                color_override: Some(&override_fn),
+            }
+            .show(ui, Vec2::splat(size));
+            // Six progress squares under the mini cube.
+            ui.horizontal(|ui| {
+                ui.add_space((size - 6.0 * 18.0).max(0.0) / 2.0);
+                for k in 0..6 {
+                    let (rect, _) = ui.allocate_exact_size(Vec2::splat(14.0), Sense::hover());
+                    let color = if k < screen.face_idx {
+                        Color32::from_rgb(0x1E, 0x88, 0x50)
+                    } else if k == screen.face_idx {
+                        Color32::from_rgb(0x2A, 0x5C, 0xC2)
+                    } else {
+                        Color32::from_gray(90)
+                    };
+                    ui.painter().rect_filled(rect, 4.0, color);
+                }
+            });
+        });
+    let _ = app;
 }
 
 /// Default-calibration class colors (white yellow red orange green blue).
@@ -412,55 +502,6 @@ fn class_color(class: u8) -> Color32 {
         Color32::from_rgb(0x00, 0xA8, 0x60),
         Color32::from_rgb(0x0D, 0x5C, 0xC7),
     ][class as usize % 6]
-}
-
-/// Six mini-squares showing which faces are captured (green check) and
-/// which is current (pulsing outline).
-fn face_progress_row(ui: &mut Ui, screen: &ScanScreen) {
-    ui.horizontal(|ui| {
-        ui.add_space((ui.available_width() - 6.0 * 34.0).max(0.0) / 2.0);
-        for k in 0..6 {
-            let (rect, _) = ui.allocate_exact_size(Vec2::splat(28.0), Sense::hover());
-            let p = ui.painter();
-            let done = screen.captured[k].is_some();
-            p.rect_filled(
-                rect,
-                6.0,
-                if done {
-                    Color32::from_rgb(0x1E, 0x88, 0x50)
-                } else {
-                    Color32::from_gray(55)
-                },
-            );
-            if done {
-                icons::draw_check(p, rect.shrink(7.0));
-            }
-            if k == screen.face_idx {
-                p.rect_stroke(rect, 6.0, Stroke::new(2.5, Color32::WHITE), StrokeKind::Outside);
-            }
-        }
-    });
-}
-
-/// Pictogram instruction for how to move the cube before this capture.
-fn instruction_row(app: &RubiksApp, ui: &mut Ui, screen: &ScanScreen) {
-    let key = match screen.face_idx {
-        0 => TextKey::ScanHoldSteady,
-        1..=3 => TextKey::ScanTurnLeft,
-        4 => TextKey::ScanTiltUp,
-        _ => TextKey::ScanTiltDown,
-    };
-    ui.horizontal(|ui| {
-        ui.add_space((ui.available_width() - 260.0).max(0.0) / 2.0);
-        let (rect, _) = ui.allocate_exact_size(Vec2::splat(30.0), Sense::hover());
-        match screen.face_idx {
-            1..=3 => icons::draw_turn_left(ui.painter(), rect),
-            4 => icons::draw_tilt_up(ui.painter(), rect),
-            5 => icons::draw_tilt_down(ui.painter(), rect),
-            _ => icons::draw_camera(ui.painter(), rect),
-        }
-        ui.label(RichText::new(app.t(key)).size(18.0));
-    });
 }
 
 fn big_button(ui: &mut Ui, text: &str, color: Color32) -> bool {
@@ -476,3 +517,7 @@ fn big_button(ui: &mut Ui, text: &str, color: Color32) -> bool {
     );
     response.clicked()
 }
+
+// StrokeKind kept in imports for future outline needs.
+#[allow(unused)]
+fn _unused(_: StrokeKind) {}
