@@ -259,12 +259,24 @@ const HUE_SOFTMAX_TEMP: f32 = 0.14;
 /// so the accumulators stay exact).
 const PIXEL_WEIGHT: u32 = 100;
 
+/// Only the INNER region of a cell crop is measured: the user aligns the
+/// stickers inside the grid squares, so the outer band is sticker-gap
+/// plastic and background peeking in at the rounded corners — under warm
+/// light that gray reads as white and forges white votes.
+const CELL_EDGE_EXCLUDE: f32 = 0.42;
+
 fn raw_votes(rgba: &[u8], width: usize, height: usize, cal: &Calibration) -> ([u32; 6], u32) {
     assert_eq!(rgba.len(), width * height * 4, "cell buffer size");
     let mut votes = [0u32; 6];
     let mut total = 0u32;
     // Subsample every other pixel: plenty of votes, half the work.
-    for px in rgba.chunks_exact(4).step_by(2) {
+    for (idx, px) in rgba.chunks_exact(4).enumerate().step_by(2) {
+        let (x, y) = (idx % width, idx / width);
+        let u = (x as f32 + 0.5) / width as f32 - 0.5;
+        let v = (y as f32 + 0.5) / height as f32 - 0.5;
+        if u.abs().max(v.abs()) > CELL_EDGE_EXCLUDE {
+            continue;
+        }
         total += PIXEL_WEIGHT;
         let c = Oklab::from_srgb8(px[0], px[1], px[2]);
         // Dead-zone gate: skin/shadow sits at warm LOW chroma (~0.06-0.09)
