@@ -229,8 +229,14 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
     .show(ui, cube_size);
 
     ui.vertical_centered(|ui| {
-        // Progress dots: filled = done moves. Purely visual progress.
-        progress_dots(ui, guide.solution.0.len(), guide.cursor);
+        // Karaoke letters carry both the plan and the progress.
+        let played = guide.cursor.saturating_sub(app.animator.pending());
+        crate::widgets::playback::karaoke_row(
+            ui,
+            &guide.solution.0,
+            played,
+            !app.animator.is_idle(),
+        );
 
         // Trained-algorithm chip: shows WHICH known algorithm this part of
         // the solution is ("you know this bit!").
@@ -256,7 +262,7 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
         }
 
         ui.horizontal(|ui| {
-            ui.add_space((ui.available_width() - 3.0 * 108.0).max(0.0) / 2.0);
+            ui.add_space((ui.available_width() - 3.0 * 108.0 - 2.0 * 76.0).max(0.0) / 2.0);
             let size = Vec2::new(96.0, 64.0);
             let gray = Color32::from_rgb(0x4A, 0x4F, 0x5C);
             if icons::big_icon_button(ui, size, gray, app.t(TextKey::Back), icons::draw_back_arrow)
@@ -268,6 +274,7 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
                 guide.cursor -= 1;
                 app.animator.enqueue(guide.solution.0[guide.cursor].inverse());
             }
+            crate::widgets::playback::speed_buttons(app, ui);
             let play_color = Color32::from_rgb(0x1E, 0x88, 0x50);
             let caption = if guide.playing {
                 app.t(TextKey::Pause)
@@ -306,28 +313,6 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
     let _ = next;
 }
 
-fn progress_dots(ui: &mut Ui, total: usize, done: usize) {
-    if total == 0 {
-        return;
-    }
-    let dot = 10.0f32;
-    let gap = 6.0f32;
-    let width = total as f32 * dot + (total - 1) as f32 * gap;
-    let (rect, _) = ui.allocate_exact_size(Vec2::new(width, dot + 4.0), Sense::hover());
-    let p = ui.painter();
-    for i in 0..total {
-        let center = egui::Pos2::new(
-            rect.left() + dot / 2.0 + i as f32 * (dot + gap),
-            rect.center().y,
-        );
-        let color = if i < done {
-            Color32::from_rgb(0x4C, 0xD9, 0x64)
-        } else {
-            Color32::from_gray(80)
-        };
-        p.circle_filled(center, dot / 2.0, color);
-    }
-}
 
 /// Solve with the persistent MPEdb solution cache: same physical cube
 /// scanned again (or revisited) resolves instantly; misses are stored so

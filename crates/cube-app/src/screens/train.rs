@@ -238,7 +238,7 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
         ui.add_space(6.0);
         ui.horizontal(|ui| {
             ui.add_space((ui.available_width() - 7.0 * 84.0).max(0.0) / 2.0);
-            speed_buttons(app, ui);
+            crate::widgets::playback::speed_buttons(app, ui);
             super::play::turn_arrows(app, ui);
             let size = Vec2::new(96.0, 64.0);
             let gray = Color32::from_gray(70);
@@ -515,43 +515,12 @@ fn session_ui(app: &mut RubiksApp, ui: &mut Ui, session: &mut SessionState, next
     let _ = (set, next);
 }
 
-/// The demo's letters, karaoke-style: played moves dim green, the move
-/// being animated RIGHT NOW is big and bright, upcoming ones gray.
+/// Delegates to the shared karaoke widget with this step's demo.
 fn karaoke_row(app: &RubiksApp, ui: &mut Ui, view: &LessonView, step: &crate::lessons::Step) {
     let Some(demo) = step.demo else { return };
     let Ok(alg) = cube_core::Alg::parse(demo) else { return };
-    if alg.0.is_empty() {
-        return;
-    }
     let played = view.demo_len.saturating_sub(app.animator.pending());
-    ui.horizontal_wrapped(|ui| {
-        ui.add_space((ui.available_width() - alg.0.len() as f32 * 34.0).max(0.0) / 2.0);
-        for (i, m) in alg.0.iter().enumerate() {
-            let text = m.to_string();
-            let rich = if i + 1 == played && !app.animator.is_idle() {
-                RichText::new(text).size(30.0).strong().color(Color32::WHITE)
-            } else if i < played {
-                RichText::new(text)
-                    .size(20.0)
-                    .color(Color32::from_rgb(0x4C, 0xD9, 0x64))
-            } else {
-                RichText::new(text).size(20.0).color(Color32::from_gray(110))
-            };
-            ui.label(rich);
-        }
-    });
-}
-
-/// Slower / faster chevron buttons for demo playback.
-fn speed_buttons(app: &mut RubiksApp, ui: &mut Ui) {
-    let size = Vec2::new(64.0, 64.0);
-    let gray = Color32::from_gray(60);
-    if icons::big_icon_button(ui, size, gray, "", icons::draw_chevrons_left).clicked() {
-        app.animator.secs_per_quarter = (app.animator.secs_per_quarter * 1.5).min(0.7);
-    }
-    if icons::big_icon_button(ui, size, gray, "", icons::draw_chevrons_right).clicked() {
-        app.animator.secs_per_quarter = (app.animator.secs_per_quarter / 1.5).max(0.08);
-    }
+    crate::widgets::playback::karaoke_row(ui, &alg.0, played, !app.animator.is_idle());
 }
 
 fn new_case_state(app: &mut RubiksApp, case_idx: u16) {
