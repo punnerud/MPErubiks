@@ -108,8 +108,11 @@ pub fn handle_tap_select(app: &mut RubiksApp, response: &egui::Response) {
 /// the layer nearest you moves in the arrow's screen direction, however
 /// the cube is oriented. The caption shows the real notation (U, U', R…).
 pub fn turn_arrows(app: &mut RubiksApp, ui: &mut Ui) {
+    turn_arrows_sized(app, ui, Vec2::new(96.0, 76.0))
+}
+
+pub fn turn_arrows_sized(app: &mut RubiksApp, ui: &mut Ui, size: Vec2) {
     use cube_render::ArrowDir;
-    let size = Vec2::new(96.0, 76.0);
     let mapping = app
         .selected_face
         .map(|f| cube_render::view_relative_arrows(&app.orbit, f));

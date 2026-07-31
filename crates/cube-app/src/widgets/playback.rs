@@ -32,7 +32,10 @@ pub fn karaoke_row(ui: &mut Ui, moves: &[Move], played: usize, animating: bool) 
 
 /// Slower / faster chevron buttons for animation playback.
 pub fn speed_buttons(app: &mut RubiksApp, ui: &mut Ui) {
-    let size = Vec2::new(64.0, 64.0);
+    speed_buttons_sized(app, ui, Vec2::new(64.0, 64.0))
+}
+
+pub fn speed_buttons_sized(app: &mut RubiksApp, ui: &mut Ui, size: Vec2) {
     let gray = Color32::from_gray(60);
     if icons::big_icon_button(ui, size, gray, "", icons::draw_chevrons_left).clicked() {
         app.animator.secs_per_quarter = (app.animator.secs_per_quarter * 1.5).min(0.7);

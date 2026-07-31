@@ -238,10 +238,14 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
         ui.label(RichText::new(app.t(step.text)).size(22.0));
         ui.add_space(6.0);
         ui.horizontal(|ui| {
-            ui.add_space((ui.available_width() - 7.0 * 84.0).max(0.0) / 2.0);
-            crate::widgets::playback::speed_buttons(app, ui);
-            super::play::turn_arrows(app, ui);
-            let size = Vec2::new(96.0, 64.0);
+            let spacing = ui.spacing().item_spacing.x;
+            let unit = ((ui.available_width() - spacing * 7.0) / 6.6).clamp(40.0, 84.0);
+            ui.add_space((ui.available_width() - 6.6 * (unit + spacing)).max(0.0) / 2.0);
+            crate::widgets::playback::speed_buttons_sized(app, ui, Vec2::new(unit * 0.8, 56.0));
+            super::play::turn_arrows_sized(app, ui, Vec2::new(unit, 60.0));
+            let spacing2 = ui.spacing().item_spacing.x;
+            let unit2 = ((ui.available_width() - spacing2 * 3.0) / 3.0).clamp(60.0, 96.0);
+            let size = Vec2::new(unit2, 60.0);
             let gray = Color32::from_gray(70);
             if icons::big_icon_button(ui, size, gray, "", icons::draw_back_arrow).clicked() {
                 if view.step > 0 {

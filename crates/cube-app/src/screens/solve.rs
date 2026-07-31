@@ -213,9 +213,12 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
         ui.ctx().request_repaint();
     }
 
-    let controls_height = 185.0;
+    // Reserve space honestly: the karaoke row wraps on narrow phones.
+    let avail_w = ui.available_width();
+    let karaoke_lines = ((guide.solution.0.len() as f32 * 34.0) / avail_w.max(1.0)).ceil();
+    let controls_height = 150.0 + karaoke_lines * 26.0 + crate::app::BOTTOM_INSET;
     let cube_size = Vec2::new(
-        ui.available_width(),
+        avail_w,
         (ui.available_height() - controls_height).max(120.0),
     );
     let highlight = (!done && app.animator.is_idle()).then(|| guide.solution.0[guide.cursor]);
@@ -263,8 +266,13 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
         }
 
         ui.horizontal(|ui| {
-            ui.add_space((ui.available_width() - 3.0 * 108.0 - 2.0 * 76.0).max(0.0) / 2.0);
-            let size = Vec2::new(96.0, 64.0);
+            // Five buttons must fit ANY phone width: shrink to available.
+            let spacing = ui.spacing().item_spacing.x;
+            let total = ui.available_width() - spacing * 5.0;
+            let unit = (total / 4.6).clamp(44.0, 96.0); // 3 big + 2 small(0.8)
+            let size = Vec2::new(unit, 64.0f32.min(unit * 0.8));
+            let small = Vec2::new(unit * 0.8, size.y);
+            ui.add_space((ui.available_width() - 3.0 * (unit + spacing) - 2.0 * (small.x + spacing)).max(0.0) / 2.0);
             let gray = Color32::from_rgb(0x4A, 0x4F, 0x5C);
             if icons::big_icon_button(ui, size, gray, app.t(TextKey::Back), icons::draw_back_arrow)
                 .clicked()
@@ -275,7 +283,7 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
                 guide.cursor -= 1;
                 app.animator.enqueue(guide.solution.0[guide.cursor].inverse());
             }
-            crate::widgets::playback::speed_buttons(app, ui);
+            crate::widgets::playback::speed_buttons_sized(app, ui, small);
             let play_color = Color32::from_rgb(0x1E, 0x88, 0x50);
             let caption = if guide.playing {
                 app.t(TextKey::Pause)
