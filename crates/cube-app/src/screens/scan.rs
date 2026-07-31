@@ -16,7 +16,7 @@ use crate::platform::web::camera::Camera;
 use crate::widgets::cube_view::CubeView;
 use cube_core::{Alg, Face, FaceletCube};
 use cube_render::{MoveAnimator, OrbitCamera};
-use cube_vision::{classify_face, Calibration, Classified, Oklab};
+use cube_vision::{vote_cell, Calibration, Classified};
 use egui::{Color32, Pos2, Rect, RichText, Sense, Stroke, StrokeKind, Ui, Vec2};
 
 /// Capture order (Morten's easy hand sequence: left, left, tilt-forward,
@@ -57,10 +57,10 @@ struct PreviewTex {
 pub struct ScanScreen {
     camera: CameraState,
     preview: Option<PreviewTex>,
-    captured: [Option<[Oklab; 9]>; 6],
+    /// Voted class per cell for each captured face (display order).
+    captured: [Option<[Option<u8>; 9]>; 6],
     face_idx: usize,
     live: [Classified; 9],
-    live_patches: Option<[Oklab; 9]>,
     stable_ticks: u8,
     last_sample: f64,
     cal: Calibration,
@@ -98,7 +98,6 @@ impl ScanScreen {
                 color: None,
                 confidence: 0.0,
             }; 9],
-            live_patches: None,
             stable_ticks: 0,
             last_sample: 0.0,
             cal: Calibration::default_stickers(),
@@ -212,32 +211,31 @@ fn scan_ui(
     let in_flash = screen.flash.is_some_and(|(until, _)| now < until);
     if cam_ready && !in_flash && screen.face_idx < 6 && now - screen.last_sample > 0.1 {
         screen.last_sample = now;
-        let patches = match &screen.camera {
-            CameraState::Ready(cam) => cam.sample_patches(rotation),
+        let cells = match &screen.camera {
+            CameraState::Ready(cam) => cam.sample_cells(rotation),
             _ => None,
         };
-        if let Some(patches) = patches {
-            let live = classify_face(&patches, &screen.cal);
-            // Enough-of-nine, not all-of-nine: dark/odd stickers (black
-            // logo centers, glare) classify as unknown and get fixed in
-            // the review net — they must not block the snap forever.
-            let confident = live
-                .iter()
-                .filter(|c| c.color.is_some() && c.confidence > 0.45)
-                .count();
+        if let Some(cells) = cells {
+            // Color VOTING per whole cell: a recurring color >5% with a
+            // clear margin wins — robust to misalignment and background.
+            let live: [Classified; 9] = core::array::from_fn(|i| {
+                let (buf, w, h) = &cells[i];
+                vote_cell(buf, *w, *h, &screen.cal)
+            });
+            // ALL nine must detect, and agree with the previous tick.
+            let all_detected = live.iter().all(|c| c.color.is_some());
             let same = screen
                 .live
                 .iter()
                 .zip(live.iter())
                 .all(|(a, b)| a.color == b.color);
-            screen.stable_ticks = if confident >= 6 && same {
+            screen.stable_ticks = if all_detected && same {
                 screen.stable_ticks.saturating_add(1)
             } else {
                 0
             };
             screen.live = live;
-            screen.live_patches = Some(patches);
-            if screen.stable_ticks >= 10 {
+            if screen.stable_ticks >= 8 {
                 capture(screen, now);
             }
         }
@@ -391,11 +389,11 @@ fn capture(screen: &mut ScanScreen, now: f64) {
     if screen.face_idx >= 6 {
         return;
     }
-    if let Some(patches) = screen.live_patches {
+    {
+        let classes: [Option<u8>; 9] = core::array::from_fn(|i| screen.live[i].color);
         // Flash what was detected in the grid for a moment.
-        let classes = classify_face(&patches, &screen.cal).map(|c| c.color);
         screen.flash = Some((now + 0.9, classes));
-        screen.captured[screen.face_idx] = Some(patches);
+        screen.captured[screen.face_idx] = Some(classes);
         // Bake the rotation the user just performed into the mini guide.
         if let Ok(alg) = Alg::parse(MINI_ALGS[screen.face_idx]) {
             screen.mini_base.apply_alg(&alg);
@@ -407,31 +405,32 @@ fn capture(screen: &mut ScanScreen, now: f64) {
     }
 }
 
-/// Rebuild the facelet cube: recalibrate on the six centers, classify all
-/// stickers against them, map classes to faces via capture order.
+/// Rebuild the facelet cube from the voted classes: a class maps to the
+/// face captured with that color's position in the ORDER (the class index
+/// IS the palette color; centers map colors to faces via which capture
+/// they appeared as the center of — falling back to palette order).
 fn assemble(screen: &ScanScreen) -> FaceletCube {
-    let centers: [Oklab; 6] = core::array::from_fn(|k| screen.captured[k].expect("captured")[4]);
-    // Center-based recalibration assumes six clean colored centers. On
-    // cubes with dark/logo centers that would poison every reference —
-    // fall back to the default sticker palette (face identity comes from
-    // the capture ORDER either way, never from the center color).
-    let default_cal = Calibration::default_stickers();
-    let centers_usable = centers
-        .iter()
-        .all(|&c| cube_vision::classify_one(c, &default_cal).color.is_some());
-    let cal = if centers_usable {
-        Calibration::from_centers(centers)
-    } else {
-        default_cal
-    };
+    // Which palette class did each capture's CENTER vote? That defines
+    // the class -> face mapping (kid can hold the cube any way). Missing
+    // centers (dark/logo) fall back to identity via capture order.
+    let mut class_to_face: [Option<Face>; 6] = [None; 6];
+    for (k, &face) in ORDER.iter().enumerate() {
+        if let Some(classes) = screen.captured[k] {
+            if let Some(center_class) = classes[4] {
+                if class_to_face[center_class as usize].is_none() {
+                    class_to_face[center_class as usize] = Some(face);
+                }
+            }
+        }
+    }
     let mut cube = FaceletCube::SOLVED;
     for (k, &face) in ORDER.iter().enumerate() {
-        let patches = screen.captured[k].expect("captured");
+        let classes = screen.captured[k].expect("captured");
         for (grid_pos, &facelet_off) in CAPTURE_GRID_TO_FACELET[k].iter().enumerate() {
-            let class = cube_vision::classify_one(patches[grid_pos], &cal)
-                .color
-                .unwrap_or(k as u8);
-            cube.0[face as usize * 9 + facelet_off as usize] = ORDER[class as usize];
+            let mapped = classes[grid_pos]
+                .and_then(|class| class_to_face[class as usize])
+                .unwrap_or(face);
+            cube.0[face as usize * 9 + facelet_off as usize] = mapped;
         }
     }
     cube

@@ -173,6 +173,52 @@ pub fn classify_face(patches: &[Oklab; 9], cal: &Calibration) -> [Classified; 9]
     core::array::from_fn(|i| classify_one(patches[i], cal))
 }
 
+/// Minimum share of a cell's pixels that must agree for a color to win.
+/// Low on purpose: with a misaligned grid the sticker may cover only part
+/// of its cell — a CONSISTENT recurring color is the signal, not area.
+pub const MIN_VOTE_SHARE: f32 = 0.05;
+
+/// Robust cell classification by per-pixel VOTING: every pixel close to
+/// one of the six reference colors votes; the winner needs `MIN_VOTE_SHARE`
+/// of all pixels and a clear margin over the runner-up. Survives grid
+/// misalignment, plastic borders and background inside the cell.
+pub fn vote_cell(rgba: &[u8], width: usize, height: usize, cal: &Calibration) -> Classified {
+    assert_eq!(rgba.len(), width * height * 4, "cell buffer size");
+    let mut votes = [0u32; 6];
+    let mut total = 0u32;
+    // Subsample every other pixel: plenty of votes, half the work.
+    for px in rgba.chunks_exact(4).step_by(2) {
+        total += 1;
+        let c = Oklab::from_srgb8(px[0], px[1], px[2]);
+        if let Some(k) = classify_one(c, cal).color {
+            votes[k as usize] += 1;
+        }
+    }
+    if total == 0 {
+        return Classified {
+            color: None,
+            confidence: 0.0,
+        };
+    }
+    let mut order: Vec<usize> = (0..6).collect();
+    order.sort_by_key(|&i| std::cmp::Reverse(votes[i]));
+    let (win, win_votes) = (order[0], votes[order[0]]);
+    let runner_votes = votes[order[1]];
+    let share = win_votes as f32 / total as f32;
+    let clear_margin = win_votes >= runner_votes.saturating_mul(3) / 2 + 1;
+    if share >= MIN_VOTE_SHARE && clear_margin {
+        Classified {
+            color: Some(win as u8),
+            confidence: (share * 4.0).clamp(0.0, 1.0),
+        }
+    } else {
+        Classified {
+            color: None,
+            confidence: 0.0,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -264,6 +310,27 @@ mod tests {
             let c = classify_one(ok, &cal);
             assert_eq!(c.color, None, "{rgb:?} must not classify as a sticker");
         }
+    }
+
+    #[test]
+    fn voting_survives_misalignment_and_rejects_background() {
+        let cal = Calibration::default_stickers();
+        // Cell 40x40 where only the central 22% is green sticker, the rest
+        // near-black plastic: voting must still find green.
+        let (w, h) = (40usize, 40usize);
+        let mut buf = Vec::with_capacity(w * h * 4);
+        for y in 0..h {
+            for x in 0..w {
+                let sticker = (12..31).contains(&x) && (12..31).contains(&y);
+                let px = if sticker { [0u8, 158, 96] } else { [18, 18, 20] };
+                buf.extend_from_slice(&[px[0], px[1], px[2], 255]);
+            }
+        }
+        let c = vote_cell(&buf, w, h, &cal);
+        assert_eq!(c.color, Some(4), "green wins by votes, got {:?}", c.color);
+        // All-plastic cell: nothing wins.
+        let dark: Vec<u8> = (0..w * h).flat_map(|_| [18u8, 18, 20, 255]).collect();
+        assert_eq!(vote_cell(&dark, w, h, &cal).color, None);
     }
 
     #[test]

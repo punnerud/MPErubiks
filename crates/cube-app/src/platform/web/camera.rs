@@ -4,7 +4,6 @@
 //! Pixel readback happens only for the nine small classification patches,
 //! through a small willReadFrequently 2d canvas.
 
-use cube_vision::Oklab;
 use eframe::wasm_bindgen::{JsCast as _, JsValue};
 use wasm_bindgen_futures::JsFuture;
 
@@ -15,11 +14,9 @@ pub struct Camera {
     stream: web_sys::MediaStream,
 }
 
-/// Sampling resolution: frames are downscaled to this width before patch
-/// reads (cheap, and plenty for 3x3 color classification).
+/// Sampling resolution: frames are downscaled to this width before cell
+/// reads (cheap, and plenty for color voting).
 const SAMPLE_WIDTH: u32 = 480;
-/// Patch size in sample-canvas pixels.
-const PATCH: u32 = 20;
 
 fn js_err(e: JsValue) -> String {
     e.as_string().unwrap_or_else(|| format!("{e:?}"))
@@ -114,12 +111,13 @@ impl Camera {
         &self.video
     }
 
-    /// Read the nine grid patches from the current frame. The grid square
-    /// is centered, with side = 0.6 * min(video dimensions) — matching the
-    /// overlay the scan screen draws. With `rotated` (portrait phones show
-    /// the landscape sensor frame turned 90° CW on screen), the patch
-    /// order is remapped so index 0 is still the overlay's top-left.
-    pub fn sample_patches(&self, rotation: u8) -> Option<[Oklab; 9]> {
+    /// Read the nine WHOLE grid cells (with a small inset against the
+    /// grid lines) from the current frame. The grid square is centered,
+    /// side = 0.6 * min(video dimensions), matching the overlay. Cell
+    /// order is remapped by `rotation` so index 0 is the overlay's
+    /// top-left. Full cells (not center points) feed the color-VOTING
+    /// classifier, which survives misalignment.
+    pub fn sample_cells(&self, rotation: u8) -> Option<[(Vec<u8>, usize, usize); 9]> {
         if !self.ready() {
             return None;
         }
@@ -144,34 +142,34 @@ impl Camera {
         let left = (f64::from(w) - side) / 2.0;
         let top = (f64::from(h) - side) / 2.0;
         let cell = side / 3.0;
+        let inset = cell * 0.14; // keep clear of the painted grid lines
 
-        let mut out = [Oklab::default(); 9];
+        let mut out: Vec<(Vec<u8>, usize, usize)> = Vec::with_capacity(9);
         for display_row in 0..3usize {
             for display_col in 0..3usize {
-                // Screen cell -> raw-frame cell (inverse of the CW display
-                // rotation, applied `rotation` quarter-turns).
                 let (mut row, mut col) = (display_row, display_col);
                 for _ in 0..(rotation % 4) {
                     let (r, c) = (row, col);
                     (row, col) = (2 - c, r);
                 }
-                let cx = left + (col as f64 + 0.5) * cell;
-                let cy = top + (row as f64 + 0.5) * cell;
-                let data = self
-                    .ctx
-                    .get_image_data(
-                        cx - f64::from(PATCH) / 2.0,
-                        cy - f64::from(PATCH) / 2.0,
-                        f64::from(PATCH),
-                        f64::from(PATCH),
-                    )
-                    .ok()?;
-                let rgba = data.data();
-                out[display_row * 3 + display_col] =
-                    cube_vision::srgb_patch_to_oklab(&rgba, PATCH as usize, PATCH as usize);
+                let x = left + col as f64 * cell + inset;
+                let y = top + row as f64 * cell + inset;
+                let cw = (cell - 2.0 * inset).max(4.0);
+                let data = self.ctx.get_image_data(x, y, cw, cw).ok()?;
+                let rgba = data.data().to_vec();
+                let px = (rgba.len() / 4) as f64;
+                let side_px = px.sqrt().round() as usize;
+                if side_px * side_px * 4 != rgba.len() {
+                    // Non-square return (edge clamp); recompute dims.
+                    let wpx = cw.floor() as usize;
+                    let hpx = rgba.len() / 4 / wpx.max(1);
+                    out.push((rgba, wpx, hpx));
+                } else {
+                    out.push((rgba, side_px, side_px));
+                }
             }
         }
-        Some(out)
+        out.try_into().ok()
     }
 
     pub fn stop(&self) {
