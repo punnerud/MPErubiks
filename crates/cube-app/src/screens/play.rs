@@ -30,6 +30,7 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
         animator: &app.animator,
         orbit: &mut app.orbit,
         highlight,
+        dim_others: 1.0,
         color_override: None,
     }
     .show(ui, cube_size);

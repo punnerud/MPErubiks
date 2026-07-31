@@ -72,9 +72,10 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
         c = mix(c, vec3<f32>(1.0, 1.0, 1.0), pulse * sticker);
     }
     if (in.flags & 2u) != 0u {
-        // Everything else fades toward gray so the selection pops.
+        // Everything else fades toward gray so the highlight pops;
+        // misc.y scales how hard (1 = selection, ~0.3 = guide hint).
         let luma = dot(c, vec3<f32>(0.299, 0.587, 0.114));
-        c = mix(c, vec3<f32>(luma * 0.55, luma * 0.55, luma * 0.58), 0.75);
+        c = mix(c, vec3<f32>(luma * 0.55, luma * 0.55, luma * 0.58), 0.75 * globals.misc.y);
     }
     let n = normalize(in.world_nrm);
     let l1 = max(dot(n, normalize(vec3<f32>(0.45, 0.8, 0.55))), 0.0);

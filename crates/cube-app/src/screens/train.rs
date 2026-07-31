@@ -227,6 +227,7 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
         animator: &app.animator,
         orbit: &mut app.orbit,
         highlight,
+        dim_others: 1.0,
         color_override: None,
     }
     .show(ui, cube_size);
@@ -408,6 +409,7 @@ fn session_ui(app: &mut RubiksApp, ui: &mut Ui, session: &mut SessionState, next
         animator: &app.animator,
         orbit: &mut app.orbit,
         highlight: None,
+        dim_others: 1.0,
         color_override: None,
     }
     .show(ui, cube_size);

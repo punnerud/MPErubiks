@@ -13,6 +13,9 @@ pub struct CubeView<'a> {
     pub orbit: &'a mut OrbitCamera,
     /// Layer to pulse-highlight (the next move a user should perform).
     pub highlight: Option<Move>,
+    /// How strongly the rest of the cube desaturates while something is
+    /// highlighted: 1.0 = selection (Play/lessons), ~0.3 = guide hint.
+    pub dim_others: f32,
     /// Per-facelet palette override (scan preview): index -> palette color.
     pub color_override: Option<&'a dyn Fn(usize) -> Option<u32>>,
 }
@@ -38,6 +41,7 @@ impl CubeView<'_> {
         let frame = FrameData {
             view_proj: self.orbit.view_proj(rect.aspect_ratio()),
             time: now as f32,
+            dim: self.dim_others,
             target_px: [
                 (rect.width() * ppp).round().max(1.0) as u32,
                 (rect.height() * ppp).round().max(1.0) as u32,

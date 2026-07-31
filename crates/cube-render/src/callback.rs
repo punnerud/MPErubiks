@@ -13,6 +13,8 @@ const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
 pub struct FrameData {
     pub view_proj: [[f32; 4]; 4],
     pub time: f32,
+    /// How strongly non-highlighted cubies desaturate (0..1).
+    pub dim: f32,
     /// Target size in physical pixels.
     pub target_px: [u32; 2],
     pub instances: [Instance; 27],
@@ -352,7 +354,7 @@ impl CubeRenderResources {
             0,
             bytemuck::bytes_of(&GlobalsPod {
                 view_proj: frame.view_proj,
-                misc: [frame.time, 0.0, 0.0, 0.0],
+                misc: [frame.time, frame.dim, 0.0, 0.0],
             }),
         );
         queue.write_buffer(&self.instance_buffer, 0, bytemuck::cast_slice(&frame.instances));

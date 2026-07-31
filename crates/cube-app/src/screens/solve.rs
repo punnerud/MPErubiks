@@ -224,6 +224,7 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
         animator: &app.animator,
         orbit: &mut app.orbit,
         highlight,
+        dim_others: 0.35,
         color_override: None,
     }
     .show(ui, cube_size);
