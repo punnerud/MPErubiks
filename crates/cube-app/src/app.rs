@@ -10,7 +10,7 @@ use std::sync::mpsc::{Receiver, Sender};
 
 /// Extra bottom breathing room: iOS Safari's collapsing URL bar overlays
 /// the bottom of the viewport; buttons must sit above it.
-pub const BOTTOM_INSET: f32 = 34.0;
+pub const BOTTOM_INSET: f32 = 14.0;
 
 pub enum Screen {
     Menu,
