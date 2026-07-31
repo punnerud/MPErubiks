@@ -118,10 +118,29 @@ const MAX_STICKER_DISTANCE: f32 = 0.25;
 /// between stickers when the sampling grid is slightly misaligned.
 const MIN_STICKER_LIGHTNESS: f32 = 0.30;
 
+/// Whitish/colored split: sticker whites sit near the gray axis, every
+/// real cube color far from it. Gating on chroma makes white vs color a
+/// STRUCTURAL decision — a warm-lit white can no longer drift into red.
+const WHITISH_CHROMA: f32 = 0.08;
+
 pub fn classify_one(patch: Oklab, cal: &Calibration) -> Classified {
+    let patch_chroma = patch.chroma();
+    let allowed = |r: Oklab| -> bool {
+        if patch_chroma < 0.06 && patch.l > 0.5 {
+            r.chroma() < WHITISH_CHROMA // near-gray patch: whitish refs only
+        } else if patch_chroma > 0.12 {
+            r.chroma() >= WHITISH_CHROMA // saturated patch: never white
+        } else {
+            true
+        }
+    };
+    let any_allowed = cal.refs.iter().any(|&r| allowed(r));
     let mut best = (f32::INFINITY, 0u8);
     let mut second = f32::INFINITY;
     for (i, &r) in cal.refs.iter().enumerate() {
+        if any_allowed && !allowed(r) {
+            continue;
+        }
         let d = sticker_distance(patch, r);
         if d < best.0 {
             second = best.0;
@@ -130,7 +149,14 @@ pub fn classify_one(patch: Oklab, cal: &Calibration) -> Classified {
             second = d;
         }
     }
-    let confidence = if second.is_finite() && second > 0.0 {
+    let confidence = if !second.is_finite() {
+        // Only one structurally allowed candidate: unambiguous by design.
+        if best.0 <= MAX_STICKER_DISTANCE {
+            1.0
+        } else {
+            0.0
+        }
+    } else if second > 0.0 {
         (1.0 - best.0 / second).clamp(0.0, 1.0)
     } else {
         0.0
@@ -237,6 +263,19 @@ mod tests {
             let ok = srgb_patch_to_oklab(&p, 20, 20);
             let c = classify_one(ok, &cal);
             assert_eq!(c.color, None, "{rgb:?} must not classify as a sticker");
+        }
+    }
+
+    #[test]
+    fn warm_tinted_white_stays_white() {
+        // Regression: white under a red-ish cast must NEVER classify as
+        // red — chroma gating keeps near-gray patches whitish.
+        let cal = Calibration::default_stickers();
+        for rgb in [[250u8, 238, 230], [235, 225, 228], [255, 245, 235]] {
+            let p = patch(rgb, 5, false);
+            let ok = srgb_patch_to_oklab(&p, 20, 20);
+            let c = classify_one(ok, &cal);
+            assert_eq!(c.color, Some(0), "{rgb:?} must stay white, got {:?}", c.color);
         }
     }
 
