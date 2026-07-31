@@ -27,8 +27,9 @@ const PLAUSIBLE_FRACTION: f32 = 0.15;
 /// How many extra low-margin cells may be freed when the confident
 /// assignment is invalid.
 const MAX_FREED: usize = 4;
-/// Search budget (complete-assignment validations).
-const MAX_CHECKS: usize = 20_000;
+/// Search budget in visited NODES (not just completed assignments) — the
+/// resolver must never freeze the UI thread.
+const MAX_CHECKS: usize = 60_000;
 
 pub fn resolve_scan(shares: &Shares) -> Result<FaceletCube, crate::ValidationError> {
     // Initial assignment: argmax per cell; centers are authoritative
@@ -87,7 +88,8 @@ pub fn resolve_scan(shares: &Shares) -> Result<FaceletCube, crate::ValidationErr
     for extra in 0..=MAX_FREED {
         let mut free: Vec<usize> = uncertain.clone();
         free.extend(confident.iter().take(extra));
-        free.sort_unstable();
+        // MRV: fewest candidates first collapses the search tree.
+        free.sort_by_key(|&i| widths[i]);
         if let Some(found) = search(&base, &free, &ranked, &widths, &mut checks) {
             return Ok(found);
         }
@@ -127,11 +129,11 @@ fn search(
         widths: &[usize; 54],
         checks: &mut usize,
     ) -> Option<FaceletCube> {
+        *checks += 1;
         if *checks >= MAX_CHECKS {
             return None;
         }
         if pos == free.len() {
-            *checks += 1;
             return validate(state).is_ok().then_some(*state);
         }
         let cell = free[pos];
