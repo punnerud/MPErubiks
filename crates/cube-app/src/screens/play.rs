@@ -103,23 +103,33 @@ pub fn handle_tap_select(app: &mut RubiksApp, response: &egui::Response) {
     }
 }
 
-/// Two big arrows that turn the tap-selected layer (animated). Plain and
-/// constant: simple left/right arrows on neutral buttons — shifting
-/// colors/letters made them hard to read.
+/// Two big arrows that turn the tap-selected layer (animated). Always
+/// visible: dull while nothing is selected (so kids learn they exist),
+/// bright the moment a layer is tapped.
 pub fn turn_arrows(app: &mut RubiksApp, ui: &mut Ui) {
-    let Some(face) = app.selected_face else {
-        return;
-    };
     let size = Vec2::new(96.0, 76.0);
-    let gray = Color32::from_rgb(0x4A, 0x4F, 0x5C);
+    let active = app.selected_face.is_some();
+    let fill = if active {
+        Color32::from_rgb(0x2A, 0x5C, 0xC2)
+    } else {
+        Color32::from_gray(42)
+    };
     for (turns, draw) in [
         (Turns::Ccw, icons::draw_back_arrow as fn(&egui::Painter, egui::Rect)),
         (Turns::Cw, icons::draw_next_arrow as fn(&egui::Painter, egui::Rect)),
     ] {
-        if icons::big_icon_button(ui, size, gray, "", draw).clicked() {
-            let m = Move::Face(face, turns);
-            app.history.push(m);
-            app.animator.enqueue(m);
+        let response = icons::big_icon_button(ui, size, fill, "", draw);
+        if !active {
+            // Dusk the whole button (icon included) while out of focus.
+            ui.painter()
+                .rect_filled(response.rect, 18.0, Color32::from_black_alpha(110));
+        }
+        if response.clicked() {
+            if let Some(face) = app.selected_face {
+                let m = Move::Face(face, turns);
+                app.history.push(m);
+                app.animator.enqueue(m);
+            }
         }
     }
 }
