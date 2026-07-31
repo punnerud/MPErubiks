@@ -61,6 +61,8 @@ pub struct ScanScreen {
     captured: [Option<[Option<u8>; 9]>; 6],
     face_idx: usize,
     live: [Classified; 9],
+    /// Raw cell buffers from the latest sampling tick (for upload).
+    last_cells: Option<[(Vec<u8>, usize, usize); 9]>,
     stable_ticks: u8,
     last_sample: f64,
     cal: Calibration,
@@ -98,6 +100,7 @@ impl ScanScreen {
                 color: None,
                 confidence: 0.0,
             }; 9],
+            last_cells: None,
             stable_ticks: 0,
             last_sample: 0.0,
             cal: Calibration::default_stickers(),
@@ -235,8 +238,9 @@ fn scan_ui(
                 0
             };
             screen.live = live;
+            screen.last_cells = Some(cells);
             if screen.stable_ticks >= 8 {
-                capture(screen, now);
+                capture(screen, now, "auto");
             }
         }
     }
@@ -370,7 +374,7 @@ fn scan_ui(
     }
     // Force-capture when auto won't bite (tricky stickers).
     if small_button(ui, slot(0), "force", app.t(TextKey::Capture), true) && !in_flash {
-        capture(screen, now);
+        capture(screen, now, "manual");
     }
     if small_button(ui, slot(1), "manual", app.t(TextKey::EnterManually), false) {
         *next = Some(Screen::Solve(super::solve::SolveScreen::new_input(
@@ -385,7 +389,7 @@ fn scan_ui(
     }
 }
 
-fn capture(screen: &mut ScanScreen, now: f64) {
+fn capture(screen: &mut ScanScreen, now: f64, source: &str) {
     if screen.face_idx >= 6 {
         return;
     }
@@ -402,7 +406,36 @@ fn capture(screen: &mut ScanScreen, now: f64) {
         screen.mini_anim.clear();
         screen.face_idx += 1;
         screen.stable_ticks = 0;
+        upload_capture(screen, source, &classes);
     }
+}
+
+/// Ship the capture (cell images + votes) to the server: real-world
+/// training data for tuning the matcher.
+fn upload_capture(screen: &ScanScreen, source: &str, classes: &[Option<u8>; 9]) {
+    let Some(cells) = &screen.last_cells else {
+        return;
+    };
+    let cells_json: Vec<String> = cells
+        .iter()
+        .map(|(buf, w, h)| {
+            format!(
+                "{{\"w\":{w},\"h\":{h},\"rgba_hex\":\"{}\"}}",
+                crate::platform::web::hex_encode(buf)
+            )
+        })
+        .collect();
+    let votes: Vec<String> = classes
+        .iter()
+        .map(|c| c.map(|v| v.to_string()).unwrap_or_else(|| "null".into()))
+        .collect();
+    let body = format!(
+        "{{\"source\":\"{source}\",\"face_idx\":{},\"votes\":[{}],\"cells\":[{}]}}",
+        screen.face_idx.saturating_sub(1),
+        votes.join(","),
+        cells_json.join(",")
+    );
+    crate::platform::web::post_json_forget("upload", body);
 }
 
 /// Rebuild the facelet cube from the voted classes: a class maps to the

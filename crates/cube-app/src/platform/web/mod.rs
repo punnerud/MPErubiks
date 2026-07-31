@@ -44,3 +44,29 @@ pub fn screen_angle() -> u16 {
         .and_then(|s| s.orientation().angle().ok())
         .unwrap_or(0)
 }
+
+/// Fire-and-forget JSON POST (scan-capture telemetry). Errors are logged,
+/// never surfaced — data collection must not disturb the flow.
+pub fn post_json_forget(url: &str, body: String) {
+    let url = url.to_string();
+    wasm_bindgen_futures::spawn_local(async move {
+        let init = web_sys::RequestInit::new();
+        init.set_method("POST");
+        init.set_body(&eframe::wasm_bindgen::JsValue::from_str(&body));
+        if let Some(window) = web_sys::window() {
+            let _ = wasm_bindgen_futures::JsFuture::from(
+                window.fetch_with_str_and_init(&url, &init),
+            )
+            .await;
+        }
+    });
+}
+
+pub fn hex_encode(data: &[u8]) -> String {
+    let mut out = String::with_capacity(data.len() * 2);
+    for b in data {
+        use std::fmt::Write as _;
+        let _ = write!(out, "{b:02x}");
+    }
+    out
+}
