@@ -89,14 +89,21 @@ impl Calibration {
             shades: vec![
                 (0, s(245, 245, 245)), // white
                 (1, s(255, 213, 0)),   // yellow classic
-                (1, s(193, 204, 26)),  // yellow neon (greenish)
+                // Field-measured neon yellow. Illumination shifts hue:
+                // daylight yellow sits at 112.6-114.3 deg, warm-night
+                // yellow at 98-109; lime green at 127-129 / 117-121.
+                // Refs at 107 and 124.5 put the voting boundary at
+                // 115.75 deg - inside the empirical gap (114.3..117.2)
+                // for BOTH lighting conditions (see eval_scans dataset).
+                (1, Oklab { l: 0.82, a: -0.0497, b: 0.1626 }),
                 (2, s(196, 30, 58)),   // red classic
                 (2, s(215, 78, 51)),   // red neon (salmon)
                 (2, s(224, 125, 99)),  // red neon washed (bright light)
                 (3, s(255, 88, 0)),    // orange classic
                 (3, s(222, 140, 25)),  // orange neon (amber)
                 (4, s(0, 158, 96)),    // green classic
-                (4, s(150, 200, 80)),  // green neon (yellowish)
+                // Field-measured neon lime (see the yellow note above).
+                (4, Oklab { l: 0.78, a: -0.0940, b: 0.1368 }),
                 (5, s(0, 81, 186)),    // blue classic
                 (5, s(45, 165, 210)),  // blue neon (sky)
             ],
@@ -209,7 +216,28 @@ pub fn vote_histogram(rgba: &[u8], width: usize, height: usize, cal: &Calibratio
     if total == 0 {
         return [0.0; 6];
     }
-    core::array::from_fn(|i| votes[i] as f32 / total as f32)
+    let mut shares: [f32; 6] = core::array::from_fn(|i| votes[i] as f32 / total as f32);
+    // Same COLOR-TRUMPS-WHITE rule as decide(): backgrounds and washed
+    // stickers masquerade as white, a real white sticker has ~zero
+    // saturated votes. With real color evidence present, white may stay
+    // a runner-up candidate but must not out-rank the color.
+    let whitish = |k: usize| {
+        cal.shades
+            .iter()
+            .any(|&(cls, r)| cls as usize == k && r.chroma() < WHITISH_CHROMA)
+    };
+    let color_max = (0..6)
+        .filter(|&k| !whitish(k))
+        .map(|k| shares[k])
+        .fold(0.0f32, f32::max);
+    if color_max >= MIN_VOTE_SHARE {
+        for k in 0..6 {
+            if whitish(k) {
+                shares[k] = shares[k].min(color_max * 0.8);
+            }
+        }
+    }
+    shares
 }
 
 /// Robust cell classification by per-pixel VOTING: every pixel close to
@@ -221,25 +249,41 @@ pub fn vote_cell(rgba: &[u8], width: usize, height: usize, cal: &Calibration) ->
     decide(&votes, total, cal)
 }
 
+/// Softmax temperature for hue voting, in RADIANS (~8 degrees): a pixel
+/// near the boundary between two reference hues splits its vote instead
+/// of flipping winner-take-all — the histogram then honestly reports
+/// "could be either", which the constraint resolver needs. Clearly-hued
+/// pixels still vote ~all on one class.
+const HUE_SOFTMAX_TEMP: f32 = 0.14;
+/// Each counted pixel contributes this much total vote weight (integer
+/// so the accumulators stay exact).
+const PIXEL_WEIGHT: u32 = 100;
+
 fn raw_votes(rgba: &[u8], width: usize, height: usize, cal: &Calibration) -> ([u32; 6], u32) {
     assert_eq!(rgba.len(), width * height * 4, "cell buffer size");
     let mut votes = [0u32; 6];
     let mut total = 0u32;
     // Subsample every other pixel: plenty of votes, half the work.
     for px in rgba.chunks_exact(4).step_by(2) {
-        total += 1;
+        total += PIXEL_WEIGHT;
         let c = Oklab::from_srgb8(px[0], px[1], px[2]);
         // Dead-zone gate: skin/shadow sits at warm LOW chroma (~0.06-0.09)
         // and poisons both white and orange votes. Only decisively gray
         // pixels may vote white; only decisively saturated ones a color.
         let chroma = c.chroma();
-        let decisive_white = chroma < 0.04 && c.l > 0.70;
+        // Warm indoor light tints white/light-gray stickers yellowish
+        // (field data: chroma 0.04-0.055 at hue 87-94). Let those vote
+        // white too, but only inside a hue window that EXCLUDES skin
+        // (skin sits at hue 40-70 in the same chroma band).
+        let hue_deg = c.b.atan2(c.a).to_degrees();
+        let decisive_white = c.l > 0.70
+            && (chroma < 0.04 || (chroma < 0.055 && (75.0..115.0).contains(&hue_deg)));
         let decisive_color = chroma > 0.10;
         if !decisive_white && !decisive_color {
             continue;
         }
         if decisive_white {
-            // Whitest shade class gets the vote.
+            // Whitest shade class gets the full vote.
             if let Some(&(cls, _)) = cal
                 .shades
                 .iter()
@@ -250,25 +294,33 @@ fn raw_votes(rgba: &[u8], width: usize, height: usize, cal: &Calibration) -> ([u
                         .unwrap()
                 })
             {
-                votes[cls as usize] += 1;
+                votes[cls as usize] += PIXEL_WEIGHT;
             }
         } else {
             // Saturated pixel: classify by HUE ANGLE against the color
             // shades — hue survives washout/overexposure far better than
-            // saturation or lightness, so red/orange and yellow/green
-            // stop splitting votes under changing light.
+            // saturation or lightness. The vote is distributed softmax-
+            // style over each class's nearest shade: near-boundary hues
+            // split their weight instead of flipping winner-take-all.
             let hue = c.b.atan2(c.a);
-            let nearest = cal
-                .shades
-                .iter()
-                .filter(|(_, r)| r.chroma() >= WHITISH_CHROMA)
-                .min_by(|(_, a), (_, b)| {
-                    let da = angular_distance(hue, a.b.atan2(a.a));
-                    let db = angular_distance(hue, b.b.atan2(b.a));
-                    da.partial_cmp(&db).unwrap()
-                });
-            if let Some(&(cls, _)) = nearest {
-                votes[cls as usize] += 1;
+            let mut w = [0.0f32; 6];
+            let mut wsum = 0.0f32;
+            for &(cls, r) in &cal.shades {
+                if r.chroma() < WHITISH_CHROMA {
+                    continue;
+                }
+                let d = angular_distance(hue, r.b.atan2(r.a));
+                let e = (-d / HUE_SOFTMAX_TEMP).exp();
+                let k = cls as usize;
+                if e > w[k] {
+                    wsum += e - w[k];
+                    w[k] = e; // nearest shade represents the class
+                }
+            }
+            if wsum > 0.0 {
+                for k in 0..6 {
+                    votes[k] += (w[k] / wsum * PIXEL_WEIGHT as f32).round() as u32;
+                }
             }
         }
     }

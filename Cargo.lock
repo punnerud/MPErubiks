@@ -822,8 +822,10 @@ name = "cube-solver"
 version = "0.1.0"
 dependencies = [
  "cube-core",
+ "cube-vision",
  "getrandom 0.3.4",
  "kewb",
+ "miniz_oxide",
 ]
 
 [[package]]

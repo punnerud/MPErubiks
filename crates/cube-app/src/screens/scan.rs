@@ -31,16 +31,28 @@ const MINI_ALGS: [&str; 6] = ["", "y", "y", "x", "y", "y"];
 
 /// Camera-grid position (row-major) -> facelet offset within the face.
 /// Derived from the orientation matrices of the sequence above: F/R/B
-/// land row-major straight; D appears 180° rotated, L 90°, U vertically
-/// flipped. Encoded as data so a physical discrepancy is a table fix.
+/// land row-major straight; D appears 180° rotated, L 90°. U lands
+/// row-major straight too — after y y x y y the camera sees U with B at
+/// the top and L at the left, exactly the Kociemba reference view
+/// (verified both by hand-tracked orientation and by 3D-coordinate
+/// simulation; the old vertical flip came from the retired tilt-toward
+/// sequence and made U-corner pieces physically impossible).
 const CAPTURE_GRID_TO_FACELET: [[u8; 9]; 6] = [
     [0, 1, 2, 3, 4, 5, 6, 7, 8],       // F
     [0, 1, 2, 3, 4, 5, 6, 7, 8],       // R
     [0, 1, 2, 3, 4, 5, 6, 7, 8],       // B
     [8, 7, 6, 5, 4, 3, 2, 1, 0],       // D (180°)
     [6, 3, 0, 7, 4, 1, 8, 5, 2],       // L (90°)
-    [6, 7, 8, 3, 4, 5, 0, 1, 2],       // U (vertical flip)
+    [0, 1, 2, 3, 4, 5, 6, 7, 8],       // U
 ];
+
+/// Continuous stable ticks (10 Hz) required before the auto-snap fires:
+/// 1.5 s of calm. Tick-to-tick class agreement doubles as blur detection
+/// — motion blur flickers the classification and resets the counter —
+/// and the evidence histograms are AVERAGED over the whole stable window,
+/// so the snap is many frames double-checking each other, not one lucky
+/// frame.
+const SNAP_TICKS: u8 = 15;
 
 pub enum CameraState {
     Requesting,
@@ -62,6 +74,9 @@ pub struct ScanScreen {
     /// Retained evidence: full vote histogram per cell per face — the
     /// constraint resolver ranks candidates from this after capture.
     evidence: [Option<[[f32; 6]; 9]>; 6],
+    /// Histogram accumulator over the current stable window (sum, ticks).
+    evid_sum: [[f32; 6]; 9],
+    evid_n: f32,
     face_idx: usize,
     live: [Classified; 9],
     /// Raw cell buffers from the latest sampling tick (for upload).
@@ -102,6 +117,8 @@ impl ScanScreen {
             preview: None,
             captured: [None; 6],
             evidence: [None; 6],
+            evid_sum: [[0.0; 6]; 9],
+            evid_n: 0.0,
             face_idx: 0,
             live: [Classified {
                 color: None,
@@ -247,14 +264,23 @@ fn scan_ui(
                     .count()
                     >= 3
             });
-            screen.stable_ticks = if all_detected && same && rotated_away {
-                screen.stable_ticks.saturating_add(1)
+            if all_detected && same && rotated_away {
+                screen.stable_ticks = screen.stable_ticks.saturating_add(1);
+                for (i, (buf, w, h)) in cells.iter().enumerate() {
+                    let hist = vote_histogram(buf, *w, *h, &screen.cal);
+                    for c in 0..6 {
+                        screen.evid_sum[i][c] += hist[c];
+                    }
+                }
+                screen.evid_n += 1.0;
             } else {
-                0
-            };
+                screen.stable_ticks = 0;
+                screen.evid_sum = [[0.0; 6]; 9];
+                screen.evid_n = 0.0;
+            }
             screen.live = live;
             screen.last_cells = Some(cells);
-            if screen.stable_ticks >= 8 {
+            if screen.stable_ticks >= SNAP_TICKS {
                 capture(screen, now, "auto");
             }
         }
@@ -344,6 +370,8 @@ fn scan_ui(
         if resp.clicked() {
             screen.rotation = (rotation + 1) % 4;
             screen.stable_ticks = 0;
+            screen.evid_sum = [[0.0; 6]; 9];
+            screen.evid_n = 0.0;
             if let Some(store) = &app.store {
                 let _ = store.set_setting("cam_rot2", &screen.rotation.to_string());
                 crate::persist::persist(store);
@@ -381,6 +409,9 @@ fn scan_ui(
     // Restart the whole scan from side one.
     if small_button(ui, slot(-1), "restart", app.t(TextKey::Reset), false) {
         screen.captured = [None; 6];
+        screen.evidence = [None; 6];
+        screen.evid_sum = [[0.0; 6]; 9];
+        screen.evid_n = 0.0;
         screen.face_idx = 0;
         screen.stable_ticks = 0;
         screen.flash = None;
@@ -458,14 +489,22 @@ fn capture(screen: &mut ScanScreen, now: f64, source: &str) {
     }
     {
         let classes: [Option<u8>; 9] = core::array::from_fn(|i| screen.live[i].color);
-        // Retain the evidence histograms for constraint resolution.
-        if let Some(cells) = &screen.last_cells {
+        // Retain the evidence for constraint resolution: the average over
+        // the stable window when one exists (auto-snap), else the last
+        // frame (manual snap).
+        if screen.evid_n > 0.0 {
+            let n = screen.evid_n;
+            screen.evidence[screen.face_idx] =
+                Some(core::array::from_fn(|i| screen.evid_sum[i].map(|v| v / n)));
+        } else if let Some(cells) = &screen.last_cells {
             let hists: [[f32; 6]; 9] = core::array::from_fn(|i| {
                 let (buf, w, h) = &cells[i];
                 vote_histogram(buf, *w, *h, &screen.cal)
             });
             screen.evidence[screen.face_idx] = Some(hists);
         }
+        screen.evid_sum = [[0.0; 6]; 9];
+        screen.evid_n = 0.0;
         // Flash what was detected in the grid for a moment.
         screen.flash = Some((now + 0.9, classes));
         screen.captured[screen.face_idx] = Some(classes);
@@ -626,7 +665,7 @@ fn draw_overlay(ui: &Ui, rect: Rect, screen: &ScanScreen, now: f64) {
                 .count()
                 < 3
         });
-    let t = f32::from(screen.stable_ticks.min(8)) / 8.0;
+    let t = f32::from(screen.stable_ticks.min(SNAP_TICKS)) / f32::from(SNAP_TICKS);
     let bar_bg = Rect::from_min_size(
         Pos2::new(square.left(), square.top() - 16.0),
         Vec2::new(side, 6.0),

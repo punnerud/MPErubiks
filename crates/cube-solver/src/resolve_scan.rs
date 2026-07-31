@@ -24,8 +24,8 @@ const EVIDENCE_FLOOR: f32 = 0.05;
 /// at least this fraction of the winner's share (a clearly-not-red cell
 /// never gets red as a candidate).
 const PLAUSIBLE_FRACTION: f32 = 0.15;
-/// How many extra low-margin cells may be freed when the confident
-/// assignment is invalid.
+/// How many low-margin cells may have their candidate set WIDENED to all
+/// six colors when the evidence-constrained search finds nothing legal.
 const MAX_FREED: usize = 4;
 /// Search budget in visited NODES (not just completed assignments) — the
 /// resolver must never freeze the UI thread.
@@ -91,26 +91,23 @@ pub fn resolve_scan(shares: &Shares) -> Result<FaceletCube, crate::ValidationErr
     };
 
     let mut base = FaceletCube::SOLVED;
-    let mut uncertain: Vec<usize> = Vec::new();
     for i in 0..54 {
-        if i % 9 == 4 {
-            base.0[i] = Face::from_index(i / 9);
-            continue;
-        }
-        base.0[i] = ranked[i][0];
-        if shares[i][ranked[i][0] as usize] < CONFIDENT_SHARE {
-            uncertain.push(i);
-        }
+        base.0[i] = if i % 9 == 4 {
+            Face::from_index(i / 9)
+        } else {
+            ranked[i][0]
+        };
     }
 
-    // Round 0: only the uncertain cells are free. If that fails, free the
-    // lowest-margin confident cells too, a few at a time.
+    // EVERY non-center cell is searchable within its evidence-plausible
+    // candidate width: clear cells have width 1 (de-facto fixed),
+    // ambiguous ones 2-3, evidence-free ones all 6. The constraints pick
+    // among plausible readings — never a color the evidence rules out.
     let widths: [usize; 54] = core::array::from_fn(|i| {
         let winner = shares[i][ranked[i][0] as usize];
         if winner < EVIDENCE_FLOOR {
             6 // no evidence: anything goes
         } else {
-            // Only classes with real evidence stay candidates.
             let floor = (winner * PLAUSIBLE_FRACTION).max(0.02);
             ranked[i]
                 .iter()
@@ -120,18 +117,22 @@ pub fn resolve_scan(shares: &Shares) -> Result<FaceletCube, crate::ValidationErr
         }
     });
 
-    let mut confident: Vec<usize> = (0..54)
-        .filter(|&i| i % 9 != 4 && !uncertain.contains(&i))
-        .collect();
-    confident.sort_by(|&a, &b| margin(a).partial_cmp(&margin(b)).unwrap());
+    // Widening fallback: when even the plausible readings admit no legal
+    // cube, the evidence itself must be wrong somewhere — widen the
+    // lowest-margin cells to all six colors, a few at a time.
+    let mut by_margin: Vec<usize> = (0..54).filter(|&i| i % 9 != 4).collect();
+    by_margin.sort_by(|&a, &b| margin(a).partial_cmp(&margin(b)).unwrap());
 
     let mut checks = 0usize;
     for extra in 0..=MAX_FREED {
-        let mut free: Vec<usize> = uncertain.clone();
-        free.extend(confident.iter().take(extra));
+        let mut w = widths;
+        for &i in by_margin.iter().take(extra) {
+            w[i] = 6;
+        }
+        let mut free: Vec<usize> = (0..54).filter(|&i| i % 9 != 4 && w[i] > 1).collect();
         // MRV: fewest candidates first collapses the search tree.
-        free.sort_by_key(|&i| widths[i]);
-        if let Some(found) = search(&base, &free, &ranked, &widths, &mut checks) {
+        free.sort_by_key(|&i| w[i]);
+        if let Some(found) = search(&base, &free, &ranked, &w, &mut checks) {
             return Ok(found);
         }
         if checks >= MAX_CHECKS {
