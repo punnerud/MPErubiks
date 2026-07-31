@@ -54,6 +54,15 @@ pub fn face_of(index: usize) -> Face {
     Face::from_index(index / 9)
 }
 
+/// The facelet index shown on `face` of the cubie at grid coordinate `q`
+/// (each component -1, 0 or 1), if that cubie has a sticker there.
+/// Used by renderers to map cube state onto cubie geometry.
+pub fn sticker_index(q: [i8; 3], face: Face) -> Option<usize> {
+    let g = geom();
+    let grid = ((q[0] + 1) * 9 + (q[1] + 1) * 3 + (q[2] + 1)) as u8;
+    (0..54).find(|&i| g.cubie_grid[i] == grid && face_of(i) == face)
+}
+
 /// Face frames: (normal, right, down) unit vectors. Row-major facelet
 /// (row, col) sits at `3*normal + 2*(col-1)*right + 2*(row-1)*down`.
 /// These encode the Kociemba layout (U1 back-left, F1 top-left, D1

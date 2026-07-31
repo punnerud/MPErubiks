@@ -45,3 +45,6 @@ web-sys = { workspace = true, features = [
     "Response",
 ] }
 getrandom.workspace = true
+
+[dev-dependencies]
+egui_kittest = { version = "0.35", features = ["wgpu", "snapshot", "eframe"] }

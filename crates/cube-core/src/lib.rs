@@ -13,6 +13,6 @@ mod moves;
 mod rng;
 
 pub use cases::{CaseDef, CaseSet, LibraryError, Match, RecogKind, Recognizer};
-pub use facelet::{Color, Face, FaceletCube, ParseStateError};
+pub use facelet::{face_of, sticker_index, Color, Face, FaceletCube, ParseStateError};
 pub use moves::{Alg, Move, ParseError, RotAxis, SliceKind, Turns};
 pub use rng::SplitMix64;
