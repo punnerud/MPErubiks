@@ -103,20 +103,20 @@ pub fn handle_tap_select(app: &mut RubiksApp, response: &egui::Response) {
     }
 }
 
-/// Two big arrows that turn the tap-selected layer (animated). Colored
-/// like the selected face so button and pulsing layer visibly belong
-/// together.
+/// Two big arrows that turn the tap-selected layer (animated). Plain and
+/// constant: simple left/right arrows on neutral buttons — shifting
+/// colors/letters made them hard to read.
 pub fn turn_arrows(app: &mut RubiksApp, ui: &mut Ui) {
     let Some(face) = app.selected_face else {
         return;
     };
-    let color = crate::widgets::net2d::face_color32(face);
     let size = Vec2::new(96.0, 76.0);
+    let gray = Color32::from_rgb(0x4A, 0x4F, 0x5C);
     for (turns, draw) in [
-        (Turns::Ccw, icons::draw_turn_left as fn(&egui::Painter, egui::Rect)),
-        (Turns::Cw, icons::draw_turn_right as fn(&egui::Painter, egui::Rect)),
+        (Turns::Ccw, icons::draw_back_arrow as fn(&egui::Painter, egui::Rect)),
+        (Turns::Cw, icons::draw_next_arrow as fn(&egui::Painter, egui::Rect)),
     ] {
-        if icons::big_icon_button(ui, size, color, &face.letter().to_string(), draw).clicked() {
+        if icons::big_icon_button(ui, size, gray, "", draw).clicked() {
             let m = Move::Face(face, turns);
             app.history.push(m);
             app.animator.enqueue(m);
