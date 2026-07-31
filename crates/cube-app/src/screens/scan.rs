@@ -63,6 +63,9 @@ pub struct ScanScreen {
     live: [Classified; 9],
     /// Raw cell buffers from the latest sampling tick (for upload).
     last_cells: Option<[(Vec<u8>, usize, usize); 9]>,
+    /// Classes of the face just captured: the camera must see a DIFFERENT
+    /// side before the auto-snap re-arms (no double-captures of one side).
+    last_captured: Option<[Option<u8>; 9]>,
     stable_ticks: u8,
     last_sample: f64,
     cal: Calibration,
@@ -101,6 +104,7 @@ impl ScanScreen {
                 confidence: 0.0,
             }; 9],
             last_cells: None,
+            last_captured: None,
             stable_ticks: 0,
             last_sample: 0.0,
             cal: Calibration::default_stickers(),
@@ -228,7 +232,17 @@ fn scan_ui(
                 .iter()
                 .zip(live.iter())
                 .all(|(a, b)| a.color == b.color);
-            screen.stable_ticks = if all_detected && same {
+            // Re-arm only once the camera sees a genuinely DIFFERENT side
+            // than the one just captured (>=3 cells differ) — otherwise
+            // one face auto-captures six times before anyone can rotate.
+            let rotated_away = screen.last_captured.map_or(true, |prev| {
+                prev.iter()
+                    .zip(live.iter())
+                    .filter(|(p, l)| **p != l.color)
+                    .count()
+                    >= 3
+            });
+            screen.stable_ticks = if all_detected && same && rotated_away {
                 screen.stable_ticks.saturating_add(1)
             } else {
                 0
@@ -368,6 +382,7 @@ fn scan_ui(
         screen.mini_base = FaceletCube::SOLVED;
         screen.mini_cube = FaceletCube::SOLVED;
         screen.mini_anim.clear();
+        screen.last_captured = None;
     }
     // Force-capture when auto won't bite (tricky stickers).
     if small_button(ui, slot(0), "force", app.t(TextKey::Capture), true) && !in_flash {
@@ -414,6 +429,7 @@ fn capture(screen: &mut ScanScreen, now: f64, source: &str) {
         screen.mini_anim.clear();
         screen.face_idx += 1;
         screen.stable_ticks = 0;
+        screen.last_captured = Some(classes);
         upload_capture(screen, source, &classes);
     }
 }
@@ -553,13 +569,24 @@ fn draw_overlay(ui: &Ui, rect: Rect, screen: &ScanScreen, now: f64) {
     }
 
     // Hold-steady progress: a thin line above the square that fills up.
-    let t = f32::from(screen.stable_ticks.min(10)) / 10.0;
+    // Orange full bar = "this is the side I already have — rotate!".
+    let same_side = screen.face_idx < 6
+        && screen.last_captured.map_or(false, |prev| {
+            prev.iter()
+                .zip(screen.live.iter())
+                .filter(|(p, l)| **p != l.color)
+                .count()
+                < 3
+        });
+    let t = f32::from(screen.stable_ticks.min(8)) / 8.0;
     let bar_bg = Rect::from_min_size(
         Pos2::new(square.left(), square.top() - 16.0),
         Vec2::new(side, 6.0),
     );
     p.rect_filled(bar_bg, 3.0, Color32::from_black_alpha(140));
-    if t > 0.0 && screen.face_idx < 6 {
+    if same_side {
+        p.rect_filled(bar_bg, 3.0, Color32::from_rgb(0xE0, 0x8A, 0x1E));
+    } else if t > 0.0 && screen.face_idx < 6 {
         let bar = Rect::from_min_size(bar_bg.min, Vec2::new(side * t, 6.0));
         p.rect_filled(bar, 3.0, Color32::from_rgb(0x4C, 0xD9, 0x64));
     }
