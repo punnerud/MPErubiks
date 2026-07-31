@@ -210,6 +210,24 @@ fn arrow_head_dir(p: &egui::Painter, tip: Pos2, back: Vec2, color: Color32) {
     ));
 }
 
+/// Double chevrons: playback speed down / up.
+pub fn draw_chevrons_left(p: &egui::Painter, r: Rect) {
+    chevrons(p, r, -1.0)
+}
+pub fn draw_chevrons_right(p: &egui::Painter, r: Rect) {
+    chevrons(p, r, 1.0)
+}
+fn chevrons(p: &egui::Painter, r: Rect, dir: f32) {
+    let s = Stroke::new(r.height() * 0.14, Color32::WHITE);
+    let h = r.height() * 0.42;
+    for k in [-0.22f32, 0.22] {
+        let x = r.center().x + k * r.width() - dir * r.width() * 0.12;
+        let tip = Pos2::new(x + dir * r.width() * 0.24, r.center().y);
+        p.line_segment([Pos2::new(x, r.center().y - h), tip], s);
+        p.line_segment([Pos2::new(x, r.center().y + h), tip], s);
+    }
+}
+
 /// Red-friendly cross (fail verdict).
 pub fn draw_cross(p: &egui::Painter, r: Rect) {
     let s = Stroke::new(r.height() * 0.16, Color32::WHITE);

@@ -295,6 +295,7 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
                 guide.cursor += 1;
             }
         });
+        ui.add_space(crate::app::BOTTOM_INSET);
     });
 
     if done && app.animator.is_idle() {

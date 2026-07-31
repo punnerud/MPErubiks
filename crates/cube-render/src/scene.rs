@@ -95,6 +95,10 @@ pub fn instances_from_state(
             Some(p) if p.mask & (1 << i) != 0 => quat_axis_angle(p.axis, p.angle),
             _ => QUAT_IDENTITY,
         };
+        let highlighted = highlight_mask & (1 << i) != 0;
+        // When a selection exists, everything OUTSIDE it dims to grayscale
+        // so the chosen layer visibly pops (bit1 = dimmed).
+        let dimmed = highlight_mask != 0 && !highlighted;
         Instance {
             pos: [
                 f32::from(q[0]) * CUBIE_SPACING,
@@ -104,7 +108,7 @@ pub fn instances_from_state(
             _pad0: 0.0,
             rot,
             colors,
-            flags: u32::from(highlight_mask & (1 << i) != 0),
+            flags: u32::from(highlighted) | (u32::from(dimmed) << 1),
             _pad1: [0, 0],
         }
     })

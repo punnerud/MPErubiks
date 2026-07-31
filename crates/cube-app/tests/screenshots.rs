@@ -87,7 +87,7 @@ fn train_intro_tab() {
 fn lesson_daisy_screen() {
     let mut h = harness();
     h.state_mut().screen = Screen::Train(cube_app::screens::train::TrainScreen::Lesson(
-        cube_app::screens::train::LessonView { lesson: 2, step: 0, pending: true },
+        cube_app::screens::train::LessonView { lesson: 2, step: 0, pending: true, demo_len: 0 },
     ));
     h.step(); // applies the step's setup and queues the demo
     {

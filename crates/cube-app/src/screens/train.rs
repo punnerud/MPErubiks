@@ -26,6 +26,8 @@ pub struct LessonView {
     pub step: usize,
     /// The step's setup+demo still needs to be applied to the cube.
     pub pending: bool,
+    /// Number of moves in the currently playing demo (karaoke progress).
+    pub demo_len: usize,
 }
 
 pub struct SessionState {
@@ -166,6 +168,7 @@ fn intro_picker(app: &mut RubiksApp, ui: &mut Ui, next: &mut Option<Screen>) {
                         lesson: i,
                         step: 0,
                         pending: true,
+                        demo_len: 0,
                     })));
                 }
             }
@@ -183,14 +186,22 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
         view.pending = false;
         app.animator.clear();
         app.selected_face = None;
-        app.cube = cube_core::FaceletCube::SOLVED;
+        // Steps CHAIN: only jump-reset the cube when the state actually
+        // differs from the step's starting point (an invisible rewind
+        // that replays into the same place reads as a glitch).
+        let mut target = cube_core::FaceletCube::SOLVED;
         if let Some(setup) = step.setup {
             if let Ok(alg) = cube_core::Alg::parse(setup) {
-                app.cube.apply_alg(&alg);
+                target.apply_alg(&alg);
             }
         }
+        if app.cube != target {
+            app.cube = target;
+        }
+        view.demo_len = 0;
         if let Some(demo) = step.demo {
             if let Ok(alg) = cube_core::Alg::parse(demo) {
+                view.demo_len = alg.0.len();
                 app.animator.enqueue_all(&alg.0);
             }
         }
@@ -222,10 +233,12 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
     super::play::handle_tap_select(app, &response);
 
     ui.vertical_centered(|ui| {
+        karaoke_row(app, ui, view, step);
         ui.label(RichText::new(app.t(step.text)).size(22.0));
         ui.add_space(6.0);
         ui.horizontal(|ui| {
-            ui.add_space((ui.available_width() - 5.0 * 108.0).max(0.0) / 2.0);
+            ui.add_space((ui.available_width() - 7.0 * 84.0).max(0.0) / 2.0);
+            speed_buttons(app, ui);
             super::play::turn_arrows(app, ui);
             let size = Vec2::new(96.0, 64.0);
             let gray = Color32::from_gray(70);
@@ -270,6 +283,7 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
                 }
             }
         });
+        ui.add_space(crate::app::BOTTOM_INSET);
     });
 }
 
@@ -398,7 +412,8 @@ fn session_ui(app: &mut RubiksApp, ui: &mut Ui, session: &mut SessionState, next
     }
     .show(ui, cube_size);
 
-    ui.vertical_centered(|ui| match &mut session.phase {
+    ui.vertical_centered(|ui| {
+        match &mut session.phase {
         Phase::Ready => {
             if big_tap_zone(ui, Color32::from_rgb(0x1E, 0x88, 0x50), "GO", 56.0) {
                 session.phase = Phase::Timing { start: now };
@@ -493,9 +508,50 @@ fn session_ui(app: &mut RubiksApp, ui: &mut Ui, session: &mut SessionState, next
                 }
             }
         }
+        }
+        ui.add_space(crate::app::BOTTOM_INSET);
     });
 
     let _ = (set, next);
+}
+
+/// The demo's letters, karaoke-style: played moves dim green, the move
+/// being animated RIGHT NOW is big and bright, upcoming ones gray.
+fn karaoke_row(app: &RubiksApp, ui: &mut Ui, view: &LessonView, step: &crate::lessons::Step) {
+    let Some(demo) = step.demo else { return };
+    let Ok(alg) = cube_core::Alg::parse(demo) else { return };
+    if alg.0.is_empty() {
+        return;
+    }
+    let played = view.demo_len.saturating_sub(app.animator.pending());
+    ui.horizontal_wrapped(|ui| {
+        ui.add_space((ui.available_width() - alg.0.len() as f32 * 34.0).max(0.0) / 2.0);
+        for (i, m) in alg.0.iter().enumerate() {
+            let text = m.to_string();
+            let rich = if i + 1 == played && !app.animator.is_idle() {
+                RichText::new(text).size(30.0).strong().color(Color32::WHITE)
+            } else if i < played {
+                RichText::new(text)
+                    .size(20.0)
+                    .color(Color32::from_rgb(0x4C, 0xD9, 0x64))
+            } else {
+                RichText::new(text).size(20.0).color(Color32::from_gray(110))
+            };
+            ui.label(rich);
+        }
+    });
+}
+
+/// Slower / faster chevron buttons for demo playback.
+fn speed_buttons(app: &mut RubiksApp, ui: &mut Ui) {
+    let size = Vec2::new(64.0, 64.0);
+    let gray = Color32::from_gray(60);
+    if icons::big_icon_button(ui, size, gray, "", icons::draw_chevrons_left).clicked() {
+        app.animator.secs_per_quarter = (app.animator.secs_per_quarter * 1.5).min(0.7);
+    }
+    if icons::big_icon_button(ui, size, gray, "", icons::draw_chevrons_right).clicked() {
+        app.animator.secs_per_quarter = (app.animator.secs_per_quarter / 1.5).max(0.08);
+    }
 }
 
 fn new_case_state(app: &mut RubiksApp, case_idx: u16) {

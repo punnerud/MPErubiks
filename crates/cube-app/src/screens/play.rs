@@ -11,8 +11,15 @@ use egui::{Color32, Sense, Ui, Vec2};
 pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
     top_bar(app, ui);
 
-    // Bottom control panel first (fixed height), cube gets the rest.
-    let controls_height = 130.0;
+    // Actions ABOVE the cube (thumb-reach + clear of the iOS bottom bar).
+    ui.vertical_centered(|ui| {
+        ui.horizontal(|ui| {
+            ui.add_space((ui.available_width() - 3.0 * 92.0).max(0.0) / 2.0);
+            action_buttons(app, ui);
+        });
+    });
+
+    let controls_height = 96.0 + crate::app::BOTTOM_INSET;
     let cube_size = Vec2::new(
         ui.available_width(),
         (ui.available_height() - controls_height).max(120.0),
@@ -29,49 +36,54 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
     handle_tap_select(app, &response);
 
     ui.vertical_centered(|ui| {
-        ui.horizontal_wrapped(|ui| {
-            let action = Vec2::new(96.0, 76.0);
-            if icons::big_icon_button(
-                ui,
-                action,
-                Color32::from_rgb(0x8E, 0x36, 0xB8),
-                app.t(TextKey::Scramble),
-                icons::draw_shuffle,
-            )
-            .clicked()
-            {
-                app.scramble();
-            }
-            if icons::big_icon_button(
-                ui,
-                action,
-                Color32::from_rgb(0x4A, 0x4F, 0x5C),
-                app.t(TextKey::Reset),
-                icons::draw_reset,
-            )
-            .clicked()
-            {
-                app.animator.clear();
-                app.cube = FaceletCube::SOLVED;
-                app.history.clear();
-            }
-            if icons::big_icon_button(
-                ui,
-                action,
-                Color32::from_rgb(0x4A, 0x4F, 0x5C),
-                app.t(TextKey::Undo),
-                icons::draw_back_arrow,
-            )
-            .clicked()
-            {
-                if let Some(m) = app.history.pop() {
-                    app.animator.enqueue(m.inverse());
-                }
-            }
-            ui.add_space(16.0);
+        ui.horizontal(|ui| {
+            ui.add_space((ui.available_width() - 2.0 * 108.0).max(0.0) / 2.0);
             turn_arrows(app, ui);
         });
+        ui.add_space(crate::app::BOTTOM_INSET);
     });
+}
+
+/// Scramble / reset / undo — compact, above the cube.
+fn action_buttons(app: &mut RubiksApp, ui: &mut Ui) {
+    let action = Vec2::new(84.0, 64.0);
+    if icons::big_icon_button(
+        ui,
+        action,
+        Color32::from_rgb(0x8E, 0x36, 0xB8),
+        app.t(TextKey::Scramble),
+        icons::draw_shuffle,
+    )
+    .clicked()
+    {
+        app.scramble();
+    }
+    if icons::big_icon_button(
+        ui,
+        action,
+        Color32::from_rgb(0x4A, 0x4F, 0x5C),
+        app.t(TextKey::Reset),
+        icons::draw_reset,
+    )
+    .clicked()
+    {
+        app.animator.clear();
+        app.cube = FaceletCube::SOLVED;
+        app.history.clear();
+    }
+    if icons::big_icon_button(
+        ui,
+        action,
+        Color32::from_rgb(0x4A, 0x4F, 0x5C),
+        app.t(TextKey::Undo),
+        icons::draw_back_arrow,
+    )
+    .clicked()
+    {
+        if let Some(m) = app.history.pop() {
+            app.animator.enqueue(m.inverse());
+        }
+    }
 }
 
 /// Tap a sticker: select (and pulse) its whole layer; tap again to

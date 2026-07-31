@@ -79,7 +79,7 @@ pub const LESSONS: &[Lesson] = &[
                 // White down, yellow up; petals bloom one by one.
                 text: TextKey::LessonDaisyGoal,
                 setup: Some("x2"),
-                demo: Some("F2 R2 B2 L2"),
+                demo: Some("F2 R2 B2"),
             },
             Step {
                 text: TextKey::LessonDaisyFind,
@@ -101,8 +101,8 @@ pub const LESSONS: &[Lesson] = &[
             },
             Step {
                 text: TextKey::LessonCrossDone,
-                setup: Some("x2 F2"),
-                demo: Some("F2"),
+                setup: Some("x2"),
+                demo: Some("F2 F2"),
             },
         ],
     },

@@ -67,9 +67,14 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
     let plastic = vec3<f32>(0.07, 0.07, 0.08);
     var c = mix(plastic, PALETTE[in.color_idx].rgb, sticker);
     if (in.flags & 1u) != 0u {
-        // Next-move layer: gentle white pulse so kids see what turns next.
-        let pulse = 0.22 + 0.16 * sin(globals.misc.x * 6.0);
+        // Selected/next layer: strong white pulse.
+        let pulse = 0.30 + 0.20 * sin(globals.misc.x * 6.0);
         c = mix(c, vec3<f32>(1.0, 1.0, 1.0), pulse * sticker);
+    }
+    if (in.flags & 2u) != 0u {
+        // Everything else fades toward gray so the selection pops.
+        let luma = dot(c, vec3<f32>(0.299, 0.587, 0.114));
+        c = mix(c, vec3<f32>(luma * 0.55, luma * 0.55, luma * 0.58), 0.75);
     }
     let n = normalize(in.world_nrm);
     let l1 = max(dot(n, normalize(vec3<f32>(0.45, 0.8, 0.55))), 0.0);
