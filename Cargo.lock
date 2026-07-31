@@ -2127,6 +2127,7 @@ dependencies = [
 name = "mpedb-core"
 version = "0.1.5"
 dependencies = [
+ "js-sys",
  "libc",
  "mpedb-types",
  "xxhash-rust",
@@ -4816,6 +4817,8 @@ checksum = "3ae8337f8a065cfc972643663ea4279e04e7256de865aa66fe25cec5fb912d3f"
 name = "xtask"
 version = "0.1.0"
 dependencies = [
+ "cube-core",
+ "cube-solver",
  "kewb",
 ]
 

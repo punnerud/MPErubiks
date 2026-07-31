@@ -51,6 +51,14 @@ pub fn validate(s: &FaceletCube) -> Result<(), ValidationError> {
     if centers.len() != 6 {
         return Err(ValidationError::CentersNotDistinct);
     }
+    // Piece existence FIRST, ourselves: kewb's facelet->cubie conversion
+    // silently leaves unmatchable pieces at their defaults (it does not
+    // reject a {U,U,F} corner), so an impossible cube could slip through
+    // and be "solved" as the wrong cube.
+    let normalized = s.normalize_orientation();
+    if let e @ ValidationError::ImpossiblePiece = piece_level_diagnosis(&normalized) {
+        return Err(e);
+    }
     match crate::solve::to_cubie(s) {
         Ok(_) => Ok(()),
         Err(crate::SolveError::Invalid(e)) => Err(e),

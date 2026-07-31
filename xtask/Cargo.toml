@@ -6,3 +6,5 @@ license.workspace = true
 
 [dependencies]
 kewb.workspace = true
+cube-core = { workspace = true }
+cube-solver = { workspace = true }

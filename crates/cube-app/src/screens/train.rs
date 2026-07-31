@@ -1,0 +1,410 @@
+//! Training mode: pick a case (visual diagrams), drill it with a timer on
+//! your physical cube, mark success/fail, watch your times improve.
+//! Scores persist via cube-store from M6; until then they live in-app.
+
+use crate::app::{RubiksApp, Screen};
+use crate::i18n::TextKey;
+use crate::widgets::{case_diagram, cube_view::CubeView, icons};
+use cube_core::{CaseSet, RecogKind};
+use egui::{Color32, Rect, RichText, ScrollArea, Sense, Stroke, StrokeKind, Ui, Vec2};
+
+pub enum TrainScreen {
+    Picker { set: CaseSet },
+    Session(SessionState),
+}
+
+pub struct SessionState {
+    pub case_idx: u16,
+    pub phase: Phase,
+}
+
+pub enum Phase {
+    Ready,
+    Timing { start: f64 },
+    Result { ms: u64, success: Option<bool> },
+}
+
+#[derive(Clone, Copy)]
+pub struct Attempt {
+    pub ms: u64,
+    pub success: bool,
+}
+
+pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
+    super::play::top_bar(app, ui);
+    let Screen::Train(mut screen) = std::mem::replace(&mut app.screen, Screen::Menu) else {
+        return;
+    };
+    let mut next: Option<Screen> = None;
+
+    match &mut screen {
+        TrainScreen::Picker { set } => picker(app, ui, set, &mut next),
+        TrainScreen::Session(session) => session_ui(app, ui, session, &mut next),
+    }
+
+    app.screen = next.unwrap_or(Screen::Train(screen));
+}
+
+fn set_tab_label(set: CaseSet) -> &'static str {
+    match set {
+        CaseSet::Pll => "PLL",
+        CaseSet::Oll => "OLL",
+        CaseSet::F2l => "F2L",
+        CaseSet::Lbl => "ABC",
+    }
+}
+
+fn picker(app: &mut RubiksApp, ui: &mut Ui, set: &mut CaseSet, next: &mut Option<Screen>) {
+    ui.vertical_centered(|ui| {
+        ui.horizontal(|ui| {
+            ui.add_space((ui.available_width() - 4.0 * 96.0).max(0.0) / 2.0);
+            for s in [CaseSet::Lbl, CaseSet::F2l, CaseSet::Oll, CaseSet::Pll] {
+                let active = *set == s;
+                let color = if active {
+                    Color32::from_rgb(0xC7, 0x51, 0x08)
+                } else {
+                    Color32::from_gray(60)
+                };
+                let (rect, response) =
+                    ui.allocate_exact_size(Vec2::new(84.0, 48.0), Sense::click());
+                ui.painter().rect_filled(rect, 12.0, color);
+                ui.painter().text(
+                    rect.center(),
+                    egui::Align2::CENTER_CENTER,
+                    set_tab_label(s),
+                    egui::FontId::proportional(22.0),
+                    Color32::WHITE,
+                );
+                if response.clicked() {
+                    *set = s;
+                }
+            }
+        });
+    });
+    ui.add_space(8.0);
+
+    let cases = app.library.cases_in_set(*set);
+    ScrollArea::vertical().show(ui, |ui| {
+        ui.horizontal_wrapped(|ui| {
+            for case_idx in cases {
+                if case_card(app, ui, case_idx) {
+                    new_case_state(app, case_idx);
+                    *next = Some(Screen::Train(TrainScreen::Session(SessionState {
+                        case_idx,
+                        phase: Phase::Ready,
+                    })));
+                }
+            }
+        });
+    });
+}
+
+/// One tappable case card: diagram + name + trained star + best time.
+/// Returns true when the card body is tapped.
+fn case_card(app: &mut RubiksApp, ui: &mut Ui, case_idx: u16) -> bool {
+    let def = app.library.rec.case(case_idx);
+    let name = def.name.clone();
+    let recognition = def.recognition;
+    let size = Vec2::new(132.0, 168.0);
+    let (rect, response) = ui.allocate_exact_size(size, Sense::click());
+    let p = ui.painter();
+    p.rect_filled(rect, 12.0, Color32::from_gray(38));
+    if response.hovered() {
+        p.rect_stroke(rect, 12.0, Stroke::new(2.0, Color32::WHITE), StrokeKind::Inside);
+    }
+
+    let diagram_rect = Rect::from_min_size(
+        rect.min + Vec2::new((size.x - 96.0) / 2.0, 10.0),
+        Vec2::splat(96.0),
+    );
+    match recognition {
+        RecogKind::Oll | RecogKind::Pll => {
+            let state = app.library.rec.canonical_state(case_idx);
+            case_diagram::draw_ll_diagram(
+                ui,
+                diagram_rect,
+                &state,
+                matches!(recognition, RecogKind::Oll),
+            );
+        }
+        _ => {
+            // F2L/LBL: mini scrambled-face icon placeholder.
+            icons::draw_mini_cube(p, diagram_rect.shrink(14.0), icons::scrambled_face());
+        }
+    }
+
+    p.text(
+        egui::Pos2::new(rect.center().x, rect.bottom() - 40.0),
+        egui::Align2::CENTER_CENTER,
+        &name,
+        egui::FontId::proportional(14.0),
+        Color32::WHITE,
+    );
+
+    // Trained star (own hit area).
+    let star_rect = Rect::from_min_size(rect.min + Vec2::new(6.0, 6.0), Vec2::splat(24.0));
+    let star_resp = ui.interact(star_rect, ui.id().with(("star", case_idx)), Sense::click());
+    let trained = app.trained.contains(&case_idx);
+    draw_star(
+        p,
+        star_rect,
+        if trained {
+            Color32::from_rgb(0xFF, 0xD5, 0x00)
+        } else {
+            Color32::from_gray(90)
+        },
+    );
+    if star_resp.clicked() {
+        app.toggle_trained(case_idx);
+    }
+
+    // Best time badge.
+    if let Some(best) = best_ms(app, case_idx) {
+        p.text(
+            egui::Pos2::new(rect.center().x, rect.bottom() - 16.0),
+            egui::Align2::CENTER_CENTER,
+            format_ms(best),
+            egui::FontId::proportional(15.0),
+            Color32::from_rgb(0x4C, 0xD9, 0x64),
+        );
+    }
+
+    response.clicked() && !star_resp.clicked()
+}
+
+fn best_ms(app: &RubiksApp, case_idx: u16) -> Option<u64> {
+    app.attempts
+        .get(&case_idx)?
+        .iter()
+        .filter(|a| a.success)
+        .map(|a| a.ms)
+        .min()
+}
+
+pub fn format_ms(ms: u64) -> String {
+    format!("{}.{:02}", ms / 1000, (ms % 1000) / 10)
+}
+
+fn draw_star(p: &egui::Painter, r: Rect, color: Color32) {
+    let c = r.center();
+    let outer = r.width() / 2.0;
+    let inner = outer * 0.45;
+    let mut points = Vec::with_capacity(10);
+    for i in 0..10 {
+        let radius = if i % 2 == 0 { outer } else { inner };
+        let a = -std::f32::consts::FRAC_PI_2 + i as f32 * std::f32::consts::PI / 5.0;
+        points.push(egui::Pos2::new(c.x + radius * a.cos(), c.y + radius * a.sin()));
+    }
+    p.add(egui::Shape::convex_polygon(points, color, Stroke::NONE));
+}
+
+fn session_ui(app: &mut RubiksApp, ui: &mut Ui, session: &mut SessionState, next: &mut Option<Screen>) {
+    let now = ui.input(|i| i.time);
+    let def = app.library.rec.case(session.case_idx);
+    let set = def.set;
+    let name = def.name.clone();
+    let alg_text = def.alg.to_string();
+
+    ui.vertical_centered(|ui| {
+        ui.label(RichText::new(name).size(26.0).strong());
+    });
+
+    // 3D cube shows the case; leave room for the control zone.
+    let controls_height = 210.0;
+    let cube_size = Vec2::new(
+        ui.available_width(),
+        (ui.available_height() - controls_height).max(120.0),
+    );
+    CubeView {
+        cube: &app.cube,
+        animator: &app.animator,
+        orbit: &mut app.orbit,
+        highlight: None,
+        color_override: None,
+    }
+    .show(ui, cube_size);
+
+    ui.vertical_centered(|ui| match &mut session.phase {
+        Phase::Ready => {
+            if big_tap_zone(ui, Color32::from_rgb(0x1E, 0x88, 0x50), "GO", 56.0) {
+                session.phase = Phase::Timing { start: now };
+            }
+            ui.horizontal(|ui| {
+                ui.add_space((ui.available_width() - 220.0).max(0.0) / 2.0);
+                if icons::big_icon_button(
+                    ui,
+                    Vec2::new(104.0, 56.0),
+                    Color32::from_gray(60),
+                    app.t(TextKey::ShowSolution),
+                    icons::draw_play,
+                )
+                .clicked()
+                    && app.animator.is_idle()
+                {
+                    let m = app
+                        .library
+                        .rec
+                        .recognize_case(&app.cube, session.case_idx)
+                        .map(|m| app.library.rec.execution_alg(m));
+                    if let Some(exec) = m {
+                        app.animator.enqueue_all(&exec.0);
+                    }
+                }
+                if icons::big_icon_button(
+                    ui,
+                    Vec2::new(104.0, 56.0),
+                    Color32::from_rgb(0x8E, 0x36, 0xB8),
+                    app.t(TextKey::Scramble),
+                    icons::draw_shuffle,
+                )
+                .clicked()
+                {
+                    new_case_state(app, session.case_idx);
+                }
+            });
+            ui.label(RichText::new(alg_text).size(16.0).weak());
+        }
+        Phase::Timing { start } => {
+            let elapsed = ((now - *start) * 1000.0) as u64;
+            ui.label(
+                RichText::new(format_ms(elapsed))
+                    .size(64.0)
+                    .strong()
+                    .color(Color32::WHITE),
+            );
+            ui.ctx().request_repaint();
+            if big_tap_zone(ui, Color32::from_rgb(0xC7, 0x2B, 0x2B), "STOP", 42.0) {
+                session.phase = Phase::Result {
+                    ms: elapsed,
+                    success: None,
+                };
+            }
+        }
+        Phase::Result { ms, success } => {
+            ui.label(RichText::new(format_ms(*ms)).size(52.0).strong());
+            if success.is_none() {
+                // Big visual verdict buttons: green check / red cross.
+                ui.horizontal(|ui| {
+                    ui.add_space((ui.available_width() - 230.0).max(0.0) / 2.0);
+                    if icons::big_icon_button(
+                        ui,
+                        Vec2::new(110.0, 72.0),
+                        Color32::from_rgb(0x1E, 0x88, 0x50),
+                        "",
+                        icons::draw_check,
+                    )
+                    .clicked()
+                    {
+                        *success = Some(true);
+                        record(app, session.case_idx, *ms, true);
+                    }
+                    if icons::big_icon_button(
+                        ui,
+                        Vec2::new(110.0, 72.0),
+                        Color32::from_rgb(0xC7, 0x2B, 0x2B),
+                        "",
+                        icons::draw_cross,
+                    )
+                    .clicked()
+                    {
+                        *success = Some(false);
+                        record(app, session.case_idx, *ms, false);
+                    }
+                });
+            } else {
+                stats_row(app, ui, session.case_idx);
+                if big_tap_zone(ui, Color32::from_rgb(0x2A, 0x5C, 0xC2), "GO", 42.0) {
+                    new_case_state(app, session.case_idx);
+                    session.phase = Phase::Ready;
+                }
+            }
+        }
+    });
+
+    let _ = (set, next);
+}
+
+fn new_case_state(app: &mut RubiksApp, case_idx: u16) {
+    app.animator.clear();
+    let mut rng = cube_core::SplitMix64::new(app.rng.next_u64());
+    app.cube = app.library.rec.setup_state(case_idx, &mut rng);
+}
+
+fn record(app: &mut RubiksApp, case_idx: u16, ms: u64, success: bool) {
+    app.record_attempt(case_idx, ms, success);
+}
+
+fn stats_row(app: &RubiksApp, ui: &mut Ui, case_idx: u16) {
+    let attempts = app.attempts.get(&case_idx).cloned().unwrap_or_default();
+    let successes: Vec<u64> = attempts.iter().filter(|a| a.success).map(|a| a.ms).collect();
+    let best = successes.iter().min().copied();
+    let last5: Vec<u64> = successes.iter().rev().take(5).copied().collect();
+    let avg5 = (!last5.is_empty()).then(|| last5.iter().sum::<u64>() / last5.len() as u64);
+    ui.horizontal(|ui| {
+        ui.add_space((ui.available_width() - 320.0).max(0.0) / 2.0);
+        stat_tile(ui, app.t(TextKey::Best), best.map(format_ms), Color32::from_rgb(0x4C, 0xD9, 0x64));
+        stat_tile(ui, app.t(TextKey::Average), avg5.map(format_ms), Color32::from_rgb(0x58, 0xB6, 0xFF));
+        stat_tile(
+            ui,
+            app.t(TextKey::Attempts),
+            Some(attempts.len().to_string()),
+            Color32::from_gray(200),
+        );
+    });
+    sparkline(ui, &successes);
+}
+
+fn stat_tile(ui: &mut Ui, label: &str, value: Option<String>, color: Color32) {
+    ui.vertical(|ui| {
+        ui.label(RichText::new(label).size(13.0).weak());
+        ui.label(
+            RichText::new(value.unwrap_or_else(|| "–".into()))
+                .size(22.0)
+                .color(color),
+        );
+    });
+}
+
+/// Tiny painter-drawn time series of successful attempts (newest right).
+fn sparkline(ui: &mut Ui, times: &[u64]) {
+    if times.len() < 2 {
+        return;
+    }
+    let (rect, _) = ui.allocate_exact_size(Vec2::new(220.0, 40.0), Sense::hover());
+    let max = *times.iter().max().unwrap() as f32;
+    let min = *times.iter().min().unwrap() as f32;
+    let span = (max - min).max(1.0);
+    let n = times.len();
+    let pts: Vec<egui::Pos2> = times
+        .iter()
+        .enumerate()
+        .map(|(i, &t)| {
+            egui::Pos2::new(
+                rect.left() + rect.width() * i as f32 / (n - 1) as f32,
+                rect.bottom() - rect.height() * (1.0 - (t as f32 - min) / span) * 0.9 - 2.0,
+            )
+        })
+        .collect();
+    // Note: y maps larger times lower via inverted factor below.
+    let p = ui.painter();
+    for w in pts.windows(2) {
+        p.line_segment([w[0], w[1]], Stroke::new(2.0, Color32::from_rgb(0x58, 0xB6, 0xFF)));
+    }
+}
+
+/// A full-width tappable zone with huge text — the main interaction while
+/// holding a physical cube (easy to hit without looking).
+fn big_tap_zone(ui: &mut Ui, color: Color32, text: &str, font: f32) -> bool {
+    let size = Vec2::new((ui.available_width() * 0.8).min(420.0), font + 26.0);
+    let (rect, response) = ui.allocate_exact_size(size, Sense::click());
+    let p = ui.painter();
+    p.rect_filled(rect, 16.0, color);
+    p.text(
+        rect.center(),
+        egui::Align2::CENTER_CENTER,
+        text,
+        egui::FontId::proportional(font),
+        Color32::WHITE,
+    );
+    response.clicked()
+}

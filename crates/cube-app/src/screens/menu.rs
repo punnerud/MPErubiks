@@ -11,10 +11,10 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
     ui.horizontal(|ui| {
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
             if flags::flag_button(ui, Lang::No, app.i18n.lang == Lang::No) {
-                app.i18n.lang = Lang::No;
+                app.set_lang(Lang::No);
             }
             if flags::flag_button(ui, Lang::En, app.i18n.lang == Lang::En) {
-                app.i18n.lang = Lang::En;
+                app.set_lang(Lang::En);
             }
         });
     });
@@ -49,7 +49,16 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
         )
         .clicked()
         {
-            app.screen = Screen::Solve;
+            #[cfg(target_arch = "wasm32")]
+            {
+                app.screen =
+                    Screen::Scan(crate::screens::scan::ScanScreen::new(app, ui.ctx()));
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                app.screen =
+                    Screen::Solve(crate::screens::solve::SolveScreen::new_input(app.cube));
+            }
         }
 
         if icons::big_icon_button(
@@ -61,7 +70,7 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
         )
         .clicked()
         {
-            app.screen = Screen::Train;
+            app.screen = Screen::Train(crate::screens::train::TrainScreen::Picker { set: cube_core::CaseSet::Pll });
         }
 
         if icons::big_icon_button(

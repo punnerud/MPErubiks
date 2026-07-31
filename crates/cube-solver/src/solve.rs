@@ -56,6 +56,11 @@ pub fn solve(s: &FaceletCube) -> Result<Alg, SolveError> {
     })
 }
 
+/// Public benchmarking hook: solve with an explicit move bound.
+pub fn solve_bounded_public(s: &FaceletCube, max_length: u8) -> Result<Alg, SolveError> {
+    solve_bounded(s, max_length)
+}
+
 pub(crate) fn solve_bounded(s: &FaceletCube, max_length: u8) -> Result<Alg, SolveError> {
     let state = to_cubie(s)?;
     let mut solver = Solver::new(table()?, max_length, None);

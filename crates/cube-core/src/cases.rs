@@ -381,6 +381,15 @@ impl Recognizer {
         Alg::new(moves).in_y_frame(m.y_frame)
     }
 
+    /// The case's canonical state (inverse alg on solved, centers home) —
+    /// what diagrams should show.
+    pub fn canonical_state(&self, case_idx: u16) -> FaceletCube {
+        let def = &self.defs[case_idx as usize];
+        FaceletCube::SOLVED
+            .applied_alg(&def.alg.inverse())
+            .normalize_orientation()
+    }
+
     /// A practice state for the case: solved (up to a random AUF), with the
     /// case's inverse applied and a random pre-AUF on top.
     pub fn setup_state(&self, case_idx: u16, rng: &mut SplitMix64) -> FaceletCube {

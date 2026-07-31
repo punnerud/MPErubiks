@@ -102,15 +102,16 @@ pub fn draw_dumbbell(p: &egui::Painter, r: Rect) {
     }
 }
 
-/// Shuffle icon: two crossing arrows.
+/// Shuffle icon: two crossing arrows with prominent heads (a plain X reads
+/// as "cancel" — the heads carry the meaning).
 pub fn draw_shuffle(p: &egui::Painter, r: Rect) {
     let s = Stroke::new(r.height() * 0.11, Color32::WHITE);
     let (l, right) = (r.left(), r.right());
-    let (t, b) = (r.top() + r.height() * 0.2, r.bottom() - r.height() * 0.2);
-    p.line_segment([Pos2::new(l, t), Pos2::new(right - r.width() * 0.15, b)], s);
-    p.line_segment([Pos2::new(l, b), Pos2::new(right - r.width() * 0.15, t)], s);
+    let (t, b) = (r.top() + r.height() * 0.22, r.bottom() - r.height() * 0.22);
+    p.line_segment([Pos2::new(l, t), Pos2::new(right - r.width() * 0.22, b)], s);
+    p.line_segment([Pos2::new(l, b), Pos2::new(right - r.width() * 0.22, t)], s);
     for y in [t, b] {
-        arrow_head(p, Pos2::new(right, y), r.width() * 0.16, s.color);
+        arrow_head(p, Pos2::new(right, y), r.width() * 0.3, s.color);
     }
 }
 
@@ -144,6 +145,106 @@ pub fn draw_reset(p: &egui::Painter, r: Rect) {
     let a_end = 0.5f32;
     let tip = Pos2::new(c.x + radius * a_end.cos(), c.y + radius * a_end.sin());
     arrow_head(p, tip + Vec2::new(0.0, -2.0), r.width() * 0.16, stroke.color);
+}
+
+/// Curved arrow pointing left (turn the cube left).
+pub fn draw_turn_left(p: &egui::Painter, r: Rect) {
+    let c = r.center();
+    let radius = r.width() * 0.36;
+    let stroke = Stroke::new(r.height() * 0.12, Color32::WHITE);
+    let n = 16;
+    let mut prev: Option<Pos2> = None;
+    for i in 0..=n {
+        let a = -0.3 + 3.4 * (i as f32 / n as f32);
+        let pt = Pos2::new(c.x + radius * a.cos(), c.y - radius * a.sin());
+        if let Some(prev) = prev {
+            p.line_segment([prev, pt], stroke);
+        }
+        prev = Some(pt);
+    }
+    if let Some(end) = prev {
+        arrow_head_dir(p, end, Vec2::new(-r.width() * 0.2, r.height() * 0.12), stroke.color);
+    }
+}
+
+/// Arrow tilting up-toward-viewer.
+pub fn draw_tilt_up(p: &egui::Painter, r: Rect) {
+    let s = Stroke::new(r.height() * 0.12, Color32::WHITE);
+    p.line_segment([Pos2::new(r.center().x, r.bottom()), Pos2::new(r.center().x, r.top())], s);
+    arrow_head_dir(p, r.center_top(), Vec2::new(0.0, r.height() * 0.35), s.color);
+}
+
+/// Arrow tilting back down.
+pub fn draw_tilt_down(p: &egui::Painter, r: Rect) {
+    let s = Stroke::new(r.height() * 0.12, Color32::WHITE);
+    p.line_segment([Pos2::new(r.center().x, r.top()), Pos2::new(r.center().x, r.bottom())], s);
+    arrow_head_dir(p, r.center_bottom(), Vec2::new(0.0, -r.height() * 0.35), s.color);
+}
+
+fn arrow_head_dir(p: &egui::Painter, tip: Pos2, back: Vec2, color: Color32) {
+    let ortho = Vec2::new(-back.y, back.x) * 0.5;
+    p.add(egui::Shape::convex_polygon(
+        vec![tip, tip + back + ortho, tip + back - ortho],
+        color,
+        Stroke::NONE,
+    ));
+}
+
+/// Red-friendly cross (fail verdict).
+pub fn draw_cross(p: &egui::Painter, r: Rect) {
+    let s = Stroke::new(r.height() * 0.16, Color32::WHITE);
+    let r = r.shrink(r.width() * 0.12);
+    p.line_segment([r.left_top(), r.right_bottom()], s);
+    p.line_segment([r.left_bottom(), r.right_top()], s);
+}
+
+/// Green-friendly checkmark.
+pub fn draw_check(p: &egui::Painter, r: Rect) {
+    let s = Stroke::new(r.height() * 0.16, Color32::WHITE);
+    let a = Pos2::new(r.left() + r.width() * 0.1, r.center().y + r.height() * 0.05);
+    let b = Pos2::new(r.left() + r.width() * 0.38, r.bottom() - r.height() * 0.1);
+    let c = Pos2::new(r.right() - r.width() * 0.05, r.top() + r.height() * 0.12);
+    p.line_segment([a, b], s);
+    p.line_segment([b, c], s);
+}
+
+/// Play triangle.
+pub fn draw_play(p: &egui::Painter, r: Rect) {
+    p.add(egui::Shape::convex_polygon(
+        vec![
+            Pos2::new(r.left() + r.width() * 0.15, r.top()),
+            Pos2::new(r.right(), r.center().y),
+            Pos2::new(r.left() + r.width() * 0.15, r.bottom()),
+        ],
+        Color32::WHITE,
+        Stroke::NONE,
+    ));
+}
+
+/// Pause bars.
+pub fn draw_pause(p: &egui::Painter, r: Rect) {
+    for side in [-1.0f32, 1.0] {
+        let bar = Rect::from_center_size(
+            Pos2::new(r.center().x + side * r.width() * 0.2, r.center().y),
+            Vec2::new(r.width() * 0.22, r.height() * 0.9),
+        );
+        p.rect_filled(bar, 3.0, Color32::WHITE);
+    }
+}
+
+/// Forward arrow (next step).
+pub fn draw_next_arrow(p: &egui::Painter, r: Rect) {
+    let s = Stroke::new(r.height() * 0.13, Color32::WHITE);
+    let mid = r.center().y;
+    p.line_segment([Pos2::new(r.left(), mid), Pos2::new(r.right(), mid)], s);
+    p.line_segment(
+        [Pos2::new(r.right(), mid), Pos2::new(r.right() - r.width() * 0.4, r.top())],
+        s,
+    );
+    p.line_segment(
+        [Pos2::new(r.right(), mid), Pos2::new(r.right() - r.width() * 0.4, r.bottom())],
+        s,
+    );
 }
 
 /// Back arrow.

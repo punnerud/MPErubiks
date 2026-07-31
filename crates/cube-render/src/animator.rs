@@ -194,12 +194,18 @@ mod tests {
     }
 
     #[test]
-    fn stalled_frame_completes_everything() {
+    fn stalled_frame_resumes_gracefully() {
+        // A long stall (backgrounded tab): the in-flight move completes,
+        // the REST resume animating from 'now' — never an invisible
+        // fast-forward of the whole queue.
         let mut anim = MoveAnimator::default();
         anim.enqueue_all(&Alg::parse("R U R' U'").unwrap().0);
         anim.tick(0.0);
-        let done = anim.tick(100.0);
-        assert_eq!(done.len(), 4);
+        assert_eq!(anim.tick(100.0), Alg::parse("R").unwrap().0);
+        assert!(anim.pose(100.1).is_some(), "U animates after the stall");
+        assert_eq!(anim.tick(100.3), Alg::parse("U").unwrap().0);
+        assert_eq!(anim.tick(100.6), Alg::parse("R'").unwrap().0);
+        assert_eq!(anim.tick(100.8), Alg::parse("U'").unwrap().0);
         assert!(anim.is_idle());
     }
 
