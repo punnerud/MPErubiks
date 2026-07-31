@@ -196,6 +196,11 @@ pub fn classify_face(patches: &[Oklab; 9], cal: &Calibration) -> [Classified; 9]
 /// of its cell — a CONSISTENT recurring color is the signal, not area.
 pub const MIN_VOTE_SHARE: f32 = 0.05;
 
+fn angular_distance(a: f32, b: f32) -> f32 {
+    let d = (a - b).rem_euclid(std::f32::consts::TAU);
+    d.min(std::f32::consts::TAU - d)
+}
+
 /// Robust cell classification by per-pixel VOTING: every pixel close to
 /// one of the six reference colors votes; the winner needs `MIN_VOTE_SHARE`
 /// of all pixels and a clear margin over the runner-up. Survives grid
@@ -217,14 +222,37 @@ pub fn vote_cell(rgba: &[u8], width: usize, height: usize, cal: &Calibration) ->
         if !decisive_white && !decisive_color {
             continue;
         }
-        if let Some(k) = classify_one(c, cal).color {
-            let is_white_class = k == 0
-                || cal
-                    .shades
-                    .iter()
-                    .any(|&(cls, r)| cls == k && r.chroma() < 0.08);
-            if (decisive_white && is_white_class) || (decisive_color && !is_white_class) {
-                votes[k as usize] += 1;
+        if decisive_white {
+            // Whitest shade class gets the vote.
+            if let Some(&(cls, _)) = cal
+                .shades
+                .iter()
+                .filter(|(_, r)| r.chroma() < WHITISH_CHROMA)
+                .min_by(|(_, a), (_, b)| {
+                    sticker_distance(c, *a)
+                        .partial_cmp(&sticker_distance(c, *b))
+                        .unwrap()
+                })
+            {
+                votes[cls as usize] += 1;
+            }
+        } else {
+            // Saturated pixel: classify by HUE ANGLE against the color
+            // shades — hue survives washout/overexposure far better than
+            // saturation or lightness, so red/orange and yellow/green
+            // stop splitting votes under changing light.
+            let hue = c.b.atan2(c.a);
+            let nearest = cal
+                .shades
+                .iter()
+                .filter(|(_, r)| r.chroma() >= WHITISH_CHROMA)
+                .min_by(|(_, a), (_, b)| {
+                    let da = angular_distance(hue, a.b.atan2(a.a));
+                    let db = angular_distance(hue, b.b.atan2(b.a));
+                    da.partial_cmp(&db).unwrap()
+                });
+            if let Some(&(cls, _)) = nearest {
+                votes[cls as usize] += 1;
             }
         }
     }
