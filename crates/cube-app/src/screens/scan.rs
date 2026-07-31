@@ -176,9 +176,21 @@ fn scan_ui(
     ui.ctx().request_repaint();
 
     let avail = ui.available_rect_before_wrap();
-    // CW quarter turns to display upright; auto-guess until the user picks.
+    // CW quarter turns to display upright. Auto mode uses the Screen
+    // Orientation API: if frames arrive landscape while the screen is
+    // rotated by `angle`, the upright correction is (90 - angle)/90
+    // quarter-turns (sensors are landscape-mounted in natural portrait).
+    // Safari sometimes pre-rotates frames (dims match the screen) — then
+    // no correction is needed. The ↻ button overrides odd devices.
     let rotation = if screen.rotation == 255 {
-        u8::from(avail.height() > avail.width() && dims.0 > dims.1)
+        let angle = crate::platform::web::screen_angle() as i32;
+        let frames_landscape = dims.0 > dims.1;
+        let screen_portrait = avail.height() > avail.width();
+        if frames_landscape && screen_portrait {
+            (((450 - angle) % 360) / 90) as u8 % 4
+        } else {
+            0
+        }
     } else {
         screen.rotation % 4
     };
@@ -193,13 +205,19 @@ fn scan_ui(
         };
         if let Some(patches) = patches {
             let live = classify_face(&patches, &screen.cal);
-            let all_confident = live.iter().all(|c| c.color.is_some() && c.confidence > 0.5);
+            // Enough-of-nine, not all-of-nine: dark/odd stickers (black
+            // logo centers, glare) classify as unknown and get fixed in
+            // the review net — they must not block the snap forever.
+            let confident = live
+                .iter()
+                .filter(|c| c.color.is_some() && c.confidence > 0.45)
+                .count();
             let same = screen
                 .live
                 .iter()
                 .zip(live.iter())
                 .all(|(a, b)| a.color == b.color);
-            screen.stable_ticks = if all_confident && same {
+            screen.stable_ticks = if confident >= 6 && same {
                 screen.stable_ticks.saturating_add(1)
             } else {
                 0
@@ -357,7 +375,19 @@ fn capture(screen: &mut ScanScreen, now: f64) {
 /// stickers against them, map classes to faces via capture order.
 fn assemble(screen: &ScanScreen) -> FaceletCube {
     let centers: [Oklab; 6] = core::array::from_fn(|k| screen.captured[k].expect("captured")[4]);
-    let cal = Calibration::from_centers(centers);
+    // Center-based recalibration assumes six clean colored centers. On
+    // cubes with dark/logo centers that would poison every reference —
+    // fall back to the default sticker palette (face identity comes from
+    // the capture ORDER either way, never from the center color).
+    let default_cal = Calibration::default_stickers();
+    let centers_usable = centers
+        .iter()
+        .all(|&c| cube_vision::classify_one(c, &default_cal).color.is_some());
+    let cal = if centers_usable {
+        Calibration::from_centers(centers)
+    } else {
+        default_cal
+    };
     let mut cube = FaceletCube::SOLVED;
     for (k, &face) in ORDER.iter().enumerate() {
         let patches = screen.captured[k].expect("captured");

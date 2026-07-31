@@ -41,6 +41,8 @@ web-sys = { workspace = true, features = [
     "CssStyleDeclaration",
     "console",
     "Location",
+    "Screen",
+    "ScreenOrientation",
     "Storage",
     "Request",
     "RequestInit",

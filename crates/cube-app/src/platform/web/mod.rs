@@ -35,3 +35,12 @@ pub fn query_flag(flag: &str) -> bool {
         .map(|s| s.contains(flag))
         .unwrap_or(false)
 }
+
+/// Screen rotation angle (0/90/180/270) from the Screen Orientation API;
+/// 0 when unavailable.
+pub fn screen_angle() -> u16 {
+    web_sys::window()
+        .and_then(|w| w.screen().ok())
+        .and_then(|s| s.orientation().angle().ok())
+        .unwrap_or(0)
+}
