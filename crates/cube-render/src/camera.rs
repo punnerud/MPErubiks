@@ -43,6 +43,15 @@ impl OrbitCamera {
         mat4_mul(proj, view)
     }
 
+    /// Camera basis (forward, right, up) in world space.
+    pub fn basis(&self) -> ([f32; 3], [f32; 3], [f32; 3]) {
+        let eye = self.eye();
+        let fwd = normalize3([-eye[0], -eye[1], -eye[2]]);
+        let right = normalize3(cross3(fwd, [0.0, 1.0, 0.0]));
+        let up = cross3(right, fwd);
+        (fwd, right, up)
+    }
+
     /// World-space ray through a point in normalized device coords
     /// (-1..1 each axis, +y up). Matches the `view_proj` projection.
     pub fn ray(&self, aspect: f32, ndc: (f32, f32)) -> ([f32; 3], [f32; 3]) {

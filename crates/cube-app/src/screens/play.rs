@@ -104,22 +104,36 @@ pub fn handle_tap_select(app: &mut RubiksApp, response: &egui::Response) {
 }
 
 /// Two big arrows that turn the tap-selected layer (animated). Always
-/// visible: dull while nothing is selected (so kids learn they exist),
-/// bright the moment a layer is tapped.
+/// visible (dull until a layer is tapped), and VIEW-RELATIVE: the part of
+/// the layer nearest you moves in the arrow's screen direction, however
+/// the cube is oriented. The caption shows the real notation (U, U', R…).
 pub fn turn_arrows(app: &mut RubiksApp, ui: &mut Ui) {
+    use cube_render::ArrowDir;
     let size = Vec2::new(96.0, 76.0);
-    let active = app.selected_face.is_some();
-    let fill = if active {
+    let mapping = app
+        .selected_face
+        .map(|f| cube_render::view_relative_arrows(&app.orbit, f));
+    let fill = if mapping.is_some() {
         Color32::from_rgb(0x2A, 0x5C, 0xC2)
     } else {
         Color32::from_gray(42)
     };
-    for (turns, draw) in [
-        (Turns::Ccw, icons::draw_back_arrow as fn(&egui::Painter, egui::Rect)),
-        (Turns::Cw, icons::draw_next_arrow as fn(&egui::Painter, egui::Rect)),
-    ] {
-        let response = icons::big_icon_button(ui, size, fill, "", draw);
-        if !active {
+    let icon_for = |dir: ArrowDir| -> fn(&egui::Painter, egui::Rect) {
+        match dir {
+            ArrowDir::Left => icons::draw_back_arrow,
+            ArrowDir::Right => icons::draw_next_arrow,
+            ArrowDir::Up => icons::draw_tilt_up,
+            ArrowDir::Down => icons::draw_tilt_down,
+        }
+    };
+    let idle = [(ArrowDir::Left, Turns::Ccw), (ArrowDir::Right, Turns::Cw)];
+    for (dir, turns) in mapping.unwrap_or(idle) {
+        let caption = match app.selected_face {
+            Some(face) => Move::Face(face, turns).to_string(),
+            None => String::new(),
+        };
+        let response = icons::big_icon_button(ui, size, fill, &caption, icon_for(dir));
+        if mapping.is_none() {
             // Dusk the whole button (icon included) while out of focus.
             ui.painter()
                 .rect_filled(response.rect, 18.0, Color32::from_black_alpha(110));

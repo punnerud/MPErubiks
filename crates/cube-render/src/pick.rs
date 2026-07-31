@@ -3,7 +3,67 @@
 
 use crate::camera::OrbitCamera;
 use crate::scene::CUBIE_SPACING;
-use cube_core::Face;
+use cube_core::{Face, Turns};
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum ArrowDir {
+    Left,
+    Right,
+    Up,
+    Down,
+}
+
+/// View-relative turn arrows for a selected layer: the part of the layer
+/// NEAREST the viewer moves in the arrow's screen direction. Returns two
+/// (arrow, turn) pairs — horizontal (←/→) or vertical (↑/↓), whichever
+/// dominates on screen for this face and camera.
+pub fn view_relative_arrows(orbit: &OrbitCamera, face: Face) -> [(ArrowDir, Turns); 2] {
+    let d = match face {
+        Face::U => [0.0f32, 1.0, 0.0],
+        Face::D => [0.0, -1.0, 0.0],
+        Face::R => [1.0, 0.0, 0.0],
+        Face::L => [-1.0, 0.0, 0.0],
+        Face::F => [0.0, 0.0, 1.0],
+        Face::B => [0.0, 0.0, -1.0],
+    };
+    let eye = orbit.eye();
+    // Nearest point of the layer's ring to the eye: the eye projected
+    // onto the layer plane (fallback to camera-right when degenerate).
+    let along = eye[0] * d[0] + eye[1] * d[1] + eye[2] * d[2];
+    let mut p = [
+        eye[0] - along * d[0],
+        eye[1] - along * d[1],
+        eye[2] - along * d[2],
+    ];
+    let (_, right, up) = orbit.basis();
+    let len = (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt();
+    if len < 1e-3 {
+        p = right;
+    } else {
+        p = [p[0] / len, p[1] / len, p[2] / len];
+    }
+    let ring = CUBIE_SPACING;
+    let p = [p[0] * ring, p[1] * ring, p[2] * ring];
+    // Cw is a -90° right-hand rotation about d: angular velocity = -d.
+    let v_cw = [
+        -(d[1] * p[2] - d[2] * p[1]),
+        -(d[2] * p[0] - d[0] * p[2]),
+        -(d[0] * p[1] - d[1] * p[0]),
+    ];
+    let dot = |a: [f32; 3], b: [f32; 3]| a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    let vr = dot(v_cw, right);
+    let vu = dot(v_cw, up);
+    if vr.abs() >= vu.abs() {
+        let right_turn = if vr > 0.0 { Turns::Cw } else { Turns::Ccw };
+        [
+            (ArrowDir::Left, right_turn.inverse()),
+            (ArrowDir::Right, right_turn),
+        ]
+    } else {
+        let up_turn = if vu > 0.0 { Turns::Cw } else { Turns::Ccw };
+        [(ArrowDir::Up, up_turn), (ArrowDir::Down, up_turn.inverse())]
+    }
+}
 
 /// Pick the face layer under a tap. `ndc` is the tap position in the view
 /// rect mapped to (-1..1, -1..1) with +y up. Returns the OUTER face whose
@@ -89,6 +149,28 @@ fn ray_aabb(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn view_arrows_are_consistent() {
+        let orbit = OrbitCamera::default();
+        // U spins horizontally on screen; R mostly vertically.
+        let u = view_relative_arrows(&orbit, cube_core::Face::U);
+        assert!(matches!(u[0].0, ArrowDir::Left) && matches!(u[1].0, ArrowDir::Right));
+        assert_eq!(u[0].1, u[1].1.inverse(), "arrows are opposite turns");
+        let r = view_relative_arrows(&orbit, cube_core::Face::R);
+        assert!(
+            matches!(r[0].0, ArrowDir::Up),
+            "R layer moves vertically from the default view, got {:?}",
+            r[0].0
+        );
+        // Walking around a vertical-axis layer does NOT flip the apparent
+        // direction (near point and screen-right both negate — they
+        // cancel). The mapping must be stable.
+        let mut opposite = OrbitCamera::default();
+        opposite.yaw += std::f32::consts::PI;
+        let u2 = view_relative_arrows(&opposite, cube_core::Face::U);
+        assert_eq!(u2[1].1, u[1].1, "walking behind keeps the same mapping");
+    }
 
     #[test]
     fn center_tap_hits_a_face_and_edges_marked_outward() {
