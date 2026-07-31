@@ -134,7 +134,7 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
                     {
                         match cube_solver::validate(draft) {
                             Err(e) => *error = Some(e),
-                            Ok(()) => match cube_solver::solve(draft) {
+                            Ok(()) => match solve_cached(app, draft) {
                                 Err(e) => {
                                     *error = Some(ValidationError::BadFaceletString);
                                     log::error!("solve failed: {e}");
@@ -326,4 +326,37 @@ fn progress_dots(ui: &mut Ui, total: usize, done: usize) {
         };
         p.circle_filled(center, dot / 2.0, color);
     }
+}
+
+/// Solve with the persistent MPEdb solution cache: same physical cube
+/// scanned again (or revisited) resolves instantly; misses are stored so
+/// they are only ever computed once per device.
+fn solve_cached(
+    app: &RubiksApp,
+    state: &FaceletCube,
+) -> Result<Alg, cube_solver::SolveError> {
+    let key = state.normalize_orientation().to_facelet_string();
+    if let Some(store) = &app.store {
+        if let Ok(Some(cached)) = store.cached_solution(&key) {
+            if let Ok(alg) = Alg::parse(&cached) {
+                return Ok(alg);
+            }
+        }
+    }
+    let t0 = ui_now_ms();
+    let solution = cube_solver::solve(state)?;
+    if let Some(store) = &app.store {
+        let _ = store.put_solution(
+            &key,
+            &solution.to_string(),
+            solution.len_htm() as i64,
+            (ui_now_ms() - t0).max(0),
+        );
+        crate::persist::persist(store);
+    }
+    Ok(solution)
+}
+
+fn ui_now_ms() -> i64 {
+    crate::persist::now_ms()
 }

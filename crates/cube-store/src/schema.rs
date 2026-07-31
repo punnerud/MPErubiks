@@ -87,18 +87,50 @@ primary_key = ["id"]
 
   [[table.index]]
   columns = ["alg_id", "success", "duration_ms"]
+
+[[table]]
+name = "solutions"
+primary_key = ["state"]
+
+  [[table.column]]
+  name = "state"
+  type = "text"
+
+  [[table.column]]
+  name = "solution"
+  type = "text"
+  nullable = false
+
+  [[table.column]]
+  name = "move_count"
+  type = "int64"
+  nullable = false
+
+  [[table.column]]
+  name = "solve_ms"
+  type = "int64"
+  nullable = false
+
+  [[table.column]]
+  name = "hits"
+  type = "int64"
+  nullable = false
 "#
     )
 }
 
 /// Tables in dump order (parents before children is irrelevant here — no
 /// FKs — but keep it stable for readable dumps).
-pub const TABLES: [(&str, &[&str]); 4] = [
+pub const TABLES: [(&str, &[&str]); 5] = [
     ("meta", &["k", "v"]),
     ("settings", &["key", "value"]),
     ("algorithms", &["id", "trained"]),
     (
         "training_results",
         &["id", "alg_id", "ts_ms", "duration_ms", "success"],
+    ),
+    (
+        "solutions",
+        &["state", "solution", "move_count", "solve_ms", "hits"],
     ),
 ];

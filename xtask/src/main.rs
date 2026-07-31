@@ -114,26 +114,37 @@ fn compress_with(tool: &str, args: &[&str], data: &[u8]) -> Option<usize> {
 /// Measure solve latency at different move bounds — drives the app's
 /// latency/quality strategy (a frozen UI is worse than a 22-move solve).
 fn bench_solve(n: usize) {
+    use kewb::{CubieCube, FaceCube, Solver};
+
+    let t0 = std::time::Instant::now();
     let bytes = std::fs::read("assets/table.bin").expect("run gen-table first");
-    cube_solver::install_table(&bytes).expect("table");
-    for max_len in [23u8, 21, 20] {
-        let mut total = std::time::Duration::ZERO;
-        let mut worst = std::time::Duration::ZERO;
-        let mut lengths = Vec::new();
-        for _ in 0..n {
-            let state = cube_solver::random_state();
-            let t0 = std::time::Instant::now();
-            let alg = cube_solver::solve_bounded_public(&state, max_len).expect("solve");
-            let dt = t0.elapsed();
-            total += dt;
-            worst = worst.max(dt);
-            lengths.push(alg.len_htm());
+    let decoded = kewb::fs::decode_table(&bytes).expect("decode");
+    println!("decode table.bin: {:.2?}", t0.elapsed());
+
+    let t0 = std::time::Instant::now();
+    let generated = kewb::DataTable::default();
+    println!("generate in-memory table: {:.2?}", t0.elapsed());
+
+    for i in 0..n {
+        let state = kewb::generators::generate_random_state();
+        for (name, table) in [("decoded ", &decoded), ("generated", &generated)] {
+            for max_len in [23u8, 21] {
+                let t0 = std::time::Instant::now();
+                let sol = Solver::new(table, max_len, None).solve(state);
+                match sol {
+                    Some(sol) => println!(
+                        "{name} max {max_len} state {i}: {:>9.2?}  len {}",
+                        t0.elapsed(),
+                        sol.get_all_moves().len()
+                    ),
+                    None => println!(
+                        "{name} max {max_len} state {i}: {:>9.2?}  NO SOLUTION",
+                        t0.elapsed()
+                    ),
+                }
+            }
         }
-        let avg_len: f64 = lengths.iter().sum::<usize>() as f64 / n as f64;
-        println!(
-            "max {max_len}: avg {:>7.1?}  worst {:>7.1?}  avg len {avg_len:.1}  (n={n})",
-            total / n as u32,
-            worst
-        );
+        // Silence unused-import warnings for conversions kept for later.
+        let _ = (FaceCube::try_from(&state), CubieCube::default());
     }
 }

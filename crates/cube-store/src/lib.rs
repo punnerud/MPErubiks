@@ -154,6 +154,43 @@ impl Store {
         Ok(out)
     }
 
+    /// Solution cache: the MPEE matrix-broker pattern — expensive results
+    /// (kewb searches) bought once, cached locally, free on repeat. Keyed
+    /// by the orientation-normalized facelet string.
+    pub fn cached_solution(&self, state: &str) -> Result<Option<String>> {
+        if let ExecResult::Rows { rows, .. } = self.db.query(
+            "SELECT solution FROM solutions WHERE state = $1",
+            &params![state],
+        )? {
+            for row in rows {
+                if let Some(Value::Text(sol)) = row.into_iter().next() {
+                    let _ = self.db.query(
+                        "UPDATE solutions SET hits = hits + 1 WHERE state = $1",
+                        &params![state],
+                    );
+                    return Ok(Some(sol));
+                }
+            }
+        }
+        Ok(None)
+    }
+
+    pub fn put_solution(
+        &self,
+        state: &str,
+        solution: &str,
+        move_count: i64,
+        solve_ms: i64,
+    ) -> Result<()> {
+        self.db.query(
+            "INSERT INTO solutions (state, solution, move_count, solve_ms, hits) \
+             VALUES ($1, $2, $3, $4, 1) \
+             ON CONFLICT (state) DO UPDATE SET solution = $2, move_count = $3",
+            &params![state, solution, move_count, solve_ms],
+        )?;
+        Ok(())
+    }
+
     /// Every recorded attempt as `(alg_id, duration_ms, success)`,
     /// chronological — used to warm the UI's stats at startup.
     pub fn all_results(&self) -> Result<Vec<(String, i64, bool)>> {
@@ -273,6 +310,26 @@ mod tests {
         // The id counter continues past restored rows.
         let next = fresh.record_result("pll-t", 3000, 2000, true).unwrap();
         assert!(next >= 3, "id counter must continue, got {next}");
+    }
+
+    #[test]
+    fn solution_cache_roundtrip() {
+        let store = Store::open_in_memory().unwrap();
+        let key = "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB";
+        assert_eq!(store.cached_solution(key).unwrap(), None);
+        store.put_solution(key, "R U R' U'", 4, 1500).unwrap();
+        assert_eq!(
+            store.cached_solution(key).unwrap(),
+            Some("R U R' U'".to_string())
+        );
+        // Upsert replaces; hit counting doesn't corrupt the row.
+        store.put_solution(key, "F2", 1, 100).unwrap();
+        assert_eq!(store.cached_solution(key).unwrap(), Some("F2".to_string()));
+        // The cache survives the wasm persistence path.
+        let json = dump_json(&store).unwrap();
+        let fresh = Store::open_in_memory().unwrap();
+        restore_json(&fresh, &json).unwrap();
+        assert_eq!(fresh.cached_solution(key).unwrap(), Some("F2".to_string()));
     }
 
     #[cfg(not(target_arch = "wasm32"))]

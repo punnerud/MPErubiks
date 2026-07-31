@@ -171,6 +171,12 @@ fn guided_solution(
     }
     let budget = (base.len_htm() + 6).max(24);
 
+    // Tail-solve memo: different chains often converge to the same state
+    // (e.g. two different OLL paths reaching the same PLL). A kewb search
+    // is the expensive "cell"; buy it once. Value = (bound tried, result).
+    let mut tail_memo: std::collections::HashMap<FaceletCube, (usize, Option<Alg>)> =
+        std::collections::HashMap::new();
+
     let mut frontier = vec![Node {
         state: *s,
         segments: Vec::new(),
@@ -255,10 +261,21 @@ fn guided_solution(
             } else if remaining == 0 {
                 None
             } else {
-                match solve_bounded(&node.state, remaining.min(23) as u8) {
-                    Ok(alg) => Some(alg),
-                    Err(SolveError::NoSolution) => None,
-                    Err(e) => return Err(e),
+                let bound = remaining.min(23);
+                match tail_memo.get(&node.state) {
+                    Some((_, Some(memo))) if memo.len_htm() <= remaining => {
+                        Some(memo.clone())
+                    }
+                    Some((tried, None)) if bound <= *tried => None,
+                    _ => {
+                        let solved = match solve_bounded(&node.state, bound as u8) {
+                            Ok(alg) => Some(alg),
+                            Err(SolveError::NoSolution) => None,
+                            Err(e) => return Err(e),
+                        };
+                        tail_memo.insert(node.state, (bound, solved.clone()));
+                        solved
+                    }
                 }
             };
             let Some(tail) = tail else { continue };
