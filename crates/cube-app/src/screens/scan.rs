@@ -19,27 +19,27 @@ use cube_render::{MoveAnimator, OrbitCamera};
 use cube_vision::{vote_cell, Calibration, Classified};
 use egui::{Color32, Pos2, Rect, RichText, Sense, Stroke, StrokeKind, Ui, Vec2};
 
-/// Capture order (Morten's easy hand sequence: left, left, tilt-forward,
-/// left, left) and the face each capture becomes.
-const ORDER: [Face; 6] = [Face::F, Face::R, Face::B, Face::U, Face::L, Face::D];
+/// Capture order (Morten's hand sequence: left, left, tilt-AWAY, left,
+/// left) and the face each capture becomes.
+const ORDER: [Face; 6] = [Face::F, Face::R, Face::B, Face::D, Face::L, Face::U];
 
 /// The physical rotation the user performs BEFORE capture k (mini-cube
 /// demo loops this until the hold-steady snap fires). "Turn left" is y
-/// (the right side comes to the front); "tilt forward" is x' (the top
-/// comes to the front).
-const MINI_ALGS: [&str; 6] = ["", "y", "y", "x'", "y", "y"];
+/// (the right side comes to the front); "tilt away" is x (the top tips
+/// away from you, the bottom comes to the camera).
+const MINI_ALGS: [&str; 6] = ["", "y", "y", "x", "y", "y"];
 
 /// Camera-grid position (row-major) -> facelet offset within the face.
-/// Derived from the orientation matrices of the sequence above: F/R/B/D
-/// land row-major straight, U appears rotated 180°, L rotated 90°.
-/// Encoded as data so a physical-cube discrepancy is a table fix.
+/// Derived from the orientation matrices of the sequence above: F/R/B
+/// land row-major straight; D appears 180° rotated, L 90°, U vertically
+/// flipped. Encoded as data so a physical discrepancy is a table fix.
 const CAPTURE_GRID_TO_FACELET: [[u8; 9]; 6] = [
     [0, 1, 2, 3, 4, 5, 6, 7, 8],       // F
     [0, 1, 2, 3, 4, 5, 6, 7, 8],       // R
     [0, 1, 2, 3, 4, 5, 6, 7, 8],       // B
-    [8, 7, 6, 5, 4, 3, 2, 1, 0],       // U (180°)
-    [2, 5, 8, 1, 4, 7, 0, 3, 6],       // L (90°)
-    [0, 1, 2, 3, 4, 5, 6, 7, 8],       // D
+    [8, 7, 6, 5, 4, 3, 2, 1, 0],       // D (180°)
+    [6, 3, 0, 7, 4, 1, 8, 5, 2],       // L (90°)
+    [6, 7, 8, 3, 4, 5, 0, 1, 2],       // U (vertical flip)
 ];
 
 pub enum CameraState {
