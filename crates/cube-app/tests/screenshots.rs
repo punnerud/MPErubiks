@@ -65,6 +65,23 @@ fn menu_norwegian() {
 }
 
 #[test]
+fn train_picker_pll_phone() {
+    std::env::set_var(
+        "RUBIKS_DATA_DIR",
+        std::env::temp_dir().join(format!("rubiks-test-{}", std::process::id())),
+    );
+    let mut h = Harness::builder()
+        .with_size(egui::Vec2::new(390.0, 740.0))
+        .wgpu()
+        .build_eframe(|cc| RubiksApp::new(cc));
+    h.state_mut().screen = Screen::Train(cube_app::screens::train::TrainScreen::Picker {
+        tab: cube_app::screens::train::PickerTab::Set(cube_core::CaseSet::Pll),
+    });
+    h.run_steps(2);
+    h.snapshot("train_picker_pll_phone");
+}
+
+#[test]
 fn train_picker_pll() {
     let mut h = harness();
     h.state_mut().screen = Screen::Train(cube_app::screens::train::TrainScreen::Picker {

@@ -105,6 +105,15 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
     app.screen = next.unwrap_or(Screen::Train(screen));
 }
 
+/// Responsive card width: 3..=6 columns depending on screen width
+/// (phones get 3, tablets/desktop more), each at least ~104 px.
+fn card_width(ui: &Ui) -> f32 {
+    let spacing = ui.spacing().item_spacing.x;
+    let avail = ui.available_width();
+    let cols = (((avail + spacing) / (116.0 + spacing)).floor()).clamp(3.0, 6.0);
+    ((avail - (cols + 1.0) * spacing) / cols).clamp(96.0, 150.0)
+}
+
 fn set_tab_label(set: CaseSet) -> &'static str {
     match set {
         CaseSet::Pll => "PLL",
@@ -163,8 +172,9 @@ fn picker(app: &mut RubiksApp, ui: &mut Ui, tab: &mut PickerTab, next: &mut Opti
             let cases = app.library.cases_in_set(set);
             ScrollArea::vertical().show(ui, |ui| {
                 ui.horizontal_wrapped(|ui| {
+                    let w = card_width(ui);
                     for case_idx in cases {
-                        if case_card(app, ui, case_idx) {
+                        if case_card(app, ui, case_idx, w) {
                             // See it first: canonical state + demo player.
                             app.animator.clear();
                             app.selected_face = None;
@@ -190,8 +200,10 @@ fn intro_picker(app: &mut RubiksApp, ui: &mut Ui, next: &mut Option<Screen>) {
     });
     ScrollArea::vertical().show(ui, |ui| {
         ui.horizontal_wrapped(|ui| {
+            let w = card_width(ui);
             for (i, lesson) in crate::lessons::LESSONS.iter().enumerate() {
-                let size = Vec2::new(132.0, 150.0);
+                let sc = w / 132.0;
+                let size = Vec2::new(w, 150.0 * sc);
                 let (rect, response) = ui.allocate_exact_size(size, Sense::click());
                 let p = ui.painter();
                 p.rect_filled(rect, 12.0, Color32::from_gray(38));
@@ -199,17 +211,17 @@ fn intro_picker(app: &mut RubiksApp, ui: &mut Ui, next: &mut Option<Screen>) {
                     p.rect_stroke(rect, 12.0, Stroke::new(2.0, Color32::WHITE), StrokeKind::Inside);
                 }
                 p.text(
-                    egui::Pos2::new(rect.center().x, rect.top() + 52.0),
+                    egui::Pos2::new(rect.center().x, rect.top() + 52.0 * sc),
                     egui::Align2::CENTER_CENTER,
                     lesson.badge,
-                    egui::FontId::proportional(56.0),
+                    egui::FontId::proportional(56.0 * sc),
                     Color32::from_rgb(0x4C, 0xD9, 0x64),
                 );
                 p.text(
-                    egui::Pos2::new(rect.center().x, rect.bottom() - 26.0),
+                    egui::Pos2::new(rect.center().x, rect.bottom() - 26.0 * sc),
                     egui::Align2::CENTER_CENTER,
                     app.t(lesson.title),
-                    egui::FontId::proportional(15.0),
+                    egui::FontId::proportional((15.0 * sc).max(11.0)),
                     Color32::WHITE,
                 );
                 if response.clicked() {
@@ -436,11 +448,12 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
 
 /// One tappable case card: diagram + name + trained star + best time.
 /// Returns true when the card body is tapped.
-fn case_card(app: &mut RubiksApp, ui: &mut Ui, case_idx: u16) -> bool {
+fn case_card(app: &mut RubiksApp, ui: &mut Ui, case_idx: u16, w: f32) -> bool {
     let def = app.library.rec.case(case_idx);
     let name = def.name.clone();
     let recognition = def.recognition;
-    let size = Vec2::new(132.0, 168.0);
+    let sc = w / 132.0;
+    let size = Vec2::new(w, 168.0 * sc);
     let (rect, response) = ui.allocate_exact_size(size, Sense::click());
     let p = ui.painter();
     p.rect_filled(rect, 12.0, Color32::from_gray(38));
@@ -449,8 +462,8 @@ fn case_card(app: &mut RubiksApp, ui: &mut Ui, case_idx: u16) -> bool {
     }
 
     let diagram_rect = Rect::from_min_size(
-        rect.min + Vec2::new((size.x - 96.0) / 2.0, 10.0),
-        Vec2::splat(96.0),
+        rect.min + Vec2::new((size.x - 96.0 * sc) / 2.0, 10.0 * sc),
+        Vec2::splat(96.0 * sc),
     );
     match recognition {
         RecogKind::Oll | RecogKind::Pll => {
@@ -469,15 +482,16 @@ fn case_card(app: &mut RubiksApp, ui: &mut Ui, case_idx: u16) -> bool {
     }
 
     p.text(
-        egui::Pos2::new(rect.center().x, rect.bottom() - 40.0),
+        egui::Pos2::new(rect.center().x, rect.bottom() - 40.0 * sc),
         egui::Align2::CENTER_CENTER,
         &name,
-        egui::FontId::proportional(14.0),
+        egui::FontId::proportional((14.0 * sc).max(11.0)),
         Color32::WHITE,
     );
 
     // Trained star (own hit area).
-    let star_rect = Rect::from_min_size(rect.min + Vec2::new(6.0, 6.0), Vec2::splat(24.0));
+    let star_rect =
+        Rect::from_min_size(rect.min + Vec2::new(6.0, 6.0), Vec2::splat((24.0 * sc).max(20.0)));
     let star_resp = ui.interact(star_rect, ui.id().with(("star", case_idx)), Sense::click());
     let trained = app.trained.contains(&case_idx);
     draw_star(
@@ -496,10 +510,10 @@ fn case_card(app: &mut RubiksApp, ui: &mut Ui, case_idx: u16) -> bool {
     // Best time badge.
     if let Some(best) = best_ms(app, case_idx) {
         p.text(
-            egui::Pos2::new(rect.center().x, rect.bottom() - 16.0),
+            egui::Pos2::new(rect.center().x, rect.bottom() - 16.0 * sc),
             egui::Align2::CENTER_CENTER,
             format_ms(best),
-            egui::FontId::proportional(15.0),
+            egui::FontId::proportional((15.0 * sc).max(11.0)),
             Color32::from_rgb(0x4C, 0xD9, 0x64),
         );
     }
