@@ -631,8 +631,9 @@ fn session_ui(app: &mut RubiksApp, ui: &mut Ui, session: &mut SessionState, next
 fn karaoke_row(app: &RubiksApp, ui: &mut Ui, view: &LessonView, step: &crate::lessons::Step) {
     let Some(demo) = step.demo else { return };
     let Ok(alg) = cube_core::Alg::parse(demo) else { return };
-    let played = view.cursor.saturating_sub(app.animator.pending());
-    crate::widgets::playback::karaoke_row(ui, &alg.0, played, !app.animator.is_idle());
+    // `cursor` counts ENQUEUED moves: highlighting cursor-1 while the
+    // animator runs marks the move AS IT STARTS (not after it lands).
+    crate::widgets::playback::karaoke_row(ui, &alg.0, view.cursor, !app.animator.is_idle());
 }
 
 fn new_case_state(app: &mut RubiksApp, case_idx: u16) {

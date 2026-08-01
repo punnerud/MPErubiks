@@ -249,7 +249,15 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
         guide.done_at = None; // stepping back re-arms the celebration
         guide.bursts.clear();
     }
-    let highlight = (!done && app.animator.is_idle()).then(|| guide.solution.0[guide.cursor]);
+    // While a move animates, the big letter and the highlighted layer
+    // show THAT move; when idle they preview the next one.
+    let highlight = if !app.animator.is_idle() {
+        guide.cursor.checked_sub(1).map(|i| guide.solution.0[i])
+    } else if !done {
+        Some(guide.solution.0[guide.cursor])
+    } else {
+        None
+    };
     let cube_resp = CubeView {
         cube: &app.cube,
         animator: &app.animator,
@@ -278,12 +286,12 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
     }
 
     ui.vertical_centered(|ui| {
-        // Karaoke letters carry both the plan and the progress.
-        let played = guide.cursor.saturating_sub(app.animator.pending());
+        // Karaoke letters carry both the plan and the progress; cursor
+        // counts enqueued moves, so the marker lights when a move STARTS.
         crate::widgets::playback::karaoke_row(
             ui,
             &guide.solution.0,
-            played,
+            guide.cursor,
             !app.animator.is_idle(),
         );
 
