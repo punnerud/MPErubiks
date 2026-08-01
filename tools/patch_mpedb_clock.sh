@@ -9,8 +9,12 @@ set -euo pipefail
 cd "${TRUNK_STAGING_DIR:?}"
 glue=$(ls ./cube-app-*.js | head -1)
 count=$(grep -cE "import \* as [A-Za-z0-9_]+ from ['\"]mpedb['\"]" "$glue" || true)
+if [ "$count" -eq 0 ]; then
+  echo "patch_mpedb_clock: no bare mpedb import (js-clock build) - nothing to do"
+  exit 0
+fi
 if [ "$count" -ne 1 ]; then
-  echo "patch_mpedb_clock: expected exactly 1 mpedb import in $glue, found $count" >&2
+  echo "patch_mpedb_clock: expected at most 1 mpedb import in $glue, found $count" >&2
   exit 1
 fi
 perl -0pi -e "s/import \* as ([A-Za-z0-9_]+) from ['\"]mpedb['\"];?/const \$1 = { mpedb_host_now_ms: () => Date.now() };/" "$glue"

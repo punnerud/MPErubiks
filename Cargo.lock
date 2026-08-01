@@ -2132,8 +2132,10 @@ dependencies = [
 name = "mpedb-core"
 version = "0.1.5"
 dependencies = [
+ "js-sys",
  "libc",
  "mpedb-types",
+ "wasmtimer",
  "xxhash-rust",
 ]
 

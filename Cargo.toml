@@ -24,7 +24,12 @@ egui = "0.35.0"
 egui-wgpu = "0.35"
 wgpu = "29"
 kewb = "0.4.3"
-mpedb = { path = "../mpedb/crates/mpedb" }
+# PINNED to a wasm-clean mpedb snapshot (~/mpedb-rubiks-pin, has the
+# js-clock feature): the live ~/mpedb WIP currently calls std::time on
+# wasm paths (btree/commit/write instrumentation, shm/ring SystemTime)
+# which panics in the browser. Point back to ../mpedb/crates/mpedb when
+# upstream is wasm-clean again.
+mpedb = { path = "../mpedb-rubiks-pin/crates/mpedb" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 bytemuck = { version = "1", features = ["derive"] }

@@ -9,5 +9,8 @@ mpedb.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 
-# mpedb 0.1.5+ requires the embedder to supply the `mpedb.mpedb_host_now_ms`
-# host import on wasm; tools/patch_mpedb_clock.sh injects it at post-build.
+# The pinned mpedb routes the wasm clock through js-sys (js-clock);
+# tools/patch_mpedb_clock.sh additionally handles newer mpedb versions
+# that declare an embedder host-import instead.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+mpedb = { workspace = true, features = ["js-clock"] }
