@@ -28,6 +28,12 @@ pub struct LessonView {
     pub pending: bool,
     /// Number of moves in the currently playing demo (karaoke progress).
     pub demo_len: usize,
+    /// Moves of the demo applied so far (drip-fed like the solve guide).
+    pub cursor: usize,
+    pub playing: bool,
+    /// Playback holds until this time: a 1s breath at start/restart so
+    /// the eye finds the cube before colors start moving.
+    pub play_at: f64,
 }
 
 pub struct SessionState {
@@ -169,6 +175,9 @@ fn intro_picker(app: &mut RubiksApp, ui: &mut Ui, next: &mut Option<Screen>) {
                         step: 0,
                         pending: true,
                         demo_len: 0,
+                        cursor: 0,
+                        playing: true,
+                        play_at: 0.0,
                     })));
                 }
             }
@@ -179,8 +188,14 @@ fn intro_picker(app: &mut RubiksApp, ui: &mut Ui, next: &mut Option<Screen>) {
 /// One lesson step: the cube DEMONSTRATES, one big sentence reinforces,
 /// giant replay/next controls.
 fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut Option<Screen>) {
+    let now = ui.input(|i| i.time);
     let lesson = &crate::lessons::LESSONS[view.lesson];
     let step = &lesson.steps[view.step];
+    let demo_moves: Vec<cube_core::Move> = step
+        .demo
+        .and_then(|d| cube_core::Alg::parse(d).ok())
+        .map(|a| a.0)
+        .unwrap_or_default();
 
     if view.pending {
         view.pending = false;
@@ -202,13 +217,21 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
         if app.cube != target {
             app.cube = target;
         }
-        view.demo_len = 0;
-        if let Some(demo) = step.demo {
-            if let Ok(alg) = cube_core::Alg::parse(demo) {
-                view.demo_len = alg.0.len();
-                app.animator.enqueue_all(&alg.0);
-            }
-        }
+        view.demo_len = demo_moves.len();
+        view.cursor = 0;
+        view.playing = true;
+        view.play_at = now + 1.0;
+    }
+
+    // Drip-feed one move at a time (same model as the solve guide): pause
+    // and single-stepping stay exact, and the karaoke row tracks reality.
+    if view.playing
+        && now >= view.play_at
+        && view.cursor < demo_moves.len()
+        && app.animator.is_idle()
+    {
+        app.animator.enqueue(demo_moves[view.cursor]);
+        view.cursor += 1;
     }
 
     ui.vertical_centered(|ui| {
@@ -246,15 +269,71 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
         karaoke_row(app, ui, view, step);
         ui.label(RichText::new(app.t(step.text)).size(22.0));
         ui.add_space(6.0);
-        // TWO centered rows: speed+turn arrows, then back/replay/next.
-        // One shared row centered for the first group alone pushed the
-        // step buttons past the right screen edge on phones.
+        // TWO centered rows: demo transport (or turn arrows while a
+        // sticker is selected), then lesson-step navigation. One shared
+        // row centered for the first group alone pushed the step buttons
+        // past the right screen edge on phones.
         ui.horizontal(|ui| {
             let spacing = ui.spacing().item_spacing.x;
-            let unit = ((ui.available_width() - spacing * 7.0) / 6.6).clamp(40.0, 84.0);
-            ui.add_space((ui.available_width() - 6.6 * (unit + spacing)).max(0.0) / 2.0);
-            crate::widgets::playback::speed_buttons_sized(app, ui, Vec2::new(unit * 0.8, 56.0));
-            super::play::turn_arrows_sized(app, ui, Vec2::new(unit, 60.0));
+            if app.selected_face.is_some() {
+                // Sandbox mode: the selected layer's turn arrows.
+                let unit = ((ui.available_width() - spacing * 6.0) / 5.0).clamp(40.0, 84.0);
+                ui.add_space((ui.available_width() - 5.0 * (unit + spacing)).max(0.0) / 2.0);
+                super::play::turn_arrows_sized(app, ui, Vec2::new(unit, 60.0));
+            } else {
+                // Demo transport, same shape as the solve guide:
+                // step-back | slower faster | play/pause | step-forward.
+                let total = ui.available_width() - spacing * 5.0;
+                let unit = (total / 4.6).clamp(44.0, 96.0);
+                let size = Vec2::new(unit, 60.0f32.min(unit * 0.9));
+                let small = Vec2::new(unit * 0.8, size.y);
+                ui.add_space(
+                    (ui.available_width() - 3.0 * (unit + spacing) - 2.0 * (small.x + spacing))
+                        .max(0.0)
+                        / 2.0,
+                );
+                let gray = Color32::from_gray(70);
+                if icons::big_icon_button(ui, size, gray, "", icons::draw_chevron_step_back)
+                    .clicked()
+                    && view.cursor > 0
+                    && app.animator.is_idle()
+                {
+                    view.playing = false;
+                    view.cursor -= 1;
+                    app.animator.enqueue(demo_moves[view.cursor].inverse());
+                }
+                crate::widgets::playback::speed_buttons_sized(app, ui, small);
+                let playing_now = view.playing && view.cursor < demo_moves.len();
+                if icons::big_icon_button(
+                    ui,
+                    size,
+                    Color32::from_rgb(0x1E, 0x88, 0x50),
+                    "",
+                    if playing_now { icons::draw_pause } else { icons::draw_play },
+                )
+                .clicked()
+                {
+                    if playing_now {
+                        view.playing = false;
+                    } else if view.cursor >= demo_moves.len() {
+                        // Play at the end = replay, with the 1s breath.
+                        view.pending = true;
+                    } else {
+                        // Resuming mid-demo starts right away.
+                        view.playing = true;
+                        view.play_at = now;
+                    }
+                }
+                if icons::big_icon_button(ui, size, gray, "", icons::draw_chevron_step_fwd)
+                    .clicked()
+                    && view.cursor < demo_moves.len()
+                    && app.animator.is_idle()
+                {
+                    view.playing = false;
+                    app.animator.enqueue(demo_moves[view.cursor]);
+                    view.cursor += 1;
+                }
+            }
         });
         ui.add_space(4.0);
         ui.horizontal(|ui| {
@@ -285,6 +364,7 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
                 view.pending = true;
             }
             let last = view.step + 1 >= lesson.steps.len();
+
             if icons::big_icon_button(
                 ui,
                 size,
@@ -452,12 +532,28 @@ fn session_ui(app: &mut RubiksApp, ui: &mut Ui, session: &mut SessionState, next
                 .clicked()
                     && app.animator.is_idle()
                 {
-                    let m = app
-                        .library
-                        .rec
-                        .recognize_case(&app.cube, session.case_idx)
-                        .map(|m| app.library.rec.execution_alg(m));
-                    if let Some(exec) = m {
+                    // If the cube drifted (exploring, or a previous
+                    // Show me already ran), silently doing nothing feels
+                    // broken — reset to the case's canonical state and
+                    // demonstrate from there. Cases WITHOUT recognition
+                    // (the beginner lbl steps) always take that path:
+                    // canonical state + the algorithm as written.
+                    let mut m = app.library.rec.recognize_case(&app.cube, session.case_idx);
+                    if m.is_none() {
+                        app.cube = app.library.rec.canonical_state(session.case_idx);
+                        app.selected_face = None;
+                        m = app
+                            .library
+                            .rec
+                            .recognize_case(&app.cube, session.case_idx)
+                            .or(Some(cube_core::Match {
+                                case_idx: session.case_idx,
+                                pre_auf: 0,
+                                y_frame: 0,
+                            }));
+                    }
+                    if let Some(m) = m {
+                        let exec = app.library.rec.execution_alg(m);
                         app.animator.enqueue_all(&exec.0);
                     }
                 }
@@ -541,7 +637,7 @@ fn session_ui(app: &mut RubiksApp, ui: &mut Ui, session: &mut SessionState, next
 fn karaoke_row(app: &RubiksApp, ui: &mut Ui, view: &LessonView, step: &crate::lessons::Step) {
     let Some(demo) = step.demo else { return };
     let Ok(alg) = cube_core::Alg::parse(demo) else { return };
-    let played = view.demo_len.saturating_sub(app.animator.pending());
+    let played = view.cursor.saturating_sub(app.animator.pending());
     crate::widgets::playback::karaoke_row(ui, &alg.0, played, !app.animator.is_idle());
 }
 

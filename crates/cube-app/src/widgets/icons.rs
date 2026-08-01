@@ -271,6 +271,54 @@ pub fn draw_pause(p: &egui::Painter, r: Rect) {
 }
 
 /// Forward arrow (next step).
+/// Single-step back: a bar + one triangle pointing left.
+pub fn draw_chevron_step_back(p: &egui::Painter, r: Rect) {
+    let c = r.center();
+    let h = r.height() * 0.28;
+    let w = r.width() * 0.16;
+    p.rect_filled(
+        Rect::from_center_size(
+            egui::Pos2::new(c.x - w * 1.4, c.y),
+            egui::Vec2::new(w * 0.35, h * 2.0),
+        ),
+        1.0,
+        egui::Color32::WHITE,
+    );
+    p.add(egui::Shape::convex_polygon(
+        vec![
+            egui::Pos2::new(c.x - w * 0.6, c.y),
+            egui::Pos2::new(c.x + w * 1.2, c.y - h),
+            egui::Pos2::new(c.x + w * 1.2, c.y + h),
+        ],
+        egui::Color32::WHITE,
+        egui::Stroke::NONE,
+    ));
+}
+
+/// Single-step forward: one triangle pointing right + a bar.
+pub fn draw_chevron_step_fwd(p: &egui::Painter, r: Rect) {
+    let c = r.center();
+    let h = r.height() * 0.28;
+    let w = r.width() * 0.16;
+    p.add(egui::Shape::convex_polygon(
+        vec![
+            egui::Pos2::new(c.x + w * 0.6, c.y),
+            egui::Pos2::new(c.x - w * 1.2, c.y - h),
+            egui::Pos2::new(c.x - w * 1.2, c.y + h),
+        ],
+        egui::Color32::WHITE,
+        egui::Stroke::NONE,
+    ));
+    p.rect_filled(
+        Rect::from_center_size(
+            egui::Pos2::new(c.x + w * 1.4, c.y),
+            egui::Vec2::new(w * 0.35, h * 2.0),
+        ),
+        1.0,
+        egui::Color32::WHITE,
+    );
+}
+
 pub fn draw_next_arrow(p: &egui::Painter, r: Rect) {
     let s = Stroke::new(r.height() * 0.13, Color32::WHITE);
     let mid = r.center().y;
