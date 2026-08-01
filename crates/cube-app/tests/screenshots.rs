@@ -205,6 +205,36 @@ fn solve_guide_narrow_phone() {
 }
 
 #[test]
+fn solve_guide_done_confetti() {
+    // iPhone-width viewport: every control must stay inside the screen.
+    std::env::set_var(
+        "RUBIKS_DATA_DIR",
+        std::env::temp_dir().join(format!("rubiks-test-{}", std::process::id())),
+    );
+    let mut h = Harness::builder()
+        .with_size(egui::Vec2::new(390.0, 740.0))
+        .wgpu()
+        .build_eframe(|cc| RubiksApp::new(cc));
+    let alg = cube_core::Alg::parse("R U F2 L' D B U2 R' F L2 D'").unwrap();
+    let state = cube_core::FaceletCube::SOLVED.applied_alg(&alg);
+    let solution = cube_solver::solve(&state).expect("table");
+    {
+        let app = h.state_mut();
+        app.cube = state;
+        app.screen = Screen::Solve(cube_app::screens::solve::SolveScreen::Guide(
+            {
+                let mut g = cube_app::screens::solve::GuideState::plain(solution, state);
+                g.cursor = g.solution.0.len();
+                g
+            },
+        ));
+    }
+    // Confetti repaints continuously - run a fixed number of steps.
+    h.run_steps(6);
+    h.snapshot("solve_guide_done");
+}
+
+#[test]
 fn solve_guide_screen() {
     let mut h = harness();
     // Native harness installs the solver table at startup, so we can build

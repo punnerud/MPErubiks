@@ -28,6 +28,8 @@ pub struct GuideState {
     /// The state the guide started from: the top-left arrow goes back to
     /// the review net with this, not to the menu.
     pub origin: FaceletCube,
+    /// When the solve finished (drives the confetti cannon).
+    pub done_at: Option<f64>,
 }
 
 impl GuideState {
@@ -39,6 +41,7 @@ impl GuideState {
             cursor: 0,
             playing: false,
             origin,
+            done_at: None,
         }
     }
 
@@ -72,6 +75,7 @@ impl GuideState {
                     cursor: 0,
                     playing: false,
                     origin,
+                    done_at: None,
                 }
             }
         }
@@ -222,14 +226,6 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
     }
     let done = guide.cursor >= guide.solution.0.len();
 
-    // Auto-play: feed the next move once the animator is idle.
-    // Auto-play removed: impossible to follow on a real cube. The guide
-    // is stepped move by move with the big Next button.
-    if false && !done && app.animator.is_idle() {
-        app.animator.enqueue(guide.solution.0[guide.cursor]);
-        guide.cursor += 1;
-        ui.ctx().request_repaint();
-    }
 
     // Reserve space honestly: the karaoke row wraps on narrow phones.
     let avail_w = ui.available_width();
@@ -239,16 +235,28 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
         avail_w,
         (ui.available_height() - controls_height).max(120.0),
     );
+    let now = ui.input(|i| i.time);
+    if done && app.animator.is_idle() {
+        if guide.done_at.is_none() {
+            guide.done_at = Some(now);
+        }
+    } else {
+        guide.done_at = None; // stepping back re-arms the celebration
+    }
     let highlight = (!done && app.animator.is_idle()).then(|| guide.solution.0[guide.cursor]);
-    CubeView {
+    let cube_resp = CubeView {
         cube: &app.cube,
         animator: &app.animator,
         orbit: &mut app.orbit,
         highlight,
-        dim_others: 0.35,
+        dim_others: if done { 0.0 } else { 0.35 },
         color_override: None,
     }
     .show(ui, cube_size);
+    if let Some(t0) = guide.done_at {
+        confetti(ui, cube_resp.rect, now - t0);
+        ui.ctx().request_repaint();
+    }
 
     ui.vertical_centered(|ui| {
         // Karaoke letters carry both the plan and the progress.
@@ -299,7 +307,20 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
                     / 2.0,
             );
             crate::widgets::playback::speed_buttons_sized(app, ui, small);
-            if icons::big_icon_button(
+            if done {
+                // Solved: the big button becomes the checkmark home.
+                if icons::big_icon_button(
+                    ui,
+                    next_size,
+                    Color32::from_rgb(0x1E, 0x88, 0x50),
+                    "",
+                    icons::draw_check,
+                )
+                .clicked()
+                {
+                    *next = Some(Screen::Menu);
+                }
+            } else if icons::big_icon_button(
                 ui,
                 next_size,
                 Color32::from_rgb(0x1E, 0x88, 0x50),
@@ -307,7 +328,6 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
                 icons::draw_next_arrow,
             )
             .clicked()
-                && !done
                 && app.animator.is_idle()
             {
                 app.animator.enqueue(guide.solution.0[guide.cursor]);
@@ -325,6 +345,66 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
     let _ = next;
 }
 
+
+/// Confetti cannon: two bursts from the bottom corners, deterministic
+/// per-particle physics (no RNG at draw time — pure f(t), replayable).
+fn confetti(ui: &Ui, rect: egui::Rect, t: f64) {
+    const DURATION: f64 = 3.0;
+    if !(0.0..DURATION).contains(&t) {
+        return;
+    }
+    let p = ui.painter();
+    let colors = [
+        Color32::from_rgb(0xF5, 0xF5, 0xF5),
+        Color32::from_rgb(0xFF, 0xD5, 0x00),
+        Color32::from_rgb(0xE0, 0x1B, 0x2E),
+        Color32::from_rgb(0xFF, 0x61, 0x00),
+        Color32::from_rgb(0x00, 0xA8, 0x60),
+        Color32::from_rgb(0x0D, 0x5C, 0xC7),
+    ];
+    let h = rect.height();
+    let g = 1.6 * h; // px/s^2
+    for i in 0..90u64 {
+        // Cheap deterministic hash -> per-particle parameters.
+        let mut z = i.wrapping_mul(0x9E37_79B9_7F4A_7C15).wrapping_add(0xBF58_476D);
+        let mut rnd = || {
+            z ^= z >> 27;
+            z = z.wrapping_mul(0x94D0_49BB_1331_11EB);
+            (z >> 40) as f32 / 16_777_216.0
+        };
+        let left = i % 2 == 0;
+        let origin = if left {
+            egui::Pos2::new(rect.left() + 8.0, rect.bottom())
+        } else {
+            egui::Pos2::new(rect.right() - 8.0, rect.bottom())
+        };
+        // Launch 55-85 deg upward, tilted inward.
+        let ang = (55.0 + 30.0 * rnd()).to_radians();
+        let dir_x = if left { ang.cos() } else { -ang.cos() };
+        let speed = h * (0.9 + 0.7 * rnd());
+        let delay = f64::from(rnd() * 0.5);
+        let tp = (t - delay).max(0.0) as f32;
+        if tp <= 0.0 {
+            continue;
+        }
+        let x = origin.x + dir_x * speed * tp;
+        let y = origin.y - ang.sin() * speed * tp + 0.5 * g * tp * tp;
+        let fade = (1.0 - ((t - delay) / (DURATION - delay)) as f32).clamp(0.0, 1.0);
+        let color = colors[(i % 6) as usize].gamma_multiply(fade);
+        // Small spinning quad.
+        let sz = 3.5 + 4.0 * rnd();
+        let spin = tp * (2.0 + 4.0 * rnd()) + rnd() * 6.28;
+        let (sa, ca) = spin.sin_cos();
+        let c = egui::Pos2::new(x, y);
+        let quad = vec![
+            egui::Pos2::new(c.x + ca * sz - sa * sz * 0.6, c.y + sa * sz + ca * sz * 0.6),
+            egui::Pos2::new(c.x - sa * sz * 0.6 - ca * sz, c.y + ca * sz * 0.6 - sa * sz),
+            egui::Pos2::new(c.x - ca * sz + sa * sz * 0.6, c.y - sa * sz - ca * sz * 0.6),
+            egui::Pos2::new(c.x + sa * sz * 0.6 + ca * sz, c.y - ca * sz * 0.6 + sa * sz),
+        ];
+        p.add(egui::Shape::convex_polygon(quad, color, egui::Stroke::NONE));
+    }
+}
 
 /// Solve with the persistent MPEdb solution cache: same physical cube
 /// scanned again (or revisited) resolves instantly; misses are stored so

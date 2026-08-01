@@ -690,45 +690,6 @@ fn draw_overlay(ui: &Ui, rect: Rect, screen: &ScanScreen, now: f64) {
     }
 
     let cell = side / 3.0;
-    // BIG direction hint while waiting for the next side (reinforces the
-    // mini-cube demo; rotating the wrong way is the costliest mistake):
-    // pulsing chevrons across the square — left for y, up-and-over for
-    // the tilt-away x.
-    if screen.face_idx > 0 && screen.face_idx < 6 && screen.flash.is_none() {
-        let alg = MINI_ALGS[screen.face_idx];
-        let pulse = (((now * 2.0).sin() * 0.5 + 0.5) * 90.0) as u8 + 50;
-        let col = Color32::from_rgba_unmultiplied(0xFF, 0xFF, 0xFF, pulse);
-        let a = side * 0.09;
-        for i in 0..3 {
-            let t = i as f32 - 1.0;
-            if alg == "x" {
-                // Tilt AWAY: chevrons along the top edge pointing up.
-                let c = Pos2::new(square.center().x + t * a * 3.0, square.top() - a * 1.2);
-                p.add(egui::Shape::convex_polygon(
-                    vec![
-                        Pos2::new(c.x, c.y - a * 0.7),
-                        Pos2::new(c.x + a * 0.8, c.y + a * 0.7),
-                        Pos2::new(c.x - a * 0.8, c.y + a * 0.7),
-                    ],
-                    col,
-                    Stroke::NONE,
-                ));
-            } else {
-                // Turn LEFT: chevrons along the left edge pointing left.
-                let c = Pos2::new(square.left() - a * 1.2, square.center().y + t * a * 3.0);
-                p.add(egui::Shape::convex_polygon(
-                    vec![
-                        Pos2::new(c.x - a * 0.7, c.y),
-                        Pos2::new(c.x + a * 0.7, c.y - a * 0.8),
-                        Pos2::new(c.x + a * 0.7, c.y + a * 0.8),
-                    ],
-                    col,
-                    Stroke::NONE,
-                ));
-            }
-        }
-    }
-
     // Locked onto the sticker grid -> green lines (visual "got it!");
     // searching -> soft white.
     let grid_stroke = if screen.grid_conf > 0.4 {
@@ -810,21 +771,63 @@ fn mini_guide(app: &mut RubiksApp, ui: &mut Ui, screen: &mut ScanScreen, outer: 
         screen.mini_last_loop = now;
     }
 
-    // Status colors by ORIGINAL face label (survives mini rotations).
+    // WHITE cube with ONE BLUE face: the side facing the camera right
+    // now. Watching the blue face get carried away by the animation IS
+    // the rotation instruction — no colors to decode.
+    let front_label = screen.mini_base.0[Face::F as usize * 9 + 4];
     let mut palette_of = [0u32; 54];
     for (i, &label) in screen.mini_cube.0.iter().enumerate() {
-        let k = ORDER.iter().position(|&f| f == label).unwrap_or(0);
-        palette_of[i] = if k < screen.face_idx {
-            2 // green: captured
-        } else if k == screen.face_idx {
-            5 // blue: show this side now
-        } else {
-            0 // white: later
-        };
+        palette_of[i] = if label == front_label { 5 } else { 0 };
     }
 
+    // Centered directly ABOVE the guide square.
+    let side = outer.width().min(outer.height()) * 0.6;
+    let square_top = outer.center().y - side / 2.0;
     let size = 132.0;
-    let pos = Pos2::new(outer.center().x - size / 2.0, outer.top() + 8.0);
+    let pos = Pos2::new(
+        outer.center().x - size / 2.0,
+        (square_top - size - 54.0).max(outer.top() + 4.0),
+    );
+    // ONE bold arrow under the cube shows the turn direction (replaces
+    // the pulsing edge chevrons): left for y, up-and-over for tilt-away.
+    if screen.face_idx > 0 && screen.face_idx < 6 && !alg_str.is_empty() {
+        let p = ui.painter();
+        let ac = Pos2::new(outer.center().x, pos.y + size + 22.0);
+        let col = Color32::from_rgba_unmultiplied(0xFF, 0xFF, 0xFF, 230);
+        let a = 13.0;
+        if alg_str == "x" {
+            // Tilt away: arrow pointing up.
+            p.line_segment(
+                [Pos2::new(ac.x, ac.y + a), Pos2::new(ac.x, ac.y - a * 0.2)],
+                Stroke::new(5.0, col),
+            );
+            p.add(egui::Shape::convex_polygon(
+                vec![
+                    Pos2::new(ac.x, ac.y - a),
+                    Pos2::new(ac.x + a * 0.8, ac.y + a * 0.1),
+                    Pos2::new(ac.x - a * 0.8, ac.y + a * 0.1),
+                ],
+                col,
+                Stroke::NONE,
+            ));
+        } else {
+            // Turn left: arrow pointing left.
+            p.line_segment(
+                [Pos2::new(ac.x + a, ac.y), Pos2::new(ac.x - a * 0.2, ac.y)],
+                Stroke::new(5.0, col),
+            );
+            p.add(egui::Shape::convex_polygon(
+                vec![
+                    Pos2::new(ac.x - a, ac.y),
+                    Pos2::new(ac.x + a * 0.1, ac.y - a * 0.8),
+                    Pos2::new(ac.x + a * 0.1, ac.y + a * 0.8),
+                ],
+                col,
+                Stroke::NONE,
+            ));
+        }
+    }
+
     egui::Area::new(ui.id().with("mini-guide"))
         .fixed_pos(pos)
         .show(ui.ctx(), |ui| {
