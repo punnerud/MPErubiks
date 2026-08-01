@@ -162,11 +162,19 @@ fn train_session_watch_phone() {
     {
         let app = h.state_mut();
         let idx = app.library.rec.find_by_id("pll-t").unwrap();
-        app.cube = app.library.rec.canonical_state(idx);
+        let origin = app.library.rec.canonical_state(idx);
+        app.cube = origin;
+        let m = app.library.rec.recognize_case(&origin, idx).unwrap();
+        let exec = app.library.rec.execution_alg(m);
         app.screen = Screen::Train(cube_app::screens::train::TrainScreen::Session(
             cube_app::screens::train::SessionState {
                 case_idx: idx,
-                phase: cube_app::screens::train::Phase::Watch { started: false },
+                phase: cube_app::screens::train::Phase::Watch {
+                    origin,
+                    exec,
+                    cursor: 0,
+                    playing: false,
+                },
                 from_lesson: None,
             },
         ));
