@@ -538,3 +538,150 @@ mod tests {
         }
     }
 }
+
+/// Locate the sticker grid inside a (roughly square) crop of the guide
+/// area: the user centers the cube, but rarely perfectly. Saturated
+/// sticker pixels (rings or full stickers) projected onto each axis form
+/// three bright spans separated by the dark plastic gaps at 1/3 and 2/3;
+/// the offset that best aligns those spans with the assumed grid is the
+/// correction to sample (and draw) with. Returns (dx, dy) in pixels of
+/// the given image and a confidence ratio (best/base score); callers
+/// should ignore offsets when confidence is ~1 (no structure found).
+pub fn grid_offset(rgba: &[u8], width: usize, height: usize) -> (f32, f32, f32) {
+    assert_eq!(rgba.len(), width * height * 4, "grid buffer size");
+    let mut col = vec![0f32; width];
+    let mut row = vec![0f32; height];
+    for y in 0..height {
+        for x in 0..width {
+            let i = (y * width + x) * 4;
+            let c = Oklab::from_srgb8(rgba[i], rgba[i + 1], rgba[i + 2]);
+            let ch = c.chroma();
+            // Saturated stickers carry the signal; bright low-chroma
+            // pixels add a small floor so WHITE stickers align too. The
+            // dark plastic gaps contribute nothing either way.
+            let mass = if ch > 0.10 {
+                ch
+            } else if c.l > 0.55 {
+                0.05
+            } else {
+                0.0
+            };
+            if mass > 0.0 {
+                col[x] += mass;
+                row[y] += mass;
+            }
+        }
+    }
+    let axis = |proj: &[f32]| -> (f32, f32) {
+        let n = proj.len();
+        let nf = n as f32;
+        // Score an offset: chroma inside the three sticker spans counts
+        // for, chroma inside the gap windows (boundaries at 1/3, 2/3 and
+        // the outer edges) counts heavily against.
+        let score = |o: f32| -> f32 {
+            let mut s = 0.0;
+            for (i, &v) in proj.iter().enumerate() {
+                let u = (i as f32 - o) / nf; // grid-relative 0..1
+                if !(0.0..=1.0).contains(&u) {
+                    continue;
+                }
+                // Distance to the nearest internal gap center.
+                let d1 = (u - 1.0 / 3.0).abs();
+                let d2 = (u - 2.0 / 3.0).abs();
+                let d_edge = u.min(1.0 - u);
+                if d1 < 0.035 || d2 < 0.035 || d_edge < 0.02 {
+                    s -= 3.0 * v;
+                } else {
+                    s += v;
+                }
+            }
+            s
+        };
+        let (mut best_o, mut best_s) = (0.0, score(0.0));
+        let half_cell = nf / 6.0;
+        let mut o = -half_cell;
+        while o <= half_cell {
+            let s = score(o);
+            if s > best_s {
+                best_s = s;
+                best_o = o;
+            }
+            o += (nf / 100.0).max(1.0);
+        }
+        // Confidence: the aligned score as a fraction of all chroma mass.
+        // A real sticker grid keeps its gaps chroma-free, so the winning
+        // offset retains most of the mass (~0.8); structureless content
+        // (uniform chroma, or none) stays low.
+        let total: f32 = proj.iter().sum();
+        let conf = if total > 1e-3 { (best_s / total).max(0.0) } else { 0.0 };
+        (best_o, conf)
+    };
+    let (dx, cx) = axis(&col);
+    let (dy, cy) = axis(&row);
+    (dx, dy, cx.min(cy))
+}
+
+#[cfg(test)]
+mod grid_tests {
+    use super::*;
+
+    /// Synthetic 3x3 sticker sheet: saturated squares with dark gaps.
+    fn sheet(w: usize, h: usize, shift_x: i32, shift_y: i32) -> Vec<u8> {
+        let mut img = vec![0u8; w * h * 4];
+        for y in 0..h {
+            for x in 0..w {
+                let gx = x as i32 - shift_x;
+                let gy = y as i32 - shift_y;
+                let u = gx as f32 / w as f32;
+                let v = gy as f32 / h as f32;
+                let in_sticker = |t: f32| {
+                    let cell = (t * 3.0).floor();
+                    let frac = t * 3.0 - cell;
+                    (0.0..=2.9).contains(&cell) && (0.12..=0.88).contains(&frac)
+                };
+                let px = &mut img[(y * w + x) * 4..(y * w + x) * 4 + 4];
+                if (0.0..1.0).contains(&u) && (0.0..1.0).contains(&v) && in_sticker(u) && in_sticker(v) {
+                    px.copy_from_slice(&[220, 60, 40, 255]); // saturated red
+                } else {
+                    px.copy_from_slice(&[25, 25, 25, 255]); // plastic/background
+                }
+            }
+        }
+        img
+    }
+
+    #[test]
+    fn white_sheet_aligns_via_brightness() {
+        // White stickers have ~no chroma: brightness must carry it.
+        let mut img = sheet(120, 120, 8, -6);
+        for px in img.chunks_exact_mut(4) {
+            if px[0] == 220 {
+                px.copy_from_slice(&[235, 235, 235, 255]);
+            }
+        }
+        let (dx, dy, conf) = grid_offset(&img, 120, 120);
+        assert!((dx - 8.0).abs() <= 3.0 && (dy + 6.0).abs() <= 3.0, "({dx:.1},{dy:.1})");
+        assert!(conf > 0.5, "confidence {conf}");
+    }
+
+    #[test]
+    fn centered_sheet_needs_no_offset() {
+        let img = sheet(120, 120, 0, 0);
+        let (dx, dy, conf) = grid_offset(&img, 120, 120);
+        assert!(dx.abs() <= 2.0 && dy.abs() <= 2.0, "({dx},{dy})");
+        assert!(conf > 0.5, "confidence {conf}");
+    }
+
+    #[test]
+    fn shifted_sheet_is_recovered() {
+        for (sx, sy) in [(9i32, 0i32), (0, -12), (14, 8), (-10, -9)] {
+            let img = sheet(120, 120, sx, sy);
+            let (dx, dy, conf) = grid_offset(&img, 120, 120);
+            assert!(
+                (dx - sx as f32).abs() <= 3.0 && (dy - sy as f32).abs() <= 3.0,
+                "shift ({sx},{sy}) detected as ({dx:.1},{dy:.1})"
+            );
+            assert!(conf > 0.5, "confidence {conf} for shift ({sx},{sy})");
+        }
+    }
+}

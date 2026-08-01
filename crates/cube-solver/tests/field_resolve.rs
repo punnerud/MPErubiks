@@ -29,7 +29,20 @@ const RUNS: &[[&str; 6]] = &[
         "20260801-000546-761",
         "20260801-000550-807",
     ],
+    [
+        "20260801-102104-731",
+        "20260801-102109-051",
+        "20260801-102115-577",
+        "20260801-102118-211",
+        "20260801-102122-202",
+        "20260801-102126-365",
+    ],
 ];
+
+/// The first MUST_RESOLVE runs are well-framed and must resolve; later
+/// entries (e.g. the misaligned 2026-08-01 morning run that motivated
+/// grid auto-alignment) replay as diagnostics only.
+const MUST_RESOLVE: usize = 2;
 
 const ORDER: [Face; 6] = [Face::F, Face::R, Face::B, Face::D, Face::L, Face::U];
 
@@ -173,10 +186,12 @@ fn latest_field_run_resolves() {
                 Err(e) => format!("failed: {e}"),
             }
         );
-        assert!(
-            outcome.is_ok(),
-            "field run {} must constraint-resolve to a legal cube",
-            run[0]
-        );
+        if RUNS.iter().position(|r| r == run).unwrap() < MUST_RESOLVE {
+            assert!(
+                outcome.is_ok(),
+                "field run {} must constraint-resolve to a legal cube",
+                run[0]
+            );
+        }
     }
 }

@@ -85,6 +85,11 @@ pub struct ScanScreen {
     /// side before the auto-snap re-arms (no double-captures of one side).
     last_captured: Option<[Option<u8>; 9]>,
     stable_ticks: u8,
+    /// Smoothed grid auto-alignment offset (working-canvas px) and its
+    /// confidence: the guide square follows the cube instead of demanding
+    /// pixel-perfect framing from the user.
+    grid_off: (f32, f32),
+    grid_conf: f32,
     last_sample: f64,
     cal: Calibration,
     /// Preview rotation in CW quarter turns; 255 = auto-guess. User can
@@ -127,6 +132,8 @@ impl ScanScreen {
             last_cells: None,
             last_captured: None,
             stable_ticks: 0,
+            grid_off: (0.0, 0.0),
+            grid_conf: 0.0,
             last_sample: 0.0,
             cal: Calibration::default_stickers(),
             rotation: app
@@ -235,8 +242,18 @@ fn scan_ui(
     let in_flash = screen.flash.is_some_and(|(until, _)| now < until);
     if cam_ready && !in_flash && screen.face_idx < 6 && now - screen.last_sample > 0.1 {
         screen.last_sample = now;
+        if let CameraState::Ready(cam) = &screen.camera {
+            if let Some((dx, dy, conf)) = cam.grid_align() {
+                screen.grid_conf = conf;
+                let target = if conf > 0.4 { (dx, dy) } else { (0.0, 0.0) };
+                // Smooth toward the detected grid so the square glides,
+                // not jitters.
+                screen.grid_off.0 += (target.0 - screen.grid_off.0) * 0.35;
+                screen.grid_off.1 += (target.1 - screen.grid_off.1) * 0.35;
+            }
+        }
         let cells = match &screen.camera {
-            CameraState::Ready(cam) => cam.sample_cells(rotation),
+            CameraState::Ready(cam) => cam.sample_cells(rotation, screen.grid_off),
             _ => None,
         };
         if let Some(cells) = cells {
@@ -270,7 +287,8 @@ fn scan_ui(
                     .count()
                     >= 3
             });
-            if all_detected && same && rotated_away {
+            let aligned = screen.grid_conf > 0.4;
+            if all_detected && same && rotated_away && aligned {
                 screen.stable_ticks = screen.stable_ticks.saturating_add(1);
                 for (i, (buf, w, h)) in cells.iter().enumerate() {
                     let hist = vote_histogram(buf, *w, *h, &screen.cal);
@@ -361,7 +379,16 @@ fn scan_ui(
         let shown = Vec2::new(sw * scale, sh * scale);
         let rect = Rect::from_center_size(outer.center(), shown);
         draw_preview(ui, preview.id, rect, rotation);
-        draw_overlay(ui, rect, screen, now);
+        // The guide square follows the auto-aligned grid: canvas-space
+        // offset rotated into screen space.
+        let (dx, dy) = screen.grid_off;
+        let shift = match rotation % 4 {
+            1 => Vec2::new(-dy, dx),
+            2 => Vec2::new(-dx, -dy),
+            3 => Vec2::new(dy, -dx),
+            _ => Vec2::new(dx, dy),
+        } * scale;
+        draw_overlay(ui, rect, screen, now, shift);
 
         // Rotation cycle button (top-right of the preview): sensor
         // orientation differs per device — one tap fixes it, remembered.
@@ -614,10 +641,15 @@ fn draw_preview(ui: &Ui, id: egui::TextureId, rect: Rect, rotation: u8) {
     ui.painter().add(egui::Shape::mesh(mesh));
 }
 
-fn draw_overlay(ui: &Ui, rect: Rect, screen: &ScanScreen, now: f64) {
+fn draw_overlay(ui: &Ui, rect: Rect, screen: &ScanScreen, now: f64, shift: Vec2) {
     let p = ui.painter();
     let side = rect.width().min(rect.height()) * 0.6;
-    let square = Rect::from_center_size(rect.center(), Vec2::splat(side));
+    let max_shift = side / 6.0;
+    let shift = Vec2::new(
+        shift.x.clamp(-max_shift, max_shift),
+        shift.y.clamp(-max_shift, max_shift),
+    );
+    let square = Rect::from_center_size(rect.center() + shift, Vec2::splat(side));
 
     // Dim outside the guide square.
     for r in [
@@ -630,7 +662,13 @@ fn draw_overlay(ui: &Ui, rect: Rect, screen: &ScanScreen, now: f64) {
     }
 
     let cell = side / 3.0;
-    let grid_stroke = Stroke::new(2.0, Color32::from_white_alpha(190));
+    // Locked onto the sticker grid -> green lines (visual "got it!");
+    // searching -> soft white.
+    let grid_stroke = if screen.grid_conf > 0.4 {
+        Stroke::new(2.5, Color32::from_rgba_unmultiplied(0x39, 0xD3, 0x76, 220))
+    } else {
+        Stroke::new(2.0, Color32::from_white_alpha(190))
+    };
     for i in 0..=3 {
         let x = square.left() + i as f32 * cell;
         p.line_segment([Pos2::new(x, square.top()), Pos2::new(x, square.bottom())], grid_stroke);

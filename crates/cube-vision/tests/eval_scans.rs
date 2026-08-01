@@ -92,6 +92,44 @@ fn accuracy(cal: &Calibration, dir: &std::path::Path) -> (usize, usize, Vec<Stri
 }
 
 #[test]
+fn grid_offset_on_a_real_frame() {
+    let Some(dir) = std::env::var_os("RUBIKS_SCANS_DIR") else {
+        eprintln!("RUBIKS_SCANS_DIR not set - skipping");
+        return;
+    };
+    let path = std::path::PathBuf::from(dir).join("20260731-234151-233/cell_0.png");
+    let Some((w, h, rgba)) = read_png(&path) else {
+        eprintln!("frame upload not present - skipping");
+        return;
+    };
+    // The guide square: 0.6 x min side, centered (matches the app).
+    let side = (0.6 * w.min(h) as f32) as usize;
+    let (left, top) = ((w - side) / 2, (h - side) / 2);
+    let crop = |ox: i32, oy: i32| -> Vec<u8> {
+        let mut out = Vec::with_capacity(side * side * 4);
+        for y in 0..side {
+            for x in 0..side {
+                let sx = (left as i32 + ox + x as i32).clamp(0, w as i32 - 1) as usize;
+                let sy = (top as i32 + oy + y as i32).clamp(0, h as i32 - 1) as usize;
+                out.extend_from_slice(&rgba[(sy * w + sx) * 4..(sy * w + sx) * 4 + 4]);
+            }
+        }
+        out
+    };
+    let (dx, dy, conf) = cube_vision::grid_offset(&crop(0, 0), side, side);
+    eprintln!("aligned frame: offset ({dx:.1},{dy:.1}) conf {conf:.2}");
+    assert!(conf > 0.4, "real frame should show grid structure ({conf})");
+    let base = (dx, dy);
+    // Crop shifted 30px right: the grid should appear 30px LEFT of it.
+    let (dx2, dy2, conf2) = cube_vision::grid_offset(&crop(30, 0), side, side);
+    eprintln!("shifted crop: offset ({dx2:.1},{dy2:.1}) conf {conf2:.2}");
+    assert!(
+        (dx2 - (base.0 - 30.0)).abs() < 9.0 && (dy2 - base.1).abs() < 9.0,
+        "shift must be recovered: base {base:?} shifted ({dx2},{dy2})"
+    );
+}
+
+#[test]
 fn field_captures_match_ground_truth() {
     let Some(dir) = std::env::var_os("RUBIKS_SCANS_DIR") else {
         eprintln!("RUBIKS_SCANS_DIR not set - skipping field eval");

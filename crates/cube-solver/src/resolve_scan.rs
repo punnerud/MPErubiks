@@ -26,7 +26,7 @@ const EVIDENCE_FLOOR: f32 = 0.05;
 const PLAUSIBLE_FRACTION: f32 = 0.15;
 /// How many low-margin cells may have their candidate set WIDENED to all
 /// six colors when the evidence-constrained search finds nothing legal.
-const MAX_FREED: usize = 4;
+const MAX_FREED: usize = 6;
 /// Search budget in visited NODES (not just completed assignments) — the
 /// resolver must never freeze the UI thread.
 const MAX_CHECKS: usize = 60_000;
@@ -118,10 +118,21 @@ pub fn resolve_scan(shares: &Shares) -> Result<FaceletCube, crate::ValidationErr
     });
 
     // Widening fallback: when even the plausible readings admit no legal
-    // cube, the evidence itself must be wrong somewhere — widen the
-    // lowest-margin cells to all six colors, a few at a time.
+    // cube, the evidence itself must be wrong somewhere. Cells whose
+    // argmax color is OVERSUBSCRIBED (more than nine claimed) are the
+    // prime suspects — widen those first (by margin), then everyone else.
+    let mut counts = [0u8; 6];
+    for i in 0..54 {
+        counts[base.0[i] as usize] += 1;
+    }
     let mut by_margin: Vec<usize> = (0..54).filter(|&i| i % 9 != 4).collect();
-    by_margin.sort_by(|&a, &b| margin(a).partial_cmp(&margin(b)).unwrap());
+    by_margin.sort_by(|&a, &b| {
+        let over_a = counts[base.0[a] as usize] > 9;
+        let over_b = counts[base.0[b] as usize] > 9;
+        over_b
+            .cmp(&over_a)
+            .then(margin(a).partial_cmp(&margin(b)).unwrap())
+    });
 
     let mut checks = 0usize;
     for extra in 0..=MAX_FREED {

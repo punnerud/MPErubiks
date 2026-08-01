@@ -11,8 +11,15 @@ pub struct Camera {
     video: web_sys::HtmlVideoElement,
     canvas: web_sys::HtmlCanvasElement,
     ctx: web_sys::CanvasRenderingContext2d,
+    /// Small canvas the guide square is downscaled into for grid
+    /// auto-alignment (cheap 120x120 readback per tick).
+    align_canvas: web_sys::HtmlCanvasElement,
+    align_ctx: web_sys::CanvasRenderingContext2d,
     stream: web_sys::MediaStream,
 }
+
+/// Resolution of the alignment readback.
+const ALIGN_SIZE: u32 = 120;
 
 /// Working resolution: frames land on the canvas at this width — the SAME
 /// canvas feeds both the on-screen preview and the color voting, so what
@@ -94,12 +101,71 @@ impl Camera {
             .dyn_into()
             .map_err(|_| "not a 2d context")?;
 
+        let align_canvas: web_sys::HtmlCanvasElement = document
+            .create_element("canvas")
+            .map_err(js_err)?
+            .dyn_into()
+            .map_err(|_| "not a canvas")?;
+        align_canvas.set_width(ALIGN_SIZE);
+        align_canvas.set_height(ALIGN_SIZE);
+        let aopts = js_sys::Object::new();
+        js_sys::Reflect::set(
+            &aopts,
+            &JsValue::from_str("willReadFrequently"),
+            &JsValue::TRUE,
+        )
+        .map_err(js_err)?;
+        let align_ctx: web_sys::CanvasRenderingContext2d = align_canvas
+            .get_context_with_context_options("2d", &aopts)
+            .map_err(js_err)?
+            .ok_or("no 2d context")?
+            .dyn_into()
+            .map_err(|_| "not a 2d context")?;
+
         Ok(Camera {
             video,
             canvas,
             ctx,
+            align_canvas,
+            align_ctx,
             stream,
         })
+    }
+
+    /// Detect how far the sticker grid sits from the guide square, in
+    /// working-canvas pixels: downscale the square into the alignment
+    /// canvas and run the projection matcher. Returns (dx, dy,
+    /// confidence); apply the offset only when confidence is high.
+    pub fn grid_align(&self) -> Option<(f32, f32, f32)> {
+        let (w, h) = self.canvas_dims();
+        if w == 0 || h == 0 {
+            return None;
+        }
+        let side = 0.6 * f64::from(w.min(h));
+        let left = (f64::from(w) - side) / 2.0;
+        let top = (f64::from(h) - side) / 2.0;
+        self.align_ctx
+            .draw_image_with_html_canvas_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
+                &self.canvas,
+                left,
+                top,
+                side,
+                side,
+                0.0,
+                0.0,
+                f64::from(ALIGN_SIZE),
+                f64::from(ALIGN_SIZE),
+            )
+            .ok()?;
+        let data = self
+            .align_ctx
+            .get_image_data(0.0, 0.0, f64::from(ALIGN_SIZE), f64::from(ALIGN_SIZE))
+            .ok()?;
+        let rgba = data.data().to_vec();
+        let (dx, dy, conf) =
+            cube_vision::grid_offset(&rgba, ALIGN_SIZE as usize, ALIGN_SIZE as usize);
+        let scale = side / f64::from(ALIGN_SIZE);
+        Some(((dx as f64 * scale) as f32, (dy as f64 * scale) as f32, conf))
     }
 
     pub fn ready(&self) -> bool {
@@ -152,14 +218,23 @@ impl Camera {
     /// order is remapped by `rotation` so index 0 is the overlay's
     /// top-left. Full cells (not center points) feed the color-VOTING
     /// classifier, which survives misalignment.
-    pub fn sample_cells(&self, rotation: u8) -> Option<[(Vec<u8>, usize, usize); 9]> {
+    pub fn sample_cells(
+        &self,
+        rotation: u8,
+        offset: (f32, f32),
+    ) -> Option<[(Vec<u8>, usize, usize); 9]> {
         let (w, h) = self.canvas_dims();
         if w == 0 || h == 0 {
             return None;
         }
         let side = 0.6 * f64::from(w.min(h));
-        let left = (f64::from(w) - side) / 2.0;
-        let top = (f64::from(h) - side) / 2.0;
+        // Grid auto-alignment: the whole sampled square follows the
+        // detected sticker grid (clamped inside the frame).
+        let max_off = side / 6.0;
+        let dx = f64::from(offset.0).clamp(-max_off, max_off);
+        let dy = f64::from(offset.1).clamp(-max_off, max_off);
+        let left = ((f64::from(w) - side) / 2.0 + dx).clamp(0.0, f64::from(w) - side);
+        let top = ((f64::from(h) - side) / 2.0 + dy).clamp(0.0, f64::from(h) - side);
         let cell = side / 3.0;
         let inset = cell * 0.14; // keep clear of the painted grid lines
 
