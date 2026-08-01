@@ -302,11 +302,18 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
         ui.label(RichText::new(app.t(lesson.title)).size(24.0).strong());
     });
 
-    // Reserve REAL space for the controls: karaoke row + step text (wraps
-    // to two lines on phones) + ONE button row + item spacing + air above
-    // the browser bottom bar (+ the Practice button once unlocked).
+    // Reserve REAL space for the controls: karaoke (which WRAPS on long
+    // demos), step text, Play row, prev/next row, spacing, bottom air —
+    // plus the Practice button once unlocked. Underestimating pushes
+    // buttons off-screen.
     let practice_unlocked = step.practice.is_some() && view.watched;
-    let controls_height = if practice_unlocked { 345.0 } else { 275.0 };
+    let karaoke_lines = ((demo_moves.len() as f32 * 34.0)
+        / ui.available_width().max(1.0))
+    .ceil()
+    .max(1.0);
+    let controls_height = 249.0
+        + karaoke_lines * 26.0
+        + if practice_unlocked { 70.0 } else { 0.0 };
     let cube_size = Vec2::new(
         ui.available_width(),
         (ui.available_height() - controls_height).max(120.0),
@@ -534,9 +541,9 @@ fn session_ui(app: &mut RubiksApp, ui: &mut Ui, session: &mut SessionState, next
         ui.label(RichText::new(name).size(26.0).strong());
     });
 
-    // 3D cube shows the case; leave room for the control zone (+ the
-    // turn-arrow row while a sticker is selected).
-    let controls_height = if app.selected_face.is_some() { 282.0 } else { 210.0 };
+    // 3D cube shows the case; the turn-arrow row's space is ALWAYS
+    // reserved so the cube never jumps when arrows appear/disappear.
+    let controls_height = 282.0;
     let cube_size = Vec2::new(
         ui.available_width(),
         (ui.available_height() - controls_height).max(120.0),
@@ -573,14 +580,18 @@ fn session_ui(app: &mut RubiksApp, ui: &mut Ui, session: &mut SessionState, next
     };
 
     ui.vertical_centered(|ui| {
-        if app.selected_face.is_some() {
-            ui.horizontal(|ui| {
+        // Fixed-height arrow slot: filled while a sticker is selected,
+        // empty otherwise — the layout below never shifts.
+        ui.horizontal(|ui| {
+            if app.selected_face.is_some() {
                 let spacing = ui.spacing().item_spacing.x;
                 let unit = ((ui.available_width() - spacing * 6.0) / 5.0).clamp(40.0, 84.0);
                 ui.add_space((ui.available_width() - 5.0 * (unit + spacing)).max(0.0) / 2.0);
                 super::play::turn_arrows_sized(app, ui, Vec2::new(unit, 60.0));
-            });
-        }
+            } else {
+                ui.allocate_exact_size(Vec2::new(1.0, 60.0), Sense::hover());
+            }
+        });
         match &mut session.phase {
         Phase::Watch { started } => {
             // Karaoke marks each move as it STARTS.

@@ -245,6 +245,34 @@ fn solve_guide_gated_phone() {
 }
 
 #[test]
+fn lesson_long_karaoke_practice_phone() {
+    // (R' D' R D)4 = 16 moves: the karaoke wraps to two lines - Practice
+    // and prev/next must still fit on screen.
+    std::env::set_var(
+        "RUBIKS_DATA_DIR",
+        std::env::temp_dir().join(format!("rubiks-test-{}", std::process::id())),
+    );
+    let mut h = Harness::builder()
+        .with_size(egui::Vec2::new(390.0, 740.0))
+        .wgpu()
+        .build_eframe(|cc| RubiksApp::new(cc));
+    h.state_mut().screen = Screen::Train(cube_app::screens::train::TrainScreen::Lesson(
+        cube_app::screens::train::LessonView {
+            lesson: 4,
+            step: 1,
+            pending: true,
+            demo_len: 0,
+            cursor: 0,
+            playing: false,
+            play_at: 0.0,
+            watched: true,
+        },
+    ));
+    h.run_steps(3);
+    h.snapshot("lesson_long_karaoke_practice");
+}
+
+#[test]
 fn train_session_ready() {
     let mut h = harness();
     {
