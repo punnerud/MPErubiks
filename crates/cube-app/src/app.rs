@@ -302,6 +302,9 @@ fn style(ctx: &egui::Context) {
     });
 }
 
+#[cfg(target_arch = "wasm32")]
+use eframe::wasm_bindgen::JsCast as _;
+
 /// Dark (default) or standard light theme; toggled on the front page.
 pub fn apply_theme(ctx: &egui::Context, light: bool) {
     ctx.all_styles_mut(|style| {
@@ -317,4 +320,24 @@ pub fn apply_theme(ctx: &egui::Context, light: bool) {
             egui::Color32::from_rgb(0x12, 0x15, 0x1D)
         };
     });
+    // The PAGE behind the canvas must match too: on iOS the body peeks
+    // out as a strip by the URL bar / home indicator — the spacing that
+    // keeps buttons above the bar stays, but the strip must not show.
+    #[cfg(target_arch = "wasm32")]
+    {
+        let color = if light { "#F2F3F7" } else { "#12151D" };
+        if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
+            for el in [
+                doc.document_element(),
+                doc.body().map(web_sys::Element::from),
+            ]
+            .into_iter()
+            .flatten()
+            {
+                if let Ok(html) = el.dyn_into::<web_sys::HtmlElement>() {
+                    let _ = html.style().set_property("background", color);
+                }
+            }
+        }
+    }
 }
