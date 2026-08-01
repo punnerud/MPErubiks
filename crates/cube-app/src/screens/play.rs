@@ -152,15 +152,23 @@ pub fn turn_arrows_sized(app: &mut RubiksApp, ui: &mut Ui, size: Vec2) {
 }
 
 pub fn top_bar(app: &mut RubiksApp, ui: &mut Ui) {
+    if top_bar_clicked(ui) {
+        app.screen = Screen::Menu;
+    }
+}
+
+/// Draw the top-left back arrow; returns true on click so each screen can
+/// go ONE level back (menu is only the default).
+pub fn top_bar_clicked(ui: &mut Ui) -> bool {
+    let mut clicked = false;
     egui::Panel::top("topbar").show_separator_line(false).show(ui, |ui| {
         ui.horizontal(|ui| {
             let (rect, response) =
                 ui.allocate_exact_size(Vec2::new(56.0, 40.0), Sense::click());
             icons::draw_back_arrow(ui.painter(), rect.shrink2(Vec2::new(14.0, 10.0)));
-            if response.clicked() {
-                app.screen = Screen::Menu;
-            }
+            clicked = response.clicked();
         });
     });
+    clicked
 }
 

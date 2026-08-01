@@ -154,7 +154,7 @@ fn solve_guide_with_trained_hint() {
         let out =
             cube_solver::solve_with_hints(&state, &[t_idx], &app.library.rec).unwrap();
         assert!(out.guided.is_some(), "T-perm state must yield a guided solution");
-        let guide = cube_app::screens::solve::GuideState::from_output(out, &app.library.rec);
+        let guide = cube_app::screens::solve::GuideState::from_output(out, &app.library.rec, state);
         assert!(
             guide.labels.iter().any(|l| l.as_deref() == Some("T-Perm")),
             "guided solution must carry the T-Perm label"
@@ -197,7 +197,7 @@ fn solve_guide_narrow_phone() {
         let app = h.state_mut();
         app.cube = state;
         app.screen = Screen::Solve(cube_app::screens::solve::SolveScreen::Guide(
-            cube_app::screens::solve::GuideState::plain(solution),
+            cube_app::screens::solve::GuideState::plain(solution, state),
         ));
     }
     h.run();
@@ -218,7 +218,7 @@ fn solve_guide_screen() {
         let app = h.state_mut();
         app.cube = state;
         app.screen = Screen::Solve(cube_app::screens::solve::SolveScreen::Guide(
-            cube_app::screens::solve::GuideState::plain(solution),
+            cube_app::screens::solve::GuideState::plain(solution, state),
         ));
     }
     h.run();

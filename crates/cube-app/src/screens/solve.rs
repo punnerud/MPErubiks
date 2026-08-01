@@ -25,24 +25,32 @@ pub struct GuideState {
     /// Moves of `solution` already applied to `app.cube`.
     pub cursor: usize,
     pub playing: bool,
+    /// The state the guide started from: the top-left arrow goes back to
+    /// the review net with this, not to the menu.
+    pub origin: FaceletCube,
 }
 
 impl GuideState {
-    pub fn plain(solution: Alg) -> GuideState {
+    pub fn plain(solution: Alg, origin: FaceletCube) -> GuideState {
         let labels = vec![None; solution.0.len()];
         GuideState {
             solution,
             labels,
             cursor: 0,
             playing: false,
+            origin,
         }
     }
 
     /// Build from the hint engine's output: use the guided (trained-alg
     /// weaving) solution when it exists, else the plain one.
-    pub fn from_output(out: cube_solver::SolveOutput, rec: &cube_core::Recognizer) -> GuideState {
+    pub fn from_output(
+        out: cube_solver::SolveOutput,
+        rec: &cube_core::Recognizer,
+        origin: FaceletCube,
+    ) -> GuideState {
         match out.guided {
-            None => GuideState::plain(out.base),
+            None => GuideState::plain(out.base, origin),
             Some(guided) => {
                 let mut moves = Vec::new();
                 let mut labels = Vec::new();
@@ -63,6 +71,7 @@ impl GuideState {
                     labels,
                     cursor: 0,
                     playing: false,
+                    origin,
                 }
             }
         }
@@ -140,10 +149,11 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
                                     log::error!("solve failed: {e}");
                                 }
                                 Ok(solution) => {
+                                    let origin = draft.normalize_orientation();
                                     let trained: Vec<u16> =
                                         app.trained.iter().copied().collect();
                                     let guide = if trained.is_empty() {
-                                        GuideState::plain(solution)
+                                        GuideState::plain(solution, origin)
                                     } else {
                                         match cube_solver::solve_with_hints(
                                             draft,
@@ -153,11 +163,12 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
                                             Ok(out) => GuideState::from_output(
                                                 out,
                                                 &app.library.rec,
+                                                origin,
                                             ),
-                                            Err(_) => GuideState::plain(solution),
+                                            Err(_) => GuideState::plain(solution, origin),
                                         }
                                     };
-                                    app.cube = draft.normalize_orientation();
+                                    app.cube = origin;
                                     app.animator.clear();
                                     next =
                                         Some(Screen::Solve(SolveScreen::Guide(guide)));
@@ -273,31 +284,20 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
         }
 
         ui.horizontal(|ui| {
-            // Back | slower faster | BIG GREEN NEXT. No auto-play: you
-            // execute each move on the real cube, then tap next.
+            // slower faster | BIG GREEN NEXT. No auto-play and no move-
+            // undo button: two kinds of "back" confused everyone (the
+            // top-left arrow is the only back, one level up).
             let spacing = ui.spacing().item_spacing.x;
-            let total = ui.available_width() - spacing * 5.0;
-            let unit = (total / 4.6).clamp(44.0, 96.0);
+            let total = ui.available_width() - spacing * 4.0;
+            let unit = (total / 3.6).clamp(44.0, 96.0);
             let size = Vec2::new(unit, 64.0f32.min(unit * 0.8));
             let small = Vec2::new(unit * 0.8, size.y);
             let next_size = Vec2::new(unit * 1.6, size.y);
             ui.add_space(
-                (ui.available_width()
-                    - (unit + spacing)
-                    - 2.0 * (small.x + spacing)
-                    - (next_size.x + spacing))
+                (ui.available_width() - 2.0 * (small.x + spacing) - (next_size.x + spacing))
                     .max(0.0)
                     / 2.0,
             );
-            let gray = Color32::from_rgb(0x4A, 0x4F, 0x5C);
-            if icons::big_icon_button(ui, size, gray, app.t(TextKey::Back), icons::draw_back_arrow)
-                .clicked()
-                && guide.cursor > 0
-                && app.animator.is_idle()
-            {
-                guide.cursor -= 1;
-                app.animator.enqueue(guide.solution.0[guide.cursor].inverse());
-            }
             crate::widgets::playback::speed_buttons_sized(app, ui, small);
             if icons::big_icon_button(
                 ui,
