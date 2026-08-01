@@ -63,8 +63,9 @@ this is what the app looks like right now.
 checked mechanically (its inverse must produce a state of the claimed kind,
 and no two cases may be AUF-indistinguishable), so data errors fail the
 build. `assets/table.pack` is the solver table the app ships: nibble-packed
-pruning depths + byte-plane-split move tables + per-section deflate — 1.9 MB
-instead of 6.8 MB (28 %), unpacking in ~10 ms.
+pruning depths + route-compressed move tables (per-column deltas along the
+coordinate order — the enumeration is already the optimal "route") +
+per-section deflate — 0.9 MB instead of 6.8 MB (13 %), unpacking in ~15 ms.
 
 ## Targets & build
 

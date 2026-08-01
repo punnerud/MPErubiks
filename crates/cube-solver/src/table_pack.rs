@@ -2,16 +2,18 @@
 //!
 //! kewb's `table.bin` is a 6.8 MB bincode stream. Shaping each section to
 //! its value distribution BEFORE the entropy coder sees it — nibble-packed
-//! pruning depths (0..13), lo/hi byte planes for u16 move coordinates —
-//! then deflating per section lands at ~1.9 MB (28%), a third smaller
-//! than transport-gzip on the raw file, and unpacks in ~10 ms into the
-//! exact same in-memory `DataTable` (solve times untouched by design).
-//! Deflate was chosen because `miniz_oxide` inflates it dependency-free
-//! on wasm.
+//! pruning depths (0..13); u16 move tables as per-column DELTAS along the
+//! coordinate order (route compression: the positional/factorial number
+//! systems make neighboring rows nearly equal, measured 11x on cp) in
+//! lo/hi byte planes — then deflating per section lands at ~0.9 MB (13%),
+//! a third of transport-gzip on the raw file, and unpacks in ~15 ms into
+//! the exact same in-memory `DataTable` (solve times untouched by
+//! design). Deflate because `miniz_oxide` inflates it dependency-free on
+//! wasm.
 
 use kewb::{move_table::MoveTable, pruning_table::PruningTable, DataTable};
 
-const MAGIC: &[u8; 6] = b"KWPK1\0";
+const MAGIC: &[u8; 6] = b"KWPK2\0";
 /// Sections in file order: six u16 move tables, four u8 pruning tables.
 const U16_SECTIONS: usize = 6;
 const SECTIONS: usize = 10;
@@ -39,14 +41,24 @@ pub fn encode_packed(t: &DataTable) -> Vec<u8> {
     for table in u16_fields(t) {
         let row_len = table.first().map_or(0, Vec::len);
         assert!(table.iter().all(|r| r.len() == row_len), "uniform rows");
-        // lo plane then hi plane: the mostly-zero hi bytes stop
-        // interleaving with the smooth lo bytes.
+        // ROUTE COMPRESSION (KWPK2): kewb's coordinate enumeration is a
+        // near-optimal "route" through the rows (neighboring indices in
+        // the factorial/positional number systems differ in few digits),
+        // so we store per-column DELTAS along it — 11x smaller than the
+        // positions themselves — then lo/hi byte planes.
         let n = table.len() * row_len;
+        let mut prev = vec![0u16; row_len];
         let mut planes = vec![0u8; n * 2];
-        for (i, v) in table.iter().flatten().enumerate() {
-            let [lo, hi] = v.to_le_bytes();
-            planes[i] = lo;
-            planes[n + i] = hi;
+        let mut i = 0;
+        for row in table {
+            for (j, &v) in row.iter().enumerate() {
+                let d = v.wrapping_sub(prev[j]);
+                let [lo, hi] = d.to_le_bytes();
+                planes[i] = lo;
+                planes[n + i] = hi;
+                prev[j] = v;
+                i += 1;
+            }
         }
         push_section(table.len() as u32, row_len as u32, &planes);
     }
@@ -103,10 +115,19 @@ pub fn decode_packed(bytes: &[u8]) -> Result<DataTable, String> {
             if raw.len() != n * 2 {
                 return Err("section size mismatch (u16)".into());
             }
+            // Undo the route compression: cumulative per-column sums.
+            let mut prev = vec![0u16; row_len];
             let mut table = Vec::with_capacity(rows);
-            let mut it = (0..n).map(|i| u16::from_le_bytes([raw[i], raw[n + i]]));
+            let mut i = 0;
             for _ in 0..rows {
-                table.push(it.by_ref().take(row_len).collect());
+                let mut row = Vec::with_capacity(row_len);
+                for p in prev.iter_mut().take(row_len) {
+                    let d = u16::from_le_bytes([raw[i], raw[n + i]]);
+                    *p = p.wrapping_add(d);
+                    row.push(*p);
+                    i += 1;
+                }
+                table.push(row);
             }
             u16_tables.push(table);
         } else {
