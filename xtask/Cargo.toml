@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+miniz_oxide = "0.8"
 kewb.workspace = true
 cube-core = { workspace = true }
 cube-solver = { workspace = true }

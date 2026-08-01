@@ -249,11 +249,17 @@ fn scan_ui(
             // Seven of nine suffice: the constraint resolver analyses
             // the uncertain rest from retained evidence.
             let all_detected = live.iter().filter(|c| c.color.is_some()).count() >= 7;
+            // Tolerate up to two flickering cells per tick: demanding
+            // all nine identical for 1.5s is unreachable hand-held (one
+            // flicker reset the whole window -> capture never fired).
+            // The averaged evidence smooths the flicker out anyway.
             let same = screen
                 .live
                 .iter()
                 .zip(live.iter())
-                .all(|(a, b)| a.color == b.color);
+                .filter(|(a, b)| a.color != b.color)
+                .count()
+                <= 2;
             // Re-arm only once the camera sees a genuinely DIFFERENT side
             // than the one just captured (>=3 cells differ) — otherwise
             // one face auto-captures six times before anyone can rotate.

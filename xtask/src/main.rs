@@ -80,6 +80,65 @@ fn table_stats() {
     if have_zstd {
         println!("zstd per-section total:   {per_section_zstd:>9} bytes");
     }
+
+    // Domain transforms (the matcodec idea proper): shape each section to
+    // its value distribution BEFORE the entropy coder sees it.
+    // - pruning depths are 0..13 -> two per byte (nibble packing)
+    // - u16 move-table coordinates -> separate lo/hi byte planes, so the
+    //   mostly-zero hi bytes and smooth lo bytes stop interleaving
+    let mut transformed: Vec<(String, Vec<u8>)> = Vec::new();
+    for (name, bytes) in &sections {
+        if name.starts_with("prune.") {
+            let mut packed = Vec::with_capacity(bytes.len() / 2 + 1);
+            for pair in bytes.chunks(2) {
+                let lo = pair[0] & 0x0F;
+                let hi = pair.get(1).copied().unwrap_or(0) & 0x0F;
+                packed.push(lo | (hi << 4));
+            }
+            transformed.push((format!("{name}+nib"), packed));
+        } else {
+            let half = bytes.len() / 2;
+            let mut planes = Vec::with_capacity(bytes.len());
+            for i in 0..half {
+                planes.push(bytes[i * 2]); // lo plane
+            }
+            for i in 0..half {
+                planes.push(bytes[i * 2 + 1]); // hi plane
+            }
+            transformed.push((format!("{name}+pln"), planes));
+        }
+    }
+    // What the app can realistically ship: miniz_oxide deflate, inflated
+    // once at startup in wasm. Report size AND inflate time.
+    let mut deflate_total = 0usize;
+    let mut inflate_time = std::time::Duration::ZERO;
+    for (name, bytes) in &transformed {
+        let t0 = std::time::Instant::now();
+        let packed = miniz_oxide::deflate::compress_to_vec(bytes, 10);
+        let dt_pack = t0.elapsed();
+        let t0 = std::time::Instant::now();
+        let back = miniz_oxide::inflate::decompress_to_vec(&packed).expect("inflate");
+        inflate_time += t0.elapsed();
+        assert_eq!(&back, bytes, "roundtrip {name}");
+        println!(
+            "  deflate {name:<18} {:>9} -> {:>9}  (pack {dt_pack:.1?})",
+            bytes.len(),
+            packed.len()
+        );
+        deflate_total += packed.len();
+        if have_zstd {
+            if let Some(n) = compress_with("zstd", &["-19", "-c"], bytes) {
+                println!("  zstd    {name:<18} {:>9} -> {n:>9}", bytes.len());
+            }
+        }
+    }
+    println!("deflate transformed total: {deflate_total:>8} bytes (inflate all: {inflate_time:.1?})");
+    println!(
+        "summary: raw {} -> transformed+deflate {} ({:.0}%)",
+        raw.len(),
+        deflate_total,
+        deflate_total as f64 / raw.len() as f64 * 100.0
+    );
 }
 
 fn u16s(t: &[Vec<u16>]) -> Vec<u8> {

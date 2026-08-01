@@ -4826,6 +4826,7 @@ dependencies = [
  "cube-core",
  "cube-solver",
  "kewb",
+ "miniz_oxide",
 ]
 
 [[package]]
