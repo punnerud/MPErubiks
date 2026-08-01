@@ -32,11 +32,20 @@ pub struct GuideState {
     pub done_at: Option<f64>,
     /// Extra confetti bursts: every tap on the solved cube fires again.
     pub bursts: Vec<f64>,
+    /// Parallel to `solution.0`: Some(k) = the move belongs to trained
+    /// segment k's OWN algorithm moves (leading AUF excluded). Labels
+    /// alone cannot separate adjacent segments with the same name.
+    pub seg_id: Vec<Option<u16>>,
+    /// Practice-stop mode, captured when the guide was built.
+    pub practice: bool,
+    /// Gated segments whose letters the user asked to see (needed help).
+    pub revealed: std::collections::HashSet<u16>,
 }
 
 impl GuideState {
     pub fn plain(solution: Alg, origin: FaceletCube) -> GuideState {
-        let labels = vec![None; solution.0.len()];
+        let len = solution.0.len();
+        let labels = vec![None; len];
         GuideState {
             solution,
             labels,
@@ -45,6 +54,9 @@ impl GuideState {
             origin,
             done_at: None,
             bursts: Vec::new(),
+            seg_id: vec![None; len],
+            practice: false,
+            revealed: std::collections::HashSet::new(),
         }
     }
 
@@ -54,22 +66,33 @@ impl GuideState {
         out: cube_solver::SolveOutput,
         rec: &cube_core::Recognizer,
         origin: FaceletCube,
+        practice: bool,
     ) -> GuideState {
         match out.guided {
             None => GuideState::plain(out.base, origin),
             Some(guided) => {
                 let mut moves = Vec::new();
                 let mut labels = Vec::new();
+                let mut seg_id = Vec::new();
+                let mut k: u16 = 0;
                 for seg in &guided.segments {
-                    let label = match seg {
-                        cube_solver::Segment::Raw(_) => None,
+                    let (label, gate) = match seg {
+                        cube_solver::Segment::Raw(_) => (None, None),
                         cube_solver::Segment::Trained { case_idx, .. } => {
-                            Some(rec.case(*case_idx).name.clone())
+                            k += 1;
+                            (Some(rec.case(*case_idx).name.clone()), Some(k - 1))
                         }
                     };
-                    for &m in &seg.alg().0 {
+                    let auf_len = match seg {
+                        cube_solver::Segment::Trained { auf_len, .. } => *auf_len as usize,
+                        _ => 0,
+                    };
+                    for (i, &m) in seg.alg().0.iter().enumerate() {
                         moves.push(m);
                         labels.push(label.clone());
+                        // The leading AUF is not part of the algorithm:
+                        // it is shown/stepped normally, never gated.
+                        seg_id.push(if i < auf_len { None } else { gate });
                     }
                 }
                 GuideState {
@@ -80,9 +103,31 @@ impl GuideState {
                     origin,
                     done_at: None,
                     bursts: Vec::new(),
+                    seg_id,
+                    practice,
+                    revealed: std::collections::HashSet::new(),
                 }
             }
         }
+    }
+
+    /// Some(k) while practice-stop blocks stepping at trained segment k.
+    /// Derived, never stored — no stale-flag bugs by construction.
+    pub fn gate(&self) -> Option<u16> {
+        if !self.practice {
+            return None;
+        }
+        let k = (*self.seg_id.get(self.cursor)?)?;
+        (!self.revealed.contains(&k)).then_some(k)
+    }
+
+    /// One past the last move of segment k, scanning from the cursor.
+    pub fn seg_end(&self, k: u16) -> usize {
+        let mut i = self.cursor;
+        while self.seg_id.get(i).copied().flatten() == Some(k) {
+            i += 1;
+        }
+        i
     }
 }
 
@@ -96,12 +141,34 @@ impl SolveScreen {
 }
 
 pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
-    super::play::top_bar(app, ui);
+    let bar = super::play::top_bar_with_gear(ui);
+    if matches!(bar, super::play::TopBarAction::Gear) {
+        let prev = std::mem::replace(&mut app.screen, Screen::Menu);
+        app.screen = Screen::Settings(crate::screens::settings::SettingsScreen {
+            prev: Box::new(prev),
+        });
+        return;
+    }
     // Take the screen state out so we can borrow app mutably alongside.
     let Screen::Solve(mut screen) = std::mem::replace(&mut app.screen, Screen::Menu) else {
         return;
     };
     let mut next: Option<Screen> = None;
+    // Hierarchical back: guide -> review net (original state restored);
+    // review net -> menu.
+    if matches!(bar, super::play::TopBarAction::Back) {
+        next = Some(match &screen {
+            SolveScreen::Guide(guide) => {
+                app.animator.clear();
+                app.cube = guide.origin;
+                Screen::Solve(SolveScreen::Input {
+                    draft: guide.origin,
+                    error: None,
+                })
+            }
+            SolveScreen::Input { .. } => Screen::Menu,
+        });
+    }
 
     match &mut screen {
         SolveScreen::Input { draft, error } => {
@@ -158,20 +225,34 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
                                 }
                                 Ok(solution) => {
                                     let origin = draft.normalize_orientation();
-                                    let trained: Vec<u16> =
-                                        app.trained.iter().copied().collect();
-                                    let guide = if trained.is_empty() {
+                                    // Ordered include list from settings,
+                                    // filtered to still-trained cases.
+                                    let include: Vec<u16> = app
+                                        .hints
+                                        .include
+                                        .iter()
+                                        .copied()
+                                        .filter(|c| app.trained.contains(c))
+                                        .collect();
+                                    let off =
+                                        matches!(app.hints.mode, crate::app::HintMode::Off);
+                                    let guide = if off || include.is_empty() {
                                         GuideState::plain(solution, origin)
                                     } else {
                                         match cube_solver::solve_with_hints(
                                             draft,
-                                            &trained,
+                                            &include,
                                             &app.library.rec,
+                                            app.hints.max_extra,
                                         ) {
                                             Ok(out) => GuideState::from_output(
                                                 out,
                                                 &app.library.rec,
                                                 origin,
+                                                matches!(
+                                                    app.hints.mode,
+                                                    crate::app::HintMode::Practice
+                                                ),
                                             ),
                                             Err(_) => GuideState::plain(solution, origin),
                                         }
@@ -231,10 +312,12 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
     let done = guide.cursor >= guide.solution.0.len();
 
 
-    // Reserve space honestly: the karaoke row wraps on narrow phones.
+    // Reserve space honestly: the karaoke row wraps on narrow phones,
+    // and the practice gate adds the prompt line.
     let avail_w = ui.available_width();
     let karaoke_lines = ((guide.solution.0.len() as f32 * 34.0) / avail_w.max(1.0)).ceil();
-    let controls_height = 150.0 + karaoke_lines * 26.0 + crate::app::BOTTOM_INSET;
+    let gate_extra = if guide.practice { 34.0 } else { 0.0 };
+    let controls_height = 150.0 + gate_extra + karaoke_lines * 26.0 + crate::app::BOTTOM_INSET;
     let cube_size = Vec2::new(
         avail_w,
         (ui.available_height() - controls_height).max(120.0),
@@ -250,8 +333,12 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
         guide.bursts.clear();
     }
     // While a move animates, the big letter and the highlighted layer
-    // show THAT move; when idle they preview the next one.
-    let highlight = if !app.animator.is_idle() {
+    // show THAT move; when idle they preview the next one. While GATED
+    // (practice-stop), neither may leak the move.
+    let gate = (!done).then(|| guide.gate()).flatten();
+    let highlight = if gate.is_some() {
+        None
+    } else if !app.animator.is_idle() {
         guide.cursor.checked_sub(1).map(|i| guide.solution.0[i])
     } else if !done {
         Some(guide.solution.0[guide.cursor])
@@ -288,11 +375,21 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
     ui.vertical_centered(|ui| {
         // Karaoke letters carry both the plan and the progress; cursor
         // counts enqueued moves, so the marker lights when a move STARTS.
-        crate::widgets::playback::karaoke_row(
+        // In practice-stop, unrevealed algorithm moves render as dots.
+        let hidden: Vec<bool> = guide
+            .seg_id
+            .iter()
+            .map(|sid| {
+                guide.practice
+                    && sid.is_some_and(|k| !guide.revealed.contains(&k))
+            })
+            .collect();
+        crate::widgets::playback::karaoke_row_masked(
             ui,
             &guide.solution.0,
             guide.cursor,
             !app.animator.is_idle(),
+            guide.practice.then_some(hidden.as_slice()),
         );
 
         // Trained-algorithm chip: shows WHICH known algorithm this part of
@@ -306,16 +403,32 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
             }
         }
 
-        // Current / next move in large type.
+        // Current / next move in large type — or, while GATED, the
+        // practice prompt (the move stays secret).
         if done && app.animator.is_idle() {
             ui.colored_label(
                 Color32::from_rgb(0x4C, 0xD9, 0x64),
                 RichText::new(format!("✔ {}", app.t(TextKey::GuideDone))).size(34.0),
             );
+        } else if gate.is_some() {
+            ui.colored_label(
+                Color32::from_rgb(0x4C, 0xD9, 0x64),
+                RichText::new(app.t(TextKey::PracticeYouKnow)).size(28.0).strong(),
+            );
         } else if let Some(m) = highlight {
             ui.label(RichText::new(m.to_string()).size(40.0).strong());
         } else {
             ui.label(RichText::new(" ").size(40.0));
+        }
+        // "Needed a peek": the cursor is inside a segment the user asked
+        // to have revealed.
+        if let Some(Some(k)) = guide.seg_id.get(guide.cursor).copied() {
+            if guide.practice && guide.revealed.contains(&k) && !done {
+                ui.colored_label(
+                    Color32::from_rgb(0xE0, 0x8A, 0x1E),
+                    RichText::new(app.t(TextKey::NeededHelp)).size(16.0),
+                );
+            }
         }
 
         ui.horizontal(|ui| {
@@ -328,6 +441,47 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
             let size = Vec2::new(unit, 64.0f32.min(unit * 0.8));
             let small = Vec2::new(unit * 0.8, size.y);
             let next_size = Vec2::new(unit * 1.6, size.y);
+            if let Some(k) = gate {
+                // GATED: big green "I did it" (fast-forwards the segment
+                // — the physical cube is already there) + small "Show me"
+                // which reveals the letters (counts as needing help).
+                let did_size = Vec2::new(next_size.x * 1.2, size.y);
+                ui.add_space(
+                    (ui.available_width() - (did_size.x + spacing) - (small.x + spacing))
+                        .max(0.0)
+                        / 2.0,
+                );
+                if icons::big_icon_button(
+                    ui,
+                    did_size,
+                    Color32::from_rgb(0x1E, 0x88, 0x50),
+                    app.t(TextKey::IDidIt),
+                    icons::draw_check,
+                )
+                .clicked()
+                    && app.animator.is_idle()
+                {
+                    // NEVER animator.clear() here: an in-flight move would
+                    // be dropped unapplied while cursor counts it.
+                    let end = guide.seg_end(k);
+                    for &m in &guide.solution.0[guide.cursor..end] {
+                        app.cube.apply(m);
+                    }
+                    guide.cursor = end;
+                }
+                if icons::big_icon_button(
+                    ui,
+                    small,
+                    Color32::from_gray(70),
+                    app.t(TextKey::ShowSolution),
+                    icons::draw_play,
+                )
+                .clicked()
+                {
+                    guide.revealed.insert(k);
+                }
+                return;
+            }
             ui.add_space(
                 (ui.available_width() - 2.0 * (small.x + spacing) - (next_size.x + spacing))
                     .max(0.0)

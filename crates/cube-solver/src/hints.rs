@@ -25,8 +25,11 @@ pub struct HintAt {
 pub enum Segment {
     /// Filler moves from the solver.
     Raw(Alg),
-    /// A trained algorithm, ready to execute (pre-AUF and frame folded in).
-    Trained { case_idx: u16, exec: Alg },
+    /// A trained algorithm, ready to execute (pre-AUF and frame folded
+    /// in). `auf_len` = how many leading moves of `exec` are the pre-AUF
+    /// (0 or 1) — the practice gate shows those normally and hides only
+    /// the algorithm's own moves.
+    Trained { case_idx: u16, auf_len: u8, exec: Alg },
 }
 
 impl Segment {
@@ -43,6 +46,8 @@ pub struct GuidedSolution {
     pub segments: Vec<Segment>,
     pub total_htm: usize,
     pub trained_used: usize,
+    /// User-priority score of the woven algorithms (tie-breaker).
+    pub prio: usize,
     /// Ergonomic cost of the whole solution: moves are "paths" and not all
     /// paths are equal — R/U turns are cheapest in the hand, D/B awkward,
     /// off-frame matches cost a regrip, and untrained filler moves weigh
@@ -164,10 +169,11 @@ pub fn solve_with_hints(
     s: &FaceletCube,
     trained: &[u16],
     rec: &Recognizer,
+    max_extra: usize,
 ) -> Result<SolveOutput, SolveError> {
     let base = solve(s)?;
     let inline_hints = collect_inline_hints(s, &base, trained, rec);
-    let guided = guided_solution(s, &base, trained, rec)?;
+    let guided = guided_solution(s, &base, trained, rec, max_extra)?;
     Ok(SolveOutput {
         base,
         inline_hints,
@@ -210,18 +216,25 @@ struct Node {
     /// Ergo spent before the first trained segment (None until one is used).
     first_trained_ergo: Option<u32>,
     trained_used: usize,
+    /// Sum of user-priority bonuses: each woven algorithm adds
+    /// (N - rank), so higher-ranked algorithms score higher.
+    prio: usize,
 }
 
+/// `trained` is ORDER-SIGNIFICANT: index = user priority (0 = highest).
+/// `max_extra` = the user's hard cap on moves beyond the shortest
+/// solution (no hidden floor — a floor would silently break the cap).
 fn guided_solution(
     s: &FaceletCube,
     base: &Alg,
     trained: &[u16],
     rec: &Recognizer,
+    max_extra: usize,
 ) -> Result<Option<GuidedSolution>, SolveError> {
     if trained.is_empty() {
         return Ok(None);
     }
-    let budget = (base.len_htm() + 6).max(24);
+    let budget = base.len_htm() + max_extra;
 
     // Tail-solve memo: different chains often converge to the same state
     // (e.g. two different OLL paths reaching the same PLL). A kewb search
@@ -236,6 +249,7 @@ fn guided_solution(
         ergo: 0,
         first_trained_ergo: None,
         trained_used: 0,
+        prio: 0,
     }];
     let mut best: Option<GuidedSolution> = None;
 
@@ -282,8 +296,13 @@ fn guided_solution(
                     if let Some(setup) = setup {
                         segments.push(Segment::Raw(Alg::new(vec![setup])));
                     }
+                    let rank = trained
+                        .iter()
+                        .position(|&c| c == m.case_idx)
+                        .unwrap_or(trained.len());
                     segments.push(Segment::Trained {
                         case_idx: m.case_idx,
+                        auf_len: u8::from(m.pre_auf % 4 != 0),
                         exec,
                     });
                     children.push(Node {
@@ -295,6 +314,7 @@ fn guided_solution(
                             .first_trained_ergo
                             .or(Some((i64::from(node.ergo) + setup_ergo).max(0) as u32)),
                         trained_used: node.trained_used + 1,
+                        prio: node.prio + (trained.len() - rank),
                     });
                 }
             };
@@ -308,14 +328,14 @@ fn guided_solution(
             }
             // Cap per-node fan-out so one node can't flood the frontier;
             // rank by path cost, not raw move count.
-            children.sort_by_key(|n| n.ergo);
+            children.sort_by_key(|n| (std::cmp::Reverse(n.prio), n.ergo));
             children.truncate(6);
             next.extend(children);
         }
         if next.is_empty() {
             break;
         }
-        next.sort_by_key(|n| n.ergo);
+        next.sort_by_key(|n| (std::cmp::Reverse(n.prio), n.ergo));
         next.truncate(MAX_FRONTIER);
 
         // Evaluate every node with >= 1 trained segment: kewb solves the rest.
@@ -358,6 +378,7 @@ fn guided_solution(
             let candidate = GuidedSolution {
                 total_htm: total,
                 trained_used: node.trained_used,
+                prio: node.prio,
                 ergo_cost,
                 first_trained_ergo: node.first_trained_ergo.unwrap_or(node.ergo),
                 segments,
@@ -368,6 +389,7 @@ fn guided_solution(
             let key = |g: &GuidedSolution| {
                 (
                     std::cmp::Reverse(g.trained_used),
+                    std::cmp::Reverse(g.prio),
                     g.first_trained_ergo,
                     g.ergo_cost,
                 )
@@ -385,6 +407,35 @@ fn guided_solution(
 mod tests {
     use super::*;
     use cube_core::{CaseDef, RecogKind, SplitMix64};
+
+    #[test]
+    fn guided_total_respects_the_user_cap() {
+        ensure_table();
+        let rec = rec_with(&[(
+            "pll-t",
+            CaseSet::Pll,
+            "R U R' U' R' F R2 U' R' U' R U R' F'",
+            RecogKind::Pll,
+        )]);
+        let t_idx = rec.find_by_id("pll-t").unwrap();
+        let mut rng = SplitMix64::new(5);
+        for round in 0..6 {
+            let state = rec.setup_state(t_idx, &mut rng);
+            let base = solve(&state).unwrap();
+            for cap in [0usize, 2, 6] {
+                if let Some(g) =
+                    guided_solution(&state, &base, &[t_idx], &rec, cap).unwrap()
+                {
+                    assert!(
+                        g.total_htm <= base.len_htm() + cap,
+                        "round {round} cap {cap}: {} > {} + {cap}",
+                        g.total_htm,
+                        base.len_htm()
+                    );
+                }
+            }
+        }
+    }
 
     fn ensure_table() {
         if !crate::table_ready() {
@@ -427,7 +478,7 @@ mod tests {
         let mut rng = SplitMix64::new(7);
         let state = rec.setup_state(t_idx, &mut rng);
 
-        let out = solve_with_hints(&state, &[t_idx], &rec).unwrap();
+        let out = solve_with_hints(&state, &[t_idx], &rec, 6).unwrap();
         // The hint pass must see T-Perm at step 0.
         assert!(
             out.inline_hints.iter().any(|h| h.step == 0 && h.matched.case_idx == t_idx),
@@ -477,7 +528,7 @@ mod tests {
         let mut rng = SplitMix64::new(11);
         let state = rec.setup_state(t_idx, &mut rng);
 
-        let guided = solve_with_hints(&state, &[t_idx], &rec)
+        let guided = solve_with_hints(&state, &[t_idx], &rec, 6)
             .unwrap()
             .guided
             .expect("guided");
@@ -530,7 +581,7 @@ mod tests {
         state.apply_alg(&Alg::parse("R U R' U' R' F R2 U' R' U' R U R' F'").unwrap().inverse());
         state.apply_alg(&Alg::parse("R'").unwrap());
 
-        let out = solve_with_hints(&state, &[t_idx], &rec).unwrap();
+        let out = solve_with_hints(&state, &[t_idx], &rec, 6).unwrap();
         let guided = out.guided.expect("guided solution with setup");
         assert_eq!(guided.trained_used, 1, "T-Perm woven in after a setup move");
         let mut s = state;
@@ -560,7 +611,7 @@ mod tests {
         state.apply_alg(&Alg::parse("R U R' U' R' F R2 U' R' U' R U R' F'").unwrap().inverse());
         state.apply_alg(&Alg::parse("R U R' U R U2 R'").unwrap().inverse());
 
-        let out = solve_with_hints(&state, &[sune, t], &rec).unwrap();
+        let out = solve_with_hints(&state, &[sune, t], &rec, 6).unwrap();
         let guided = out.guided.expect("guided solution");
         assert_eq!(guided.trained_used, 2, "should chain Sune then T-Perm");
         let mut s = state;

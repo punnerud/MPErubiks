@@ -51,6 +51,16 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
             if flags::flag_button(ui, Lang::En, app.i18n.lang == Lang::En) {
                 app.set_lang(Lang::En);
             }
+            // Solution settings (gear).
+            let (rect, resp) =
+                ui.allocate_exact_size(Vec2::new(44.0, 40.0), egui::Sense::click());
+            icons::draw_gear(ui.painter(), rect);
+            if resp.clicked() {
+                let prev = std::mem::replace(&mut app.screen, crate::app::Screen::Menu);
+                app.screen = crate::app::Screen::Settings(
+                    crate::screens::settings::SettingsScreen { prev: Box::new(prev) },
+                );
+            }
         });
     });
 

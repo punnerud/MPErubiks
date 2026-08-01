@@ -70,6 +70,23 @@ pub fn solved_face(color: Color32) -> [[Color32; 3]; 3] {
 }
 
 /// Camera icon (for the scan/solve flow).
+/// Settings gear: ring + eight teeth + hub.
+pub fn draw_gear(p: &egui::Painter, r: Rect) {
+    let c = r.center();
+    let radius = r.width().min(r.height()) * 0.32;
+    let col = egui::Color32::from_gray(200);
+    for i in 0..8 {
+        let a = i as f32 * std::f32::consts::TAU / 8.0;
+        let d = egui::Vec2::new(a.cos(), a.sin());
+        p.line_segment(
+            [c + d * radius, c + d * (radius * 1.45)],
+            egui::Stroke::new(radius * 0.42, col),
+        );
+    }
+    p.circle_stroke(c, radius, egui::Stroke::new(radius * 0.5, col));
+    p.circle_filled(c, radius * 0.35, egui::Color32::from_gray(90));
+}
+
 pub fn draw_camera(p: &egui::Painter, r: Rect) {
     let body = Rect::from_min_max(
         Pos2::new(r.left(), r.top() + r.height() * 0.22),

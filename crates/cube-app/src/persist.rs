@@ -79,6 +79,42 @@ pub fn warm_app(app: &mut RubiksApp) {
             }
         }
     }
+    // Guided-solution prefs — AFTER trained, so unknown/untrained ids
+    // can be dropped and newly trained ones appended (lowest priority).
+    {
+        let mode = store.setting("hints.mode").ok().flatten();
+        app.hints.mode = match mode.as_deref() {
+            Some("practice") => crate::app::HintMode::Practice,
+            Some("off") => crate::app::HintMode::Off,
+            _ => crate::app::HintMode::Full,
+        };
+        if let Some(v) = store.setting("hints.max_extra").ok().flatten() {
+            if let Ok(n) = v.parse::<usize>() {
+                app.hints.max_extra = n.min(12);
+            }
+        }
+        let mut include: Vec<u16> = Vec::new();
+        if let Some(ids) = store.setting("hints.include").ok().flatten() {
+            for id in ids.split(',').filter(|s| !s.is_empty()) {
+                if let Some(idx) = app.library.rec.find_by_id(id) {
+                    if app.trained.contains(&idx) && !include.contains(&idx) {
+                        include.push(idx);
+                    }
+                }
+            }
+        } else {
+            // First run: every trained algorithm included, library order.
+            let mut t: Vec<u16> = app.trained.iter().copied().collect();
+            t.sort_unstable();
+            include = t;
+        }
+        for &t in &app.trained {
+            if !include.contains(&t) {
+                include.push(t);
+            }
+        }
+        app.hints.include = include;
+    }
     if let Ok(rows) = store.all_results() {
         for (id, ms, success) in rows {
             if let Some(idx) = app.library.rec.find_by_id(&id) {

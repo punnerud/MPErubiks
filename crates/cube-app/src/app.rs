@@ -17,6 +17,7 @@ pub enum Screen {
     Play,
     Solve(SolveScreen),
     Train(TrainScreen),
+    Settings(crate::screens::settings::SettingsScreen),
     #[cfg(target_arch = "wasm32")]
     Scan(crate::screens::scan::ScanScreen),
 }
@@ -32,6 +33,35 @@ pub enum AsyncMsg {
     TableBytes(Result<Vec<u8>, String>),
     #[cfg(target_arch = "wasm32")]
     CameraReady(Result<crate::platform::web::camera::Camera, String>),
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum HintMode {
+    /// Today's behavior: star chips + every move shown.
+    Full,
+    /// Practice-stop: the guide halts at a chosen algorithm, shows only
+    /// its NAME, and the user executes it from memory.
+    Practice,
+    /// Pure shortest solution, no algorithm weaving.
+    Off,
+}
+
+pub struct HintSettings {
+    pub mode: HintMode,
+    /// Hard cap on extra moves vs the shortest solution (0..=12).
+    pub max_extra: usize,
+    /// Included algorithms in PRIORITY order (highest first).
+    pub include: Vec<u16>,
+}
+
+impl Default for HintSettings {
+    fn default() -> Self {
+        HintSettings {
+            mode: HintMode::Full,
+            max_extra: 6,
+            include: Vec::new(),
+        }
+    }
 }
 
 pub struct RubiksApp {
@@ -56,6 +86,8 @@ pub struct RubiksApp {
     /// Standard light theme instead of the default dark (front-page
     /// toggle; persisted).
     pub light_mode: bool,
+    /// Guided-solution preferences (gear settings; persisted).
+    pub hints: HintSettings,
     pub tx: Sender<AsyncMsg>,
     rx: Receiver<AsyncMsg>,
 }
@@ -122,6 +154,7 @@ impl RubiksApp {
             attempts: HashMap::new(),
             store,
             light_mode: false,
+            hints: HintSettings::default(),
             tx,
             rx,
         };
@@ -162,11 +195,41 @@ impl RubiksApp {
             self.trained.insert(case_idx);
             true
         };
+        // Keep the guided-solution include list in sync: newly trained
+        // algorithms join at the lowest priority; untrained ones leave.
+        if trained {
+            if !self.hints.include.contains(&case_idx) {
+                self.hints.include.push(case_idx);
+            }
+        } else {
+            self.hints.include.retain(|&c| c != case_idx);
+        }
+        self.save_hint_settings();
         if let Some(store) = &self.store {
             let id = self.library.rec.case(case_idx).id.clone();
             if let Err(e) = store.set_trained(&id, trained) {
                 log::error!("set_trained: {e}");
             }
+            crate::persist::persist(store);
+        }
+    }
+
+    pub fn save_hint_settings(&self) {
+        if let Some(store) = &self.store {
+            let mode = match self.hints.mode {
+                HintMode::Full => "full",
+                HintMode::Practice => "practice",
+                HintMode::Off => "off",
+            };
+            let ids: Vec<String> = self
+                .hints
+                .include
+                .iter()
+                .map(|&c| self.library.rec.case(c).id.clone())
+                .collect();
+            let _ = store.set_setting("hints.mode", mode);
+            let _ = store.set_setting("hints.max_extra", &self.hints.max_extra.to_string());
+            let _ = store.set_setting("hints.include", &ids.join(","));
             crate::persist::persist(store);
         }
     }
@@ -256,6 +319,7 @@ impl eframe::App for RubiksApp {
                 Screen::Play => screens::play::show(self, ui),
                 Screen::Solve(_) => screens::solve::show(self, ui),
                 Screen::Train(_) => screens::train::show(self, ui),
+                Screen::Settings(_) => screens::settings::show(self, ui),
                 #[cfg(target_arch = "wasm32")]
                 Screen::Scan(_) => screens::scan::show(self, ui, frame),
             });

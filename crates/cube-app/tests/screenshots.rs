@@ -186,6 +186,65 @@ fn lesson_practice_unlocked_phone() {
 }
 
 #[test]
+fn settings_screen_phone() {
+    std::env::set_var(
+        "RUBIKS_DATA_DIR",
+        std::env::temp_dir().join(format!("rubiks-test-{}", std::process::id())),
+    );
+    let mut h = Harness::builder()
+        .with_size(egui::Vec2::new(390.0, 740.0))
+        .wgpu()
+        .build_eframe(|cc| RubiksApp::new(cc));
+    {
+        let app = h.state_mut();
+        for id in ["pll-t", "oll-27", "lbl-sune"] {
+            let idx = app.library.rec.find_by_id(id).unwrap();
+            app.trained.insert(idx);
+            app.hints.include.push(idx);
+        }
+        app.hints.mode = cube_app::app::HintMode::Practice;
+        app.screen = Screen::Settings(cube_app::screens::settings::SettingsScreen {
+            prev: Box::new(Screen::Menu),
+        });
+    }
+    h.run_steps(2);
+    h.snapshot("settings_phone");
+}
+
+#[test]
+fn solve_guide_gated_phone() {
+    std::env::set_var(
+        "RUBIKS_DATA_DIR",
+        std::env::temp_dir().join(format!("rubiks-test-{}", std::process::id())),
+    );
+    let mut h = Harness::builder()
+        .with_size(egui::Vec2::new(390.0, 740.0))
+        .wgpu()
+        .build_eframe(|cc| RubiksApp::new(cc));
+    {
+        let app = h.state_mut();
+        let t_idx = app.library.rec.find_by_id("pll-t").unwrap();
+        app.trained.insert(t_idx);
+        let mut rng = cube_core::SplitMix64::new(11);
+        let state = app.library.rec.setup_state(t_idx, &mut rng);
+        let out =
+            cube_solver::solve_with_hints(&state, &[t_idx], &app.library.rec, 6).unwrap();
+        let mut guide =
+            cube_app::screens::solve::GuideState::from_output(out, &app.library.rec, state, true);
+        // Advance to the gate (past AUF/filler) and sync the cube.
+        let mut cube = state;
+        while guide.gate().is_none() && guide.cursor < guide.solution.0.len() {
+            cube.apply(guide.solution.0[guide.cursor]);
+            guide.cursor += 1;
+        }
+        app.cube = cube;
+        app.screen = Screen::Solve(cube_app::screens::solve::SolveScreen::Guide(guide));
+    }
+    h.run_steps(2);
+    h.snapshot("solve_guide_gated");
+}
+
+#[test]
 fn train_session_ready() {
     let mut h = harness();
     {
@@ -217,9 +276,9 @@ fn solve_guide_with_trained_hint() {
         let mut rng = cube_core::SplitMix64::new(3);
         let state = app.library.rec.setup_state(t_idx, &mut rng);
         let out =
-            cube_solver::solve_with_hints(&state, &[t_idx], &app.library.rec).unwrap();
+            cube_solver::solve_with_hints(&state, &[t_idx], &app.library.rec, 6).unwrap();
         assert!(out.guided.is_some(), "T-perm state must yield a guided solution");
-        let guide = cube_app::screens::solve::GuideState::from_output(out, &app.library.rec, state);
+        let guide = cube_app::screens::solve::GuideState::from_output(out, &app.library.rec, state, false);
         assert!(
             guide.labels.iter().any(|l| l.as_deref() == Some("T-Perm")),
             "guided solution must carry the T-Perm label"

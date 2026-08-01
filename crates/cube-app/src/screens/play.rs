@@ -157,6 +157,40 @@ pub fn top_bar(app: &mut RubiksApp, ui: &mut Ui) {
     }
 }
 
+pub enum TopBarAction {
+    None,
+    Back,
+    Gear,
+}
+
+/// Top bar with back arrow AND a settings gear (solve screens): back is
+/// hierarchical, the gear opens solution settings over the current
+/// screen (state preserved).
+pub fn top_bar_with_gear(ui: &mut Ui) -> TopBarAction {
+    let mut action = TopBarAction::None;
+    egui::Panel::top("topbar").show_separator_line(false).show(ui, |ui| {
+        ui.horizontal(|ui| {
+            let (rect, response) =
+                ui.allocate_exact_size(Vec2::new(56.0, 40.0), Sense::click());
+            ui.painter()
+                .rect_filled(rect, 10.0, Color32::from_black_alpha(120));
+            icons::draw_back_arrow(ui.painter(), rect.shrink2(Vec2::new(14.0, 10.0)));
+            if response.clicked() {
+                action = TopBarAction::Back;
+            }
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+                let (rect, resp) =
+                    ui.allocate_exact_size(Vec2::new(44.0, 40.0), Sense::click());
+                icons::draw_gear(ui.painter(), rect);
+                if resp.clicked() {
+                    action = TopBarAction::Gear;
+                }
+            });
+        });
+    });
+    action
+}
+
 /// Draw the top-left back arrow; returns true on click so each screen can
 /// go ONE level back (menu is only the default).
 pub fn top_bar_clicked(ui: &mut Ui) -> bool {

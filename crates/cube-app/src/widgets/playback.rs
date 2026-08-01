@@ -9,13 +9,30 @@ use egui::{Color32, RichText, Ui, Vec2};
 /// The sequence's letters, karaoke-style: played moves dim green, the move
 /// being animated RIGHT NOW is big and bright, upcoming ones gray.
 pub fn karaoke_row(ui: &mut Ui, moves: &[Move], played: usize, animating: bool) {
+    karaoke_row_masked(ui, moves, played, animating, None);
+}
+
+/// Karaoke with optional per-move masking: hidden moves render as dots
+/// (practice-stop keeps an algorithm's moves secret; completed hidden
+/// moves stay green dots — "did it myself" vs revealed letters).
+pub fn karaoke_row_masked(
+    ui: &mut Ui,
+    moves: &[Move],
+    played: usize,
+    animating: bool,
+    hidden: Option<&[bool]>,
+) {
     if moves.is_empty() {
         return;
     }
     ui.horizontal_wrapped(|ui| {
         ui.add_space((ui.available_width() - moves.len() as f32 * 34.0).max(0.0) / 2.0);
         for (i, m) in moves.iter().enumerate() {
-            let text = m.to_string();
+            let text = if hidden.is_some_and(|h| h.get(i).copied().unwrap_or(false)) {
+                "•".to_string()
+            } else {
+                m.to_string()
+            };
             let rich = if i + 1 == played && animating {
                 RichText::new(text)
                     .size(30.0)
