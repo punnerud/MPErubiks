@@ -96,3 +96,11 @@ The screenshot suite renders real app screens through wgpu (lavapipe works)
 into `crates/cube-app/tests/snapshots/`. Scan telemetry (cell crops) uploads
 to a private dev server for offline tuning; personal photos are **never**
 committed to this repo.
+
+## License
+
+[PolyForm Noncommercial 1.0.0](LICENSE.md): free for everyone to use,
+modify and share **for any noncommercial purpose**. All commercial
+rights remain with the copyright owner (Morten Punnerud-Engelstad) —
+only the owner may commercialize this software or license it onward for
+commercial use. Third-party dependencies keep their own licenses.
