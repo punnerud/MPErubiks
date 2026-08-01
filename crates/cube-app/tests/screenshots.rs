@@ -84,6 +84,25 @@ fn train_intro_tab() {
 }
 
 #[test]
+fn lesson_daisy_phone() {
+    // iPhone-ish viewport: the bug class this guards against is buttons
+    // pushed past the right edge or cut by the bottom (URL-bar zone).
+    std::env::set_var(
+        "RUBIKS_DATA_DIR",
+        std::env::temp_dir().join(format!("rubiks-test-{}", std::process::id())),
+    );
+    let mut h = Harness::builder()
+        .with_size(egui::Vec2::new(390.0, 740.0))
+        .wgpu()
+        .build_eframe(|cc| RubiksApp::new(cc));
+    h.state_mut().screen = Screen::Train(cube_app::screens::train::TrainScreen::Lesson(
+        cube_app::screens::train::LessonView { lesson: 2, step: 0, pending: true, demo_len: 0 },
+    ));
+    h.run_steps(3);
+    h.snapshot("lesson_daisy_phone");
+}
+
+#[test]
 fn lesson_daisy_screen() {
     let mut h = harness();
     h.state_mut().screen = Screen::Train(cube_app::screens::train::TrainScreen::Lesson(

@@ -185,6 +185,10 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
     if view.pending {
         view.pending = false;
         app.animator.clear();
+        // Calm demo tempo at every step start: fast playback makes it
+        // impossible to see where the colors come from. The speed
+        // buttons still adjust it during the step.
+        app.animator.secs_per_quarter = 0.6;
         app.selected_face = None;
         // Steps CHAIN: only jump-reset the cube when the state actually
         // differs from the step's starting point (an invisible rewind
@@ -211,7 +215,12 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
         ui.label(RichText::new(app.t(lesson.title)).size(24.0).strong());
     });
 
-    let controls_height = 170.0;
+    // Reserve REAL space for the controls: karaoke row + step text (wraps
+    // to two lines on phones) + two button rows + the 12px item spacing
+    // between all of them + breathing room above the browser's bottom
+    // bar. 170 was measured on desktop and cut the buttons in half on
+    // mobile.
+    let controls_height = 300.0;
     let cube_size = Vec2::new(
         ui.available_width(),
         (ui.available_height() - controls_height).max(120.0),
@@ -237,14 +246,21 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
         karaoke_row(app, ui, view, step);
         ui.label(RichText::new(app.t(step.text)).size(22.0));
         ui.add_space(6.0);
+        // TWO centered rows: speed+turn arrows, then back/replay/next.
+        // One shared row centered for the first group alone pushed the
+        // step buttons past the right screen edge on phones.
         ui.horizontal(|ui| {
             let spacing = ui.spacing().item_spacing.x;
             let unit = ((ui.available_width() - spacing * 7.0) / 6.6).clamp(40.0, 84.0);
             ui.add_space((ui.available_width() - 6.6 * (unit + spacing)).max(0.0) / 2.0);
             crate::widgets::playback::speed_buttons_sized(app, ui, Vec2::new(unit * 0.8, 56.0));
             super::play::turn_arrows_sized(app, ui, Vec2::new(unit, 60.0));
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
             let spacing2 = ui.spacing().item_spacing.x;
-            let unit2 = ((ui.available_width() - spacing2 * 3.0) / 3.0).clamp(60.0, 96.0);
+            let unit2 = ((ui.available_width() - spacing2 * 4.0) / 3.0).clamp(60.0, 96.0);
+            ui.add_space((ui.available_width() - 3.0 * (unit2 + spacing2)).max(0.0) / 2.0);
             let size = Vec2::new(unit2, 60.0);
             let gray = Color32::from_gray(70);
             if icons::big_icon_button(ui, size, gray, "", icons::draw_back_arrow).clicked() {
