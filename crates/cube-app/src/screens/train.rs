@@ -240,6 +240,21 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
     if view.playing && view.cursor < demo_moves.len() {
         ui.ctx().request_repaint();
     }
+    // Demo finished: if it ended exactly where it began (cyclic
+    // sequence), arm Play directly - a Restart to the identical state
+    // is pointless.
+    if view.playing && view.cursor >= demo_moves.len() && app.animator.is_idle() {
+        view.playing = false;
+        let mut start = cube_core::FaceletCube::SOLVED;
+        if let Some(setup) = step.setup {
+            if let Ok(alg) = cube_core::Alg::parse(setup) {
+                start.apply_alg(&alg);
+            }
+        }
+        if app.cube == start {
+            view.cursor = 0;
+        }
+    }
 
     ui.vertical_centered(|ui| {
         ui.label(RichText::new(app.t(lesson.title)).size(24.0).strong());
