@@ -203,7 +203,7 @@ mod tests {
         assert!(anim.pose(0.1).is_some());
         let done = anim.tick(0.26); // R done (0.25s), U2 starts
         assert_eq!(done, Alg::parse("R").unwrap().0);
-        let done = anim.tick(0.80); // U2 takes 0.5s: done at 0.75
+        let done = anim.tick(0.90); // U2 takes 2.4 quarters: done at 0.86
         assert_eq!(done, Alg::parse("U2").unwrap().0);
         let done = anim.tick(5.0);
         assert_eq!(done, Alg::parse("F'").unwrap().0);
