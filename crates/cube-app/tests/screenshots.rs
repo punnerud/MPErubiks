@@ -19,6 +19,17 @@ fn harness<'a>() -> Harness<'a, RubiksApp> {
 }
 
 #[test]
+fn menu_light_mode() {
+    let mut h = harness();
+    h.state_mut().light_mode = true;
+    // apply on next frame via the toggle path: call apply directly
+    h.run_steps(1);
+    cube_app::app::apply_theme(&h.ctx, true);
+    h.run_steps(2);
+    h.snapshot("menu_light");
+}
+
+#[test]
 fn menu_screen() {
     let mut h = harness();
     h.run();

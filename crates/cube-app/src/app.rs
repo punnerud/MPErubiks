@@ -53,6 +53,9 @@ pub struct RubiksApp {
     /// Training attempts per case (persisted via cube-store in M6).
     pub attempts: HashMap<u16, Vec<Attempt>>,
     pub store: Option<cube_store::Store>,
+    /// Standard light theme instead of the default dark (front-page
+    /// toggle; persisted).
+    pub light_mode: bool,
     pub tx: Sender<AsyncMsg>,
     rx: Receiver<AsyncMsg>,
 }
@@ -118,10 +121,17 @@ impl RubiksApp {
             trained: HashSet::new(),
             attempts: HashMap::new(),
             store,
+            light_mode: false,
             tx,
             rx,
         };
         crate::persist::warm_app(&mut app);
+        app.light_mode = app
+            .store
+            .as_ref()
+            .and_then(|s| s.setting("theme").ok().flatten())
+            .is_some_and(|v| v == "light");
+        apply_theme(&cc.egui_ctx, app.light_mode);
         #[cfg(target_arch = "wasm32")]
         crate::platform::web::crumb("new(): app warmed — startup complete");
         app
@@ -289,5 +299,22 @@ fn style(ctx: &egui::Context) {
             font.size *= 1.25;
         }
         style.visuals.panel_fill = egui::Color32::from_rgb(0x12, 0x15, 0x1D);
+    });
+}
+
+/// Dark (default) or standard light theme; toggled on the front page.
+pub fn apply_theme(ctx: &egui::Context, light: bool) {
+    ctx.all_styles_mut(|style| {
+        let base = if light {
+            egui::Visuals::light()
+        } else {
+            egui::Visuals::dark()
+        };
+        style.visuals = base;
+        style.visuals.panel_fill = if light {
+            egui::Color32::from_rgb(0xF2, 0xF3, 0xF7)
+        } else {
+            egui::Color32::from_rgb(0x12, 0x15, 0x1D)
+        };
     });
 }

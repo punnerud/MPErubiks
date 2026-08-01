@@ -165,6 +165,9 @@ pub fn top_bar_clicked(ui: &mut Ui) -> bool {
         ui.horizontal(|ui| {
             let (rect, response) =
                 ui.allocate_exact_size(Vec2::new(56.0, 40.0), Sense::click());
+            // Chip behind the white arrow so it reads on light theme too.
+            ui.painter()
+                .rect_filled(rect, 10.0, Color32::from_black_alpha(120));
             icons::draw_back_arrow(ui.painter(), rect.shrink2(Vec2::new(14.0, 10.0)));
             clicked = response.clicked();
         });

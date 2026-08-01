@@ -7,8 +7,43 @@ use crate::widgets::{flags, icons};
 use egui::{Color32, Rect, Ui, Vec2};
 
 pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
-    // Language flags, top right.
+    // Theme toggle top left, language flags top right.
     ui.horizontal(|ui| {
+        let (rect, resp) =
+            ui.allocate_exact_size(Vec2::new(48.0, 40.0), egui::Sense::click());
+        let p = ui.painter();
+        let c = rect.center();
+        if app.light_mode {
+            // Moon: tap to go dark.
+            let r = 13.0;
+            p.circle_filled(c, r, egui::Color32::from_rgb(0x3A, 0x42, 0x55));
+            p.circle_filled(
+                c + Vec2::new(5.0, -4.0),
+                r * 0.85,
+                ui.visuals().panel_fill,
+            );
+        } else {
+            // Sun: tap to go light.
+            let r = 9.0;
+            let col = egui::Color32::from_rgb(0xFF, 0xD5, 0x00);
+            p.circle_filled(c, r, col);
+            for i in 0..8 {
+                let a = i as f32 * std::f32::consts::TAU / 8.0;
+                let d = Vec2::new(a.cos(), a.sin());
+                p.line_segment([c + d * (r + 3.0), c + d * (r + 7.0)], egui::Stroke::new(2.5, col));
+            }
+        }
+        if resp.clicked() {
+            app.light_mode = !app.light_mode;
+            crate::app::apply_theme(ui.ctx(), app.light_mode);
+            if let Some(store) = &app.store {
+                let _ = store.set_setting(
+                    "theme",
+                    if app.light_mode { "light" } else { "dark" },
+                );
+                crate::persist::persist(store);
+            }
+        }
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
             if flags::flag_button(ui, Lang::No, app.i18n.lang == Lang::No) {
                 app.set_lang(Lang::No);

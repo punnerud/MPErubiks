@@ -17,7 +17,10 @@ pub fn karaoke_row(ui: &mut Ui, moves: &[Move], played: usize, animating: bool) 
         for (i, m) in moves.iter().enumerate() {
             let text = m.to_string();
             let rich = if i + 1 == played && animating {
-                RichText::new(text).size(30.0).strong().color(Color32::WHITE)
+                RichText::new(text)
+                    .size(30.0)
+                    .strong()
+                    .color(ui.visuals().strong_text_color())
             } else if i < played {
                 RichText::new(text)
                     .size(20.0)
