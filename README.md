@@ -1,5 +1,8 @@
 # MPErubiks — Rubik's cube solver & trainer
 
+**▶ Try it live: <https://punnerud.github.io/MPErubiks/>** (camera scanning
+works right in the browser — phones included).
+
 A visual-first Rubik's cube app in Rust, running in the browser via
 WebAssembly (GPU-rendered with wgpu): **scan your real cube with the
 camera**, watch it in 3D, and follow a step-by-step guide — then train the
