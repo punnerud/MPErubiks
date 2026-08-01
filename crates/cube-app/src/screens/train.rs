@@ -54,11 +54,27 @@ pub struct Attempt {
 }
 
 pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
-    super::play::top_bar(app, ui);
+    let back_clicked = super::play::top_bar_clicked(ui);
     let Screen::Train(mut screen) = std::mem::replace(&mut app.screen, Screen::Menu) else {
         return;
     };
     let mut next: Option<Screen> = None;
+    // Hierarchical back: inside a lesson/session the top-left arrow goes
+    // to the picker (on the matching tab), not to the front page.
+    if back_clicked {
+        next = Some(match &screen {
+            TrainScreen::Picker { .. } => Screen::Menu,
+            TrainScreen::Lesson(_) => Screen::Train(TrainScreen::Picker {
+                tab: PickerTab::Intro,
+            }),
+            TrainScreen::Session(session) => {
+                app.animator.clear();
+                Screen::Train(TrainScreen::Picker {
+                    tab: PickerTab::Set(app.library.rec.case(session.case_idx).set),
+                })
+            }
+        });
+    }
 
     match &mut screen {
         TrainScreen::Picker { tab } => picker(app, ui, tab, &mut next),
