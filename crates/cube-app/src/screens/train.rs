@@ -378,35 +378,54 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
                 ui.add_space((ui.available_width() - 5.0 * (unit + spacing)).max(0.0) / 2.0);
                 super::play::turn_arrows_sized(app, ui, Vec2::new(unit, 60.0));
             } else {
+                // Big Play/Pause; a small Restart appears beside it once
+                // the demo has started.
+                let spacing = ui.spacing().item_spacing.x;
                 let play_size = Vec2::new(132.0, 60.0);
-                ui.add_space((ui.available_width() - play_size.x).max(0.0) / 2.0);
-                let started = view.playing || view.cursor > 0;
-                if started {
-                    // Restart = back to the step's start, showing Play
-                    // again (no auto-replay).
-                    if icons::big_icon_button(
+                let small = Vec2::new(60.0, 60.0);
+                let started = view.cursor > 0 || view.playing;
+                let row_w = if started {
+                    play_size.x + spacing + small.x
+                } else {
+                    play_size.x
+                };
+                ui.add_space((ui.available_width() - row_w).max(0.0) / 2.0);
+                if started
+                    && icons::big_icon_button(
                         ui,
-                        play_size,
+                        small,
                         Color32::from_rgb(0x2A, 0x5C, 0xC2),
                         "",
                         icons::draw_reset,
                     )
                     .clicked()
-                    {
-                        view.pending = true;
-                        view.playing = false;
-                    }
-                } else if icons::big_icon_button(
+                {
+                    view.pending = true;
+                    view.playing = false;
+                }
+                let at_end = view.cursor >= demo_moves.len();
+                if icons::big_icon_button(
                     ui,
                     play_size,
                     Color32::from_rgb(0x1E, 0x88, 0x50),
                     "",
-                    icons::draw_play,
+                    if view.playing { icons::draw_pause } else { icons::draw_play },
                 )
                 .clicked()
                 {
-                    view.playing = true;
-                    view.play_at = now + 1.0;
+                    if view.playing {
+                        view.playing = false; // PAUSE (current move finishes)
+                    } else if at_end && !demo_moves.is_empty() {
+                        // Play at the end = replay with the 1s breath.
+                        view.pending = true;
+                        view.playing = true;
+                    } else if view.cursor > 0 {
+                        view.playing = true; // resume instantly
+                        view.play_at = now;
+                    } else {
+                        view.playing = true; // fresh start: 1s breath
+                        view.play_at = now + 1.0;
+                    }
                 }
             }
         });
