@@ -333,7 +333,9 @@ fn solve_cached(
     app: &RubiksApp,
     state: &FaceletCube,
 ) -> Result<Alg, cube_solver::SolveError> {
-    let key = state.normalize_orientation().to_facelet_string();
+    // v2: solutions cached before the shallow-solve fix may be the long
+    // two-phase answer for nearly-solved states - don't serve those.
+    let key = format!("v2:{}", state.normalize_orientation().to_facelet_string());
     if let Some(store) = &app.store {
         if let Ok(Some(cached)) = store.cached_solution(&key) {
             if let Ok(alg) = Alg::parse(&cached) {
