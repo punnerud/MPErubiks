@@ -30,6 +30,8 @@ pub struct GuideState {
     pub origin: FaceletCube,
     /// When the solve finished (drives the confetti cannon).
     pub done_at: Option<f64>,
+    /// Extra confetti bursts: every tap on the solved cube fires again.
+    pub bursts: Vec<f64>,
 }
 
 impl GuideState {
@@ -42,6 +44,7 @@ impl GuideState {
             playing: false,
             origin,
             done_at: None,
+            bursts: Vec::new(),
         }
     }
 
@@ -76,6 +79,7 @@ impl GuideState {
                     playing: false,
                     origin,
                     done_at: None,
+                    bursts: Vec::new(),
                 }
             }
         }
@@ -239,9 +243,11 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
     if done && app.animator.is_idle() {
         if guide.done_at.is_none() {
             guide.done_at = Some(now);
+            guide.bursts.push(now);
         }
     } else {
         guide.done_at = None; // stepping back re-arms the celebration
+        guide.bursts.clear();
     }
     let highlight = (!done && app.animator.is_idle()).then(|| guide.solution.0[guide.cursor]);
     let cube_resp = CubeView {
@@ -253,9 +259,22 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
         color_override: None,
     }
     .show(ui, cube_size);
-    if let Some(t0) = guide.done_at {
-        confetti(ui, cube_resp.rect, now - t0);
-        ui.ctx().request_repaint();
+    if guide.done_at.is_some() {
+        // Tapping the solved cube fires MORE confetti.
+        if cube_resp.clicked() {
+            guide.bursts.push(now);
+        }
+        guide.bursts.retain(|&t0| now - t0 < 3.0);
+        if guide.bursts.len() > 8 {
+            let drop = guide.bursts.len() - 8;
+            guide.bursts.drain(..drop);
+        }
+        for (bi, &t0) in guide.bursts.iter().enumerate() {
+            confetti(ui, cube_resp.rect, now - t0, bi as u64);
+        }
+        if !guide.bursts.is_empty() {
+            ui.ctx().request_repaint();
+        }
     }
 
     ui.vertical_centered(|ui| {
@@ -348,7 +367,7 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
 
 /// Confetti cannon: two bursts from the bottom corners, deterministic
 /// per-particle physics (no RNG at draw time — pure f(t), replayable).
-fn confetti(ui: &Ui, rect: egui::Rect, t: f64) {
+fn confetti(ui: &Ui, rect: egui::Rect, t: f64, burst: u64) {
     const DURATION: f64 = 3.0;
     if !(0.0..DURATION).contains(&t) {
         return;
@@ -365,8 +384,11 @@ fn confetti(ui: &Ui, rect: egui::Rect, t: f64) {
     let h = rect.height();
     let g = 1.6 * h; // px/s^2
     for i in 0..90u64 {
-        // Cheap deterministic hash -> per-particle parameters.
-        let mut z = i.wrapping_mul(0x9E37_79B9_7F4A_7C15).wrapping_add(0xBF58_476D);
+        // Cheap deterministic hash -> per-particle parameters (varied
+        // per burst so every tap looks fresh).
+        let mut z = (i + burst * 97)
+            .wrapping_mul(0x9E37_79B9_7F4A_7C15)
+            .wrapping_add(0xBF58_476D);
         let mut rnd = || {
             z ^= z >> 27;
             z = z.wrapping_mul(0x94D0_49BB_1331_11EB);
