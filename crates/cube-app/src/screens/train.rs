@@ -306,7 +306,7 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
     // to two lines on phones) + ONE button row + item spacing + air above
     // the browser bottom bar (+ the Practice button once unlocked).
     let practice_unlocked = step.practice.is_some() && view.watched;
-    let controls_height = if practice_unlocked { 322.0 } else { 250.0 };
+    let controls_height = if practice_unlocked { 345.0 } else { 275.0 };
     let cube_size = Vec2::new(
         ui.available_width(),
         (ui.available_height() - controls_height).max(120.0),
@@ -332,11 +332,10 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
         karaoke_row(app, ui, view, step);
         ui.label(RichText::new(app.t(step.text)).size(22.0));
         ui.add_space(6.0);
-        // ONE row: prev-step | Play/Restart | next-step. Play starts the
-        // demo (1s breath); once started it becomes Restart. Switching
-        // lesson/algorithm is the top-left back arrow's job — no other
-        // buttons. While a sticker is selected, the row shows the
-        // sandbox turn arrows instead.
+        // Play/Restart centered (or the sandbox turn arrows while a
+        // sticker is selected); Practice under it once unlocked; and at
+        // the bottom a FULL-WIDTH prev/next pair shared with every other
+        // stepping screen (left half back, right half forward).
         ui.horizontal(|ui| {
             let spacing = ui.spacing().item_spacing.x;
             if app.selected_face.is_some() {
@@ -344,33 +343,8 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
                 ui.add_space((ui.available_width() - 5.0 * (unit + spacing)).max(0.0) / 2.0);
                 super::play::turn_arrows_sized(app, ui, Vec2::new(unit, 60.0));
             } else {
-                let unit = ((ui.available_width() - spacing * 4.0) / 3.4).clamp(56.0, 96.0);
-                let size = Vec2::new(unit, 60.0);
-                let play_size = Vec2::new(unit * 1.4, 60.0);
-                ui.add_space(
-                    (ui.available_width() - 2.0 * (unit + spacing) - (play_size.x + spacing))
-                        .max(0.0)
-                        / 2.0,
-                );
-                let gray = Color32::from_gray(70);
-                let first = view.step == 0;
-                let last = view.step + 1 >= lesson.steps.len();
-                let dim_gray = Color32::from_gray(45);
-                if icons::big_icon_button(
-                    ui,
-                    size,
-                    if first { dim_gray } else { gray },
-                    "",
-                    icons::draw_back_arrow,
-                )
-                .clicked()
-                    && !first
-                {
-                    view.step -= 1;
-                    view.pending = true;
-                    view.playing = false;
-                    view.watched = false;
-                }
+                let play_size = Vec2::new(132.0, 60.0);
+                ui.add_space((ui.available_width() - play_size.x).max(0.0) / 2.0);
                 let started = view.playing || view.cursor > 0;
                 if started {
                     // Restart = back to the step's start, showing Play
@@ -399,26 +373,6 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
                     view.playing = true;
                     view.play_at = now + 1.0;
                 }
-                if icons::big_icon_button(
-                    ui,
-                    size,
-                    if last { Color32::from_rgb(0x1E, 0x88, 0x50) } else { gray },
-                    "",
-                    if last { icons::draw_check } else { icons::draw_next_arrow },
-                )
-                .clicked()
-                {
-                    if last {
-                        *next = Some(Screen::Train(TrainScreen::Picker {
-                            tab: PickerTab::Intro,
-                        }));
-                    } else {
-                        view.step += 1;
-                        view.pending = true;
-                        view.playing = false;
-                        view.watched = false;
-                    }
-                }
             }
         });
         // Practice unlocks after the demo has been WATCHED: repeated
@@ -443,6 +397,27 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
                         })));
                     }
                 }
+            }
+        }
+        let first = view.step == 0;
+        let last = view.step + 1 >= lesson.steps.len();
+        let (prev, nxt) = crate::widgets::playback::prev_next_row(ui, !first, last);
+        if prev {
+            view.step -= 1;
+            view.pending = true;
+            view.playing = false;
+            view.watched = false;
+        }
+        if nxt {
+            if last {
+                *next = Some(Screen::Train(TrainScreen::Picker {
+                    tab: PickerTab::Intro,
+                }));
+            } else {
+                view.step += 1;
+                view.pending = true;
+                view.playing = false;
+                view.watched = false;
             }
         }
         ui.add_space(crate::app::BOTTOM_INSET);

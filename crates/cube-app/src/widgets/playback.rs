@@ -47,3 +47,53 @@ pub fn speed_buttons_sized(app: &mut RubiksApp, ui: &mut Ui, size: Vec2) {
         app.animator.secs_per_quarter = (app.animator.secs_per_quarter / 1.5).max(0.08);
     }
 }
+
+/// Full-width prev/next pair, IDENTICAL across every screen that steps
+/// through something: the left half of the screen is "previous", the
+/// right half "next" — big targets, no hunting. `last` renders the next
+/// button as a green checkmark (finish). Returns (prev, next) clicks.
+pub fn prev_next_row(
+    ui: &mut Ui,
+    prev_enabled: bool,
+    last: bool,
+) -> (bool, bool) {
+    let spacing = ui.spacing().item_spacing.x;
+    let w = (ui.available_width() - spacing) / 2.0;
+    let size = Vec2::new(w.max(60.0), 64.0);
+    let mut clicks = (false, false);
+    ui.horizontal(|ui| {
+        let prev_fill = if prev_enabled {
+            Color32::from_gray(70)
+        } else {
+            Color32::from_gray(45)
+        };
+        if crate::widgets::icons::big_icon_button(
+            ui,
+            size,
+            prev_fill,
+            "",
+            crate::widgets::icons::draw_back_arrow,
+        )
+        .clicked()
+            && prev_enabled
+        {
+            clicks.0 = true;
+        }
+        if crate::widgets::icons::big_icon_button(
+            ui,
+            size,
+            Color32::from_rgb(0x1E, 0x88, 0x50),
+            "",
+            if last {
+                crate::widgets::icons::draw_check
+            } else {
+                crate::widgets::icons::draw_next_arrow
+            },
+        )
+        .clicked()
+        {
+            clicks.1 = true;
+        }
+    });
+    clicks
+}
