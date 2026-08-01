@@ -10,6 +10,7 @@ pub enum Lang {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum TextKey {
+    Practice,
     AppTitle,
     MenuSolve,
     MenuTrain,
@@ -90,6 +91,7 @@ fn en(k: TextKey) -> &'static str {
         MenuPlay => "Play",
         Back => "Back",
         Scramble => "Scramble",
+        Practice => "Practice",
         Reset => "Reset",
         Undo => "Undo",
         ComingSoon => "Coming soon!",
@@ -151,6 +153,7 @@ fn no(k: TextKey) -> &'static str {
         MenuPlay => "Lek",
         Back => "Tilbake",
         Scramble => "Bland",
+        Practice => "Øv",
         Reset => "Nullstill",
         Undo => "Angre",
         ComingSoon => "Kommer snart!",

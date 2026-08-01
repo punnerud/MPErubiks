@@ -107,7 +107,7 @@ fn lesson_daisy_phone() {
         .wgpu()
         .build_eframe(|cc| RubiksApp::new(cc));
     h.state_mut().screen = Screen::Train(cube_app::screens::train::TrainScreen::Lesson(
-        cube_app::screens::train::LessonView { lesson: 2, step: 0, pending: true, demo_len: 0, cursor: 0, playing: false, play_at: 0.0 },
+        cube_app::screens::train::LessonView { lesson: 2, step: 0, pending: true, demo_len: 0, cursor: 0, playing: false, play_at: 0.0, watched: false },
     ));
     h.run_steps(3);
     h.snapshot("lesson_daisy_phone");
@@ -117,7 +117,7 @@ fn lesson_daisy_phone() {
 fn lesson_daisy_screen() {
     let mut h = harness();
     h.state_mut().screen = Screen::Train(cube_app::screens::train::TrainScreen::Lesson(
-        cube_app::screens::train::LessonView { lesson: 2, step: 0, pending: true, demo_len: 0, cursor: 0, playing: false, play_at: 0.0 },
+        cube_app::screens::train::LessonView { lesson: 2, step: 0, pending: true, demo_len: 0, cursor: 0, playing: false, play_at: 0.0, watched: false },
     ));
     h.step(); // applies the step's setup and queues the demo
     {
@@ -133,6 +133,59 @@ fn lesson_daisy_screen() {
 }
 
 #[test]
+fn train_session_watch_phone() {
+    std::env::set_var(
+        "RUBIKS_DATA_DIR",
+        std::env::temp_dir().join(format!("rubiks-test-{}", std::process::id())),
+    );
+    let mut h = Harness::builder()
+        .with_size(egui::Vec2::new(390.0, 740.0))
+        .wgpu()
+        .build_eframe(|cc| RubiksApp::new(cc));
+    {
+        let app = h.state_mut();
+        let idx = app.library.rec.find_by_id("pll-t").unwrap();
+        app.cube = app.library.rec.canonical_state(idx);
+        app.screen = Screen::Train(cube_app::screens::train::TrainScreen::Session(
+            cube_app::screens::train::SessionState {
+                case_idx: idx,
+                phase: cube_app::screens::train::Phase::Watch { started: false },
+                from_lesson: None,
+            },
+        ));
+    }
+    h.run_steps(3);
+    h.snapshot("train_session_watch");
+}
+
+#[test]
+fn lesson_practice_unlocked_phone() {
+    std::env::set_var(
+        "RUBIKS_DATA_DIR",
+        std::env::temp_dir().join(format!("rubiks-test-{}", std::process::id())),
+    );
+    let mut h = Harness::builder()
+        .with_size(egui::Vec2::new(390.0, 740.0))
+        .wgpu()
+        .build_eframe(|cc| RubiksApp::new(cc));
+    // Lesson 4 (index): intro-corners step 0 teaches lbl-corner-insert.
+    h.state_mut().screen = Screen::Train(cube_app::screens::train::TrainScreen::Lesson(
+        cube_app::screens::train::LessonView {
+            lesson: 4,
+            step: 0,
+            pending: true,
+            demo_len: 0,
+            cursor: 0,
+            playing: false,
+            play_at: 0.0,
+            watched: true,
+        },
+    ));
+    h.run_steps(3);
+    h.snapshot("lesson_practice_unlocked");
+}
+
+#[test]
 fn train_session_ready() {
     let mut h = harness();
     {
@@ -144,6 +197,7 @@ fn train_session_ready() {
             cube_app::screens::train::SessionState {
                 case_idx: t_idx,
                 phase: cube_app::screens::train::Phase::Ready,
+                from_lesson: None,
             },
         ));
     }

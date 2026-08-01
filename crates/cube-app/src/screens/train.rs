@@ -31,6 +31,8 @@ pub struct LessonView {
     /// Moves of the demo applied so far (drip-fed like the solve guide).
     pub cursor: usize,
     pub playing: bool,
+    /// The step's demo has completed at least once: unlocks Practice.
+    pub watched: bool,
     /// Playback holds until this time: a 1s breath at start/restart so
     /// the eye finds the cube before colors start moving.
     pub play_at: f64,
@@ -39,9 +41,15 @@ pub struct LessonView {
 pub struct SessionState {
     pub case_idx: u16,
     pub phase: Phase,
+    /// Set when Practice was launched from a lesson step: the top-left
+    /// back arrow returns THERE, not to the picker.
+    pub from_lesson: Option<(usize, usize)>,
 }
 
 pub enum Phase {
+    /// See the algorithm first: canonical state + Play/Restart demo;
+    /// the Practice button starts the drill loop.
+    Watch { started: bool },
     Ready,
     Timing { start: f64 },
     Result { ms: u64, success: Option<bool> },
@@ -69,9 +77,21 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
             }),
             TrainScreen::Session(session) => {
                 app.animator.clear();
-                Screen::Train(TrainScreen::Picker {
-                    tab: PickerTab::Set(app.library.rec.case(session.case_idx).set),
-                })
+                match session.from_lesson {
+                    Some((lesson, step)) => Screen::Train(TrainScreen::Lesson(LessonView {
+                        lesson,
+                        step,
+                        pending: true,
+                        demo_len: 0,
+                        cursor: 0,
+                        playing: false,
+                        play_at: 0.0,
+                        watched: true, // they came from Practice: keep it unlocked
+                    })),
+                    None => Screen::Train(TrainScreen::Picker {
+                        tab: PickerTab::Set(app.library.rec.case(session.case_idx).set),
+                    }),
+                }
             }
         });
     }
@@ -142,10 +162,13 @@ fn picker(app: &mut RubiksApp, ui: &mut Ui, tab: &mut PickerTab, next: &mut Opti
                 ui.horizontal_wrapped(|ui| {
                     for case_idx in cases {
                         if case_card(app, ui, case_idx) {
-                            new_case_state(app, case_idx);
+                            // See it first: canonical state + demo player.
+                            app.animator.clear();
+                            app.cube = app.library.rec.canonical_state(case_idx);
                             *next = Some(Screen::Train(TrainScreen::Session(SessionState {
                                 case_idx,
-                                phase: Phase::Ready,
+                                phase: Phase::Watch { started: false },
+                                from_lesson: None,
                             })));
                         }
                     }
@@ -194,6 +217,7 @@ fn intro_picker(app: &mut RubiksApp, ui: &mut Ui, next: &mut Option<Screen>) {
                         cursor: 0,
                         playing: false,
                         play_at: 0.0,
+                        watched: false,
                     })));
                 }
             }
@@ -261,6 +285,7 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
     // is pointless.
     if view.playing && view.cursor >= demo_moves.len() && app.animator.is_idle() {
         view.playing = false;
+        view.watched = true;
         let mut start = cube_core::FaceletCube::SOLVED;
         if let Some(setup) = step.setup {
             if let Ok(alg) = cube_core::Alg::parse(setup) {
@@ -277,11 +302,10 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
     });
 
     // Reserve REAL space for the controls: karaoke row + step text (wraps
-    // to two lines on phones) + two button rows + the 12px item spacing
-    // between all of them + breathing room above the browser's bottom
-    // bar. 170 was measured on desktop and cut the buttons in half on
-    // mobile.
-    let controls_height = 300.0;
+    // to two lines on phones) + ONE button row + item spacing + air above
+    // the browser bottom bar (+ the Practice button once unlocked).
+    let practice_unlocked = step.practice.is_some() && view.watched;
+    let controls_height = if practice_unlocked { 322.0 } else { 250.0 };
     let cube_size = Vec2::new(
         ui.available_width(),
         (ui.available_height() - controls_height).max(120.0),
@@ -344,6 +368,7 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
                     view.step -= 1;
                     view.pending = true;
                     view.playing = false;
+                    view.watched = false;
                 }
                 let started = view.playing || view.cursor > 0;
                 if started {
@@ -390,10 +415,35 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
                         view.step += 1;
                         view.pending = true;
                         view.playing = false;
+                        view.watched = false;
                     }
                 }
             }
         });
+        // Practice unlocks after the demo has been WATCHED: repeated
+        // drilling of this algorithm with fresh random examples.
+        if practice_unlocked {
+            if let Some(case_id) = step.practice {
+                if let Some(case_idx) = app.library.rec.find_by_id(case_id) {
+                    if icons::big_icon_button(
+                        ui,
+                        Vec2::new(190.0, 60.0),
+                        Color32::from_rgb(0x8E, 0x36, 0xB8),
+                        app.t(TextKey::Practice),
+                        icons::draw_dumbbell,
+                    )
+                    .clicked()
+                    {
+                        new_case_state(app, case_idx);
+                        *next = Some(Screen::Train(TrainScreen::Session(SessionState {
+                            case_idx,
+                            phase: Phase::Ready,
+                            from_lesson: Some((view.lesson, view.step)),
+                        })));
+                    }
+                }
+            }
+        }
         ui.add_space(crate::app::BOTTOM_INSET);
     });
 }
@@ -524,8 +574,92 @@ fn session_ui(app: &mut RubiksApp, ui: &mut Ui, session: &mut SessionState, next
     }
     .show(ui, cube_size);
 
+    // The demo alg from the canonical state (same for every frame).
+    let demo_alg = {
+        let canon = app.library.rec.canonical_state(session.case_idx);
+        let m = app
+            .library
+            .rec
+            .recognize_case(&canon, session.case_idx)
+            .unwrap_or(cube_core::Match {
+                case_idx: session.case_idx,
+                pre_auf: 0,
+                y_frame: 0,
+            });
+        app.library.rec.execution_alg(m)
+    };
+
     ui.vertical_centered(|ui| {
         match &mut session.phase {
+        Phase::Watch { started } => {
+            // Karaoke marks each move as it STARTS.
+            let total = demo_alg.0.len();
+            // Before Play: nothing is marked. After: enqueued-minus-
+            // pending, +1 while animating so the marker lights at START.
+            let played = if *started {
+                ((total - app.animator.pending().min(total))
+                    + usize::from(!app.animator.is_idle()))
+                .min(total)
+            } else {
+                0
+            };
+            crate::widgets::playback::karaoke_row(
+                ui,
+                &demo_alg.0,
+                played,
+                !app.animator.is_idle(),
+            );
+            if !app.animator.is_idle() {
+                ui.ctx().request_repaint();
+            }
+            let was_started = *started;
+            ui.horizontal(|ui| {
+                ui.add_space((ui.available_width() - 132.0).max(0.0) / 2.0);
+                if was_started {
+                    // Restart: back to the canonical state, showing Play.
+                    if icons::big_icon_button(
+                        ui,
+                        Vec2::new(132.0, 60.0),
+                        Color32::from_rgb(0x2A, 0x5C, 0xC2),
+                        "",
+                        icons::draw_reset,
+                    )
+                    .clicked()
+                    {
+                        app.animator.clear();
+                        app.cube = app.library.rec.canonical_state(session.case_idx);
+                        *started = false;
+                    }
+                } else if icons::big_icon_button(
+                    ui,
+                    Vec2::new(132.0, 60.0),
+                    Color32::from_rgb(0x1E, 0x88, 0x50),
+                    "",
+                    icons::draw_play,
+                )
+                .clicked()
+                {
+                    app.cube = app.library.rec.canonical_state(session.case_idx);
+                    app.animator.clear();
+                    app.animator.enqueue_all(&demo_alg.0);
+                    *started = true;
+                }
+            });
+            // Practice: into the drill loop with a fresh random example.
+            if icons::big_icon_button(
+                ui,
+                Vec2::new(190.0, 60.0),
+                Color32::from_rgb(0x8E, 0x36, 0xB8),
+                app.t(TextKey::Practice),
+                icons::draw_dumbbell,
+            )
+            .clicked()
+            {
+                new_case_state(app, session.case_idx);
+                session.phase = Phase::Ready;
+            }
+            ui.label(RichText::new(alg_text.clone()).size(16.0).weak());
+        }
         Phase::Ready => {
             if big_tap_zone(ui, Color32::from_rgb(0x1E, 0x88, 0x50), "GO", 56.0) {
                 session.phase = Phase::Timing { start: now };
