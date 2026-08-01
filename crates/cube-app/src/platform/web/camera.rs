@@ -132,11 +132,11 @@ impl Camera {
         })
     }
 
-    /// Detect how far the sticker grid sits from the guide square, in
-    /// working-canvas pixels: downscale the square into the alignment
-    /// canvas and run the projection matcher. Returns (dx, dy,
-    /// confidence); apply the offset only when confidence is high.
-    pub fn grid_align(&self) -> Option<(f32, f32, f32)> {
+    /// Detect where the sticker grid sits inside the guide square:
+    /// offset AND per-axis scale, in working-canvas terms (downscaled
+    /// 120x120 readback + projection matcher). Returns (dx, dy, sx, sy,
+    /// confidence); apply only when confidence is high.
+    pub fn grid_align(&self) -> Option<(f32, f32, f32, f32, f32)> {
         let (w, h) = self.canvas_dims();
         if w == 0 || h == 0 {
             return None;
@@ -162,10 +162,15 @@ impl Camera {
             .get_image_data(0.0, 0.0, f64::from(ALIGN_SIZE), f64::from(ALIGN_SIZE))
             .ok()?;
         let rgba = data.data().to_vec();
-        let (dx, dy, conf) =
-            cube_vision::grid_offset(&rgba, ALIGN_SIZE as usize, ALIGN_SIZE as usize);
+        let f = cube_vision::grid_fit(&rgba, ALIGN_SIZE as usize, ALIGN_SIZE as usize);
         let scale = side / f64::from(ALIGN_SIZE);
-        Some(((dx as f64 * scale) as f32, (dy as f64 * scale) as f32, conf))
+        Some((
+            (f64::from(f.dx) * scale) as f32,
+            (f64::from(f.dy) * scale) as f32,
+            f.sx,
+            f.sy,
+            f.conf,
+        ))
     }
 
     pub fn ready(&self) -> bool {
@@ -221,22 +226,28 @@ impl Camera {
     pub fn sample_cells(
         &self,
         rotation: u8,
-        offset: (f32, f32),
+        fit: (f32, f32, f32, f32),
     ) -> Option<[(Vec<u8>, usize, usize); 9]> {
         let (w, h) = self.canvas_dims();
         if w == 0 || h == 0 {
             return None;
         }
         let side = 0.6 * f64::from(w.min(h));
-        // Grid auto-alignment: the whole sampled square follows the
-        // detected sticker grid (clamped inside the frame).
+        // Grid auto-fit: the sampled grid follows the detected sticker
+        // grid in position AND size (clamped inside the frame).
         let max_off = side / 6.0;
-        let dx = f64::from(offset.0).clamp(-max_off, max_off);
-        let dy = f64::from(offset.1).clamp(-max_off, max_off);
-        let left = ((f64::from(w) - side) / 2.0 + dx).clamp(0.0, f64::from(w) - side);
-        let top = ((f64::from(h) - side) / 2.0 + dy).clamp(0.0, f64::from(h) - side);
-        let cell = side / 3.0;
-        let inset = cell * 0.14; // keep clear of the painted grid lines
+        let (sx, sy) = (
+            f64::from(fit.2).clamp(0.8, 1.2),
+            f64::from(fit.3).clamp(0.8, 1.2),
+        );
+        let dx = f64::from(fit.0).clamp(-max_off, max_off) + side * (1.0 - sx) / 2.0;
+        let dy = f64::from(fit.1).clamp(-max_off, max_off) + side * (1.0 - sy) / 2.0;
+        let (side_x, side_y) = (side * sx, side * sy);
+        let left = ((f64::from(w) - side) / 2.0 + dx).clamp(0.0, f64::from(w) - side_x);
+        let top = ((f64::from(h) - side) / 2.0 + dy).clamp(0.0, f64::from(h) - side_y);
+        let (cell_x, cell_y) = (side_x / 3.0, side_y / 3.0);
+        let inset_x = cell_x * 0.14; // keep clear of the painted grid lines
+        let inset_y = cell_y * 0.14;
 
         let mut out: Vec<(Vec<u8>, usize, usize)> = Vec::with_capacity(9);
         for display_row in 0..3usize {
@@ -246,10 +257,11 @@ impl Camera {
                     let (r, c) = (row, col);
                     (row, col) = (2 - c, r);
                 }
-                let x = left + col as f64 * cell + inset;
-                let y = top + row as f64 * cell + inset;
-                let cw = (cell - 2.0 * inset).max(4.0);
-                let data = self.ctx.get_image_data(x, y, cw, cw).ok()?;
+                let x = left + col as f64 * cell_x + inset_x;
+                let y = top + row as f64 * cell_y + inset_y;
+                let cw = (cell_x - 2.0 * inset_x).max(4.0);
+                let ch = (cell_y - 2.0 * inset_y).max(4.0);
+                let data = self.ctx.get_image_data(x, y, cw, ch).ok()?;
                 let rgba = data.data().to_vec();
                 let px = (rgba.len() / 4) as f64;
                 let side_px = px.sqrt().round() as usize;

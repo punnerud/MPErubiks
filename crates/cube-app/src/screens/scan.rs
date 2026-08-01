@@ -85,10 +85,10 @@ pub struct ScanScreen {
     /// side before the auto-snap re-arms (no double-captures of one side).
     last_captured: Option<[Option<u8>; 9]>,
     stable_ticks: u8,
-    /// Smoothed grid auto-alignment offset (working-canvas px) and its
-    /// confidence: the guide square follows the cube instead of demanding
-    /// pixel-perfect framing from the user.
-    grid_off: (f32, f32),
+    /// Smoothed grid auto-fit (canvas px offset + per-axis scale) and its
+    /// confidence: sampling follows the cube's actual position and size,
+    /// invisibly — the painted grid stays fixed.
+    grid_fit: (f32, f32, f32, f32),
     grid_conf: f32,
     last_sample: f64,
     cal: Calibration,
@@ -132,7 +132,7 @@ impl ScanScreen {
             last_cells: None,
             last_captured: None,
             stable_ticks: 0,
-            grid_off: (0.0, 0.0),
+            grid_fit: (0.0, 0.0, 1.0, 1.0),
             grid_conf: 0.0,
             last_sample: 0.0,
             cal: Calibration::default_stickers(),
@@ -243,17 +243,22 @@ fn scan_ui(
     if cam_ready && !in_flash && screen.face_idx < 6 && now - screen.last_sample > 0.1 {
         screen.last_sample = now;
         if let CameraState::Ready(cam) = &screen.camera {
-            if let Some((dx, dy, conf)) = cam.grid_align() {
+            if let Some((dx, dy, sx, sy, conf)) = cam.grid_align() {
                 screen.grid_conf = conf;
-                let target = if conf > 0.4 { (dx, dy) } else { (0.0, 0.0) };
-                // Smooth toward the detected grid so the square glides,
-                // not jitters.
-                screen.grid_off.0 += (target.0 - screen.grid_off.0) * 0.35;
-                screen.grid_off.1 += (target.1 - screen.grid_off.1) * 0.35;
+                let target = if conf > 0.4 {
+                    (dx, dy, sx, sy)
+                } else {
+                    (0.0, 0.0, 1.0, 1.0)
+                };
+                // Smooth toward the detected grid: steady, not jittery.
+                screen.grid_fit.0 += (target.0 - screen.grid_fit.0) * 0.35;
+                screen.grid_fit.1 += (target.1 - screen.grid_fit.1) * 0.35;
+                screen.grid_fit.2 += (target.2 - screen.grid_fit.2) * 0.35;
+                screen.grid_fit.3 += (target.3 - screen.grid_fit.3) * 0.35;
             }
         }
         let cells = match &screen.camera {
-            CameraState::Ready(cam) => cam.sample_cells(rotation, screen.grid_off),
+            CameraState::Ready(cam) => cam.sample_cells(rotation, screen.grid_fit),
             _ => None,
         };
         if let Some(cells) = cells {

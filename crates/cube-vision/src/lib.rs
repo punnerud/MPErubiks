@@ -548,6 +548,23 @@ mod tests {
 /// the given image and a confidence ratio (best/base score); callers
 /// should ignore offsets when confidence is ~1 (no structure found).
 pub fn grid_offset(rgba: &[u8], width: usize, height: usize) -> (f32, f32, f32) {
+    let f = grid_fit(rgba, width, height);
+    (f.dx, f.dy, f.conf)
+}
+
+/// Full grid fit: translation AND scale per axis (the cube rarely fills
+/// the guide square exactly; outer cells clip rings when the size is
+/// off, which a pure offset cannot fix).
+#[derive(Clone, Copy, Debug)]
+pub struct GridFit {
+    pub dx: f32,
+    pub dy: f32,
+    pub sx: f32,
+    pub sy: f32,
+    pub conf: f32,
+}
+
+pub fn grid_fit(rgba: &[u8], width: usize, height: usize) -> GridFit {
     assert_eq!(rgba.len(), width * height * 4, "grid buffer size");
     let mut col = vec![0f32; width];
     let mut row = vec![0f32; height];
@@ -572,20 +589,21 @@ pub fn grid_offset(rgba: &[u8], width: usize, height: usize) -> (f32, f32, f32) 
             }
         }
     }
-    let axis = |proj: &[f32]| -> (f32, f32) {
+    let axis = |proj: &[f32]| -> (f32, f32, f32) {
         let n = proj.len();
         let nf = n as f32;
-        // Score an offset: chroma inside the three sticker spans counts
-        // for, chroma inside the gap windows (boundaries at 1/3, 2/3 and
-        // the outer edges) counts heavily against.
-        let score = |o: f32| -> f32 {
+        // Score a (offset, scale) pair: mass inside the three sticker
+        // spans counts for, mass in the gap windows (boundaries at 1/3,
+        // 2/3 and the outer edges of the scaled grid) counts against.
+        let score = |o: f32, sc: f32| -> f32 {
+            let g0 = o + nf * (1.0 - sc) / 2.0;
+            let span = nf * sc;
             let mut s = 0.0;
             for (i, &v) in proj.iter().enumerate() {
-                let u = (i as f32 - o) / nf; // grid-relative 0..1
+                let u = (i as f32 - g0) / span; // grid-relative 0..1
                 if !(0.0..=1.0).contains(&u) {
                     continue;
                 }
-                // Distance to the nearest internal gap center.
                 let d1 = (u - 1.0 / 3.0).abs();
                 let d2 = (u - 2.0 / 3.0).abs();
                 let d_edge = u.min(1.0 - u);
@@ -595,30 +613,41 @@ pub fn grid_offset(rgba: &[u8], width: usize, height: usize) -> (f32, f32, f32) 
                     s += v;
                 }
             }
-            s
+            // Slight preference for larger grids: a shrunken grid can
+            // hide inside a bigger one's stickers, never the reverse.
+            s * (0.9 + 0.1 * sc)
         };
-        let (mut best_o, mut best_s) = (0.0, score(0.0));
+        let (mut best_o, mut best_sc, mut best_s) = (0.0, 1.0, score(0.0, 1.0));
         let half_cell = nf / 6.0;
-        let mut o = -half_cell;
-        while o <= half_cell {
-            let s = score(o);
-            if s > best_s {
-                best_s = s;
-                best_o = o;
+        for step in 0..9 {
+            let sc = 0.84 + step as f32 * 0.04; // 0.84..1.16
+            let mut o = -half_cell;
+            while o <= half_cell {
+                let s = score(o, sc);
+                if s > best_s {
+                    best_s = s;
+                    best_o = o;
+                    best_sc = sc;
+                }
+                o += (nf / 100.0).max(1.0);
             }
-            o += (nf / 100.0).max(1.0);
         }
-        // Confidence: the aligned score as a fraction of all chroma mass.
-        // A real sticker grid keeps its gaps chroma-free, so the winning
-        // offset retains most of the mass (~0.8); structureless content
-        // (uniform chroma, or none) stays low.
+        // Confidence: winning score as a fraction of all mass (a real
+        // grid keeps its gaps mass-free; structureless content scores
+        // low either way).
         let total: f32 = proj.iter().sum();
         let conf = if total > 1e-3 { (best_s / total).max(0.0) } else { 0.0 };
-        (best_o, conf)
+        (best_o, best_sc, conf)
     };
-    let (dx, cx) = axis(&col);
-    let (dy, cy) = axis(&row);
-    (dx, dy, cx.min(cy))
+    let (dx, sx, cx) = axis(&col);
+    let (dy, sy, cy) = axis(&row);
+    GridFit {
+        dx,
+        dy,
+        sx,
+        sy,
+        conf: cx.min(cy),
+    }
 }
 
 #[cfg(test)]
@@ -648,6 +677,35 @@ mod grid_tests {
             }
         }
         img
+    }
+
+    #[test]
+    fn scaled_sheet_is_recovered() {
+        // Sticker sheet drawn at 85% size, shifted: the fit must find
+        // both, or the outer cells clip the stickers.
+        let mut img = vec![0u8; 120 * 120 * 4];
+        let (scale, sx, sy) = (0.85f32, 6i32, -4i32);
+        for y in 0..120usize {
+            for x in 0..120usize {
+                let u = ((x as f32 - sx as f32) / 120.0 - 0.5) / scale + 0.5;
+                let v = ((y as f32 - sy as f32) / 120.0 - 0.5) / scale + 0.5;
+                let in_sticker = |t: f32| {
+                    let cell = (t * 3.0).floor();
+                    let frac = t * 3.0 - cell;
+                    (0.0..=2.9).contains(&cell) && (0.12..=0.88).contains(&frac)
+                };
+                let px = &mut img[(y * 120 + x) * 4..(y * 120 + x) * 4 + 4];
+                if (0.0..1.0).contains(&u) && (0.0..1.0).contains(&v) && in_sticker(u) && in_sticker(v) {
+                    px.copy_from_slice(&[220, 60, 40, 255]);
+                } else {
+                    px.copy_from_slice(&[25, 25, 25, 255]);
+                }
+            }
+        }
+        let f = grid_fit(&img, 120, 120);
+        assert!((f.sx - 0.85).abs() <= 0.05 && (f.sy - 0.85).abs() <= 0.05, "{f:?}");
+        assert!((f.dx - 6.0).abs() <= 4.0 && (f.dy + 4.0).abs() <= 4.0, "{f:?}");
+        assert!(f.conf > 0.5, "{f:?}");
     }
 
     #[test]

@@ -46,11 +46,15 @@ fn kewb_moves_to_alg(moves: &[kewb::Move]) -> Alg {
     Alg::parse(&text).expect("kewb notation is a subset of ours")
 }
 
-/// Solve within 21 moves (hard bound); falls back to 23 on the rare miss.
+/// Solve within 23 moves: kewb finds those near-instantly, while a hard
+/// 21-bound can grind for 10+ seconds on one wasm thread for unlucky
+/// states (field-measured). Most solutions still land <=21, the guide is
+/// pedagogically identical at 22-23, and the MPEdb solution cache makes
+/// every repeat instant.
 /// `timeout: None` everywhere — kewb's timeout path burns the full budget
 /// and uses `std::time::Instant`, which panics on wasm.
 pub fn solve(s: &FaceletCube) -> Result<Alg, SolveError> {
-    solve_bounded(s, 21).or_else(|e| match e {
+    solve_bounded(s, 23).or_else(|e| match e {
         SolveError::NoSolution => solve_bounded(s, 23),
         other => Err(other),
     })
@@ -97,7 +101,7 @@ mod tests {
     }
 
     #[test]
-    fn solves_100_random_states_within_21() {
+    fn solves_100_random_states_within_23() {
         ensure_table();
         let mut over_21 = 0;
         for i in 0..100 {
@@ -110,7 +114,7 @@ mod tests {
             }
             assert!(alg.len_htm() <= 23, "state {i}: {} moves", alg.len_htm());
         }
-        assert_eq!(over_21, 0, "{over_21} states needed the 23-move fallback");
+        eprintln!("{over_21}/100 solutions used 22-23 moves");
     }
 
     #[test]
