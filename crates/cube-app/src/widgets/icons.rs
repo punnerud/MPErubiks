@@ -70,21 +70,28 @@ pub fn solved_face(color: Color32) -> [[Color32; 3]; 3] {
 }
 
 /// Camera icon (for the scan/solve flow).
-/// Settings gear: ring + eight teeth + hub.
+/// Settings gear: six CLEAR square teeth around a ring with a hub hole
+/// (the previous version's thick ring swallowed the teeth — it read as
+/// a plain circle).
 pub fn draw_gear(p: &egui::Painter, r: Rect) {
     let c = r.center();
-    let radius = r.width().min(r.height()) * 0.32;
-    let col = egui::Color32::from_gray(200);
-    for i in 0..8 {
-        let a = i as f32 * std::f32::consts::TAU / 8.0;
+    let radius = r.width().min(r.height()) * 0.26;
+    let col = egui::Color32::from_gray(205);
+    for i in 0..6 {
+        let a = i as f32 * std::f32::consts::TAU / 6.0 + 0.26;
         let d = egui::Vec2::new(a.cos(), a.sin());
-        p.line_segment(
-            [c + d * radius, c + d * (radius * 1.45)],
-            egui::Stroke::new(radius * 0.42, col),
-        );
+        let n = egui::Vec2::new(-d.y, d.x);
+        let inner = c + d * (radius * 0.9);
+        let outer = c + d * (radius * 1.65);
+        let w = radius * 0.34;
+        p.add(egui::Shape::convex_polygon(
+            vec![inner + n * w, outer + n * w * 0.7, outer - n * w * 0.7, inner - n * w],
+            col,
+            egui::Stroke::NONE,
+        ));
     }
-    p.circle_stroke(c, radius, egui::Stroke::new(radius * 0.5, col));
-    p.circle_filled(c, radius * 0.35, egui::Color32::from_gray(90));
+    p.circle_filled(c, radius * 1.05, col);
+    p.circle_filled(c, radius * 0.45, egui::Color32::from_gray(40));
 }
 
 pub fn draw_camera(p: &egui::Painter, r: Rect) {

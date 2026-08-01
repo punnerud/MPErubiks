@@ -115,6 +115,39 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
                 }
             });
 
+            // --- Tap-select mode: side vs cell ---
+            ui.add_space(10.0);
+            ui.label(RichText::new(app.t(TextKey::TapSelectTitle)).size(18.0).weak());
+            ui.horizontal(|ui| {
+                ui.add_space((ui.available_width() - 2.0 * 128.0).max(0.0) / 2.0);
+                let opts = [
+                    (false, TextKey::TapSelectSide),
+                    (true, TextKey::TapSelectCell),
+                ];
+                for (cell, label) in opts {
+                    let active = app.tap_cell == cell;
+                    let color = if active {
+                        Color32::from_rgb(0x1E, 0x88, 0x50)
+                    } else {
+                        Color32::from_gray(60)
+                    };
+                    let (rect, resp) =
+                        ui.allocate_exact_size(Vec2::new(116.0, 52.0), Sense::click());
+                    ui.painter().rect_filled(rect, 12.0, color);
+                    ui.painter().text(
+                        rect.center(),
+                        egui::Align2::CENTER_CENTER,
+                        app.t(label),
+                        egui::FontId::proportional(16.0),
+                        Color32::WHITE,
+                    );
+                    if resp.clicked() {
+                        app.tap_cell = cell;
+                        dirty = true;
+                    }
+                }
+            });
+
             // --- Priority list: trained algorithms only, flat order ---
             ui.add_space(12.0);
             let include = app.hints.include.clone();

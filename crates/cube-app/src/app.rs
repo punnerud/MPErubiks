@@ -88,6 +88,10 @@ pub struct RubiksApp {
     pub light_mode: bool,
     /// Guided-solution preferences (gear settings; persisted).
     pub hints: HintSettings,
+    /// Tap-select mode: false = tap selects the SIDE you touched,
+    /// true = CELL mode (center = that face, edge cell = the adjacent
+    /// side it borders). Gear setting; persisted.
+    pub tap_cell: bool,
     pub tx: Sender<AsyncMsg>,
     rx: Receiver<AsyncMsg>,
 }
@@ -155,6 +159,7 @@ impl RubiksApp {
             store,
             light_mode: false,
             hints: HintSettings::default(),
+            tap_cell: false,
             tx,
             rx,
         };
@@ -230,6 +235,10 @@ impl RubiksApp {
             let _ = store.set_setting("hints.mode", mode);
             let _ = store.set_setting("hints.max_extra", &self.hints.max_extra.to_string());
             let _ = store.set_setting("hints.include", &ids.join(","));
+            let _ = store.set_setting(
+                "tap_select",
+                if self.tap_cell { "cell" } else { "side" },
+            );
             crate::persist::persist(store);
         }
     }

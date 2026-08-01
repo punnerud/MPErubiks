@@ -69,9 +69,47 @@ pub fn view_relative_arrows(orbit: &OrbitCamera, face: Face) -> [(ArrowDir, Turn
 /// rect mapped to (-1..1, -1..1) with +y up. Returns the OUTER face whose
 /// sticker was hit (tapping any right-side sticker selects R, etc.).
 pub fn pick_face(orbit: &OrbitCamera, aspect: f32, ndc: (f32, f32)) -> Option<Face> {
+    pick(orbit, aspect, ndc).map(|(face, _)| face)
+}
+
+/// CELL-select mode: the tapped face's center cell selects that face's
+/// layer, an edge cell selects the NEIGHBORING side it physically
+/// touches (the cell next to the blue face selects blue — intuitive
+/// from any camera angle), and corner cells (ambiguous between two
+/// neighbors) select the tapped face.
+pub fn pick_layer_by_cell(orbit: &OrbitCamera, aspect: f32, ndc: (f32, f32)) -> Option<Face> {
+    let (face, grid) = pick(orbit, aspect, ndc)?;
+    let axis = match face {
+        Face::R | Face::L => 0,
+        Face::U | Face::D => 1,
+        Face::F | Face::B => 2,
+    };
+    let mut neighbor: Option<Face> = None;
+    let mut nonzero = 0;
+    for a in 0..3 {
+        if a == axis || grid[a] == 0 {
+            continue;
+        }
+        nonzero += 1;
+        neighbor = Some(match (a, grid[a] > 0) {
+            (0, true) => Face::R,
+            (0, false) => Face::L,
+            (1, true) => Face::U,
+            (1, false) => Face::D,
+            (2, true) => Face::F,
+            _ => Face::B,
+        });
+    }
+    match nonzero {
+        1 => neighbor,
+        _ => Some(face),
+    }
+}
+
+fn pick(orbit: &OrbitCamera, aspect: f32, ndc: (f32, f32)) -> Option<(Face, [i8; 3])> {
     let (origin, dir) = orbit.ray(aspect, ndc);
 
-    let mut best: Option<(f32, Face)> = None;
+    let mut best: Option<(f32, Face, [i8; 3])> = None;
     for gx in -1i8..=1 {
         for gy in -1i8..=1 {
             for gz in -1i8..=1 {
@@ -97,13 +135,13 @@ pub fn pick_face(orbit: &OrbitCamera, aspect: f32, ndc: (f32, f32)) -> Option<Fa
                     (2, 1) => Face::F,
                     _ => Face::B,
                 };
-                if best.map_or(true, |(bt, _)| t < bt) {
-                    best = Some((t, face));
+                if best.map_or(true, |(bt, _, _)| t < bt) {
+                    best = Some((t, face, grid));
                 }
             }
         }
     }
-    best.map(|(_, f)| f)
+    best.map(|(_, f, g)| (f, g))
 }
 
 /// Slab-method ray/AABB intersection. Returns (t_enter, entry axis, entry
@@ -207,5 +245,28 @@ mod tests {
             vec![U, R, F],
             "visible faces from the default camera"
         );
+    }
+}
+
+#[cfg(test)]
+mod cell_tests {
+    use super::*;
+
+    #[test]
+    fn cell_select_maps_center_edge_and_corner() {
+        // Default orbit looks at F from the front-ish; tap dead center of
+        // the screen -> F's center cell -> F itself.
+        let orbit = OrbitCamera::default();
+        let center = pick_layer_by_cell(&orbit, 1.0, (0.0, 0.0));
+        assert_eq!(center, Some(Face::F));
+        // A tap clearly on the view-left column of the front face picks
+        // the neighbor on that side; on the top row, the top neighbor.
+        // (Exact NDC values probe inside the face, off center.)
+        let left = pick_layer_by_cell(&orbit, 1.0, (-0.28, 0.0));
+        let up = pick_layer_by_cell(&orbit, 1.0, (0.0, 0.30));
+        assert!(left.is_some() && left != Some(Face::F), "left column -> a side, got {left:?}");
+        assert!(up.is_some(), "top row hit");
+        // side-select mode still returns the face itself there.
+        assert_eq!(pick_face(&orbit, 1.0, (-0.28, 0.0)), Some(Face::F));
     }
 }

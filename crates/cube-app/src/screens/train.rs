@@ -116,6 +116,8 @@ fn set_tab_label(set: CaseSet) -> &'static str {
 
 fn picker(app: &mut RubiksApp, ui: &mut Ui, tab: &mut PickerTab, next: &mut Option<Screen>) {
     ui.vertical_centered(|ui| {
+        // Five tabs overflow narrow phones: horizontally draggable.
+        ScrollArea::horizontal().show(ui, |ui| {
         ui.horizontal(|ui| {
             ui.add_space((ui.available_width() - 5.0 * 96.0).max(0.0) / 2.0);
             let tabs = [
@@ -150,6 +152,7 @@ fn picker(app: &mut RubiksApp, ui: &mut Ui, tab: &mut PickerTab, next: &mut Opti
                     *tab = t;
                 }
             }
+        });
         });
     });
     ui.add_space(8.0);

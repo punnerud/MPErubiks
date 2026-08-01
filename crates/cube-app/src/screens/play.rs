@@ -97,7 +97,11 @@ pub fn handle_tap_select(app: &mut RubiksApp, response: &egui::Response) {
                 (pos.x - rect.left()) / rect.width() * 2.0 - 1.0,
                 -((pos.y - rect.top()) / rect.height() * 2.0 - 1.0),
             );
-            let hit = cube_render::pick_face(&app.orbit, rect.aspect_ratio(), ndc);
+            let hit = if app.tap_cell {
+                cube_render::pick_layer_by_cell(&app.orbit, rect.aspect_ratio(), ndc)
+            } else {
+                cube_render::pick_face(&app.orbit, rect.aspect_ratio(), ndc)
+            };
             app.selected_face = if hit == app.selected_face { None } else { hit };
         }
     }

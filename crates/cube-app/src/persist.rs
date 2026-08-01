@@ -114,6 +114,11 @@ pub fn warm_app(app: &mut RubiksApp) {
             }
         }
         app.hints.include = include;
+        app.tap_cell = store
+            .setting("tap_select")
+            .ok()
+            .flatten()
+            .is_some_and(|v| v == "cell");
     }
     if let Ok(rows) = store.all_results() {
         for (id, ms, success) in rows {
