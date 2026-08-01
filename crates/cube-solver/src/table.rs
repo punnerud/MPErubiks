@@ -15,6 +15,16 @@ pub fn install_table(bytes: &[u8]) -> Result<(), crate::SolveError> {
     Ok(())
 }
 
+/// Install from the PACKED asset (table.pack, ~1.9 MB — see table_pack.rs).
+pub fn install_packed_table(bytes: &[u8]) -> Result<(), crate::SolveError> {
+    if TABLE.get().is_some() {
+        return Ok(());
+    }
+    let table = crate::decode_packed(bytes).map_err(crate::SolveError::Table)?;
+    let _ = TABLE.set(table);
+    Ok(())
+}
+
 pub fn table_ready() -> bool {
     TABLE.get().is_some()
 }

@@ -203,9 +203,10 @@ impl RubiksApp {
         while let Ok(msg) = self.rx.try_recv() {
             match msg {
                 AsyncMsg::TableBytes(Ok(bytes)) => {
+                    // Packed asset (table.pack) since M7.
                     #[cfg(target_arch = "wasm32")]
                     crate::platform::web::crumb("table bytes received; decoding");
-                    self.table = match cube_solver::install_table(&bytes) {
+                    self.table = match cube_solver::install_packed_table(&bytes) {
                         Ok(()) => TableState::Ready,
                         Err(e) => TableState::Failed(e.to_string()),
                     };
@@ -258,8 +259,8 @@ fn install_table_for_platform(
 ) -> TableState {
     // Native: the table ships inside the binary.
     static TABLE_BYTES: &[u8] =
-        include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/table.bin"));
-    match cube_solver::install_table(TABLE_BYTES) {
+        include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/table.pack"));
+    match cube_solver::install_packed_table(TABLE_BYTES) {
         Ok(()) => TableState::Ready,
         Err(e) => TableState::Failed(e.to_string()),
     }
@@ -271,7 +272,7 @@ fn install_table_for_platform(ctx: &egui::Context, tx: &Sender<AsyncMsg>) -> Tab
     let ctx = ctx.clone();
     let tx = tx.clone();
     wasm_bindgen_futures::spawn_local(async move {
-        let result = crate::platform::web::fetch_bytes("table.bin").await;
+        let result = crate::platform::web::fetch_bytes("table.pack").await;
         let _ = tx.send(AsyncMsg::TableBytes(result));
         ctx.request_repaint();
     });

@@ -3,10 +3,11 @@ fn main() {
     match args.get(1).map(|s| s.as_str()) {
         Some("gen-table") => gen_table(),
         Some("table-stats") => table_stats(),
+        Some("pack-table") => pack_table(),
         Some("bench-solve") => bench_solve(
             args.get(2).and_then(|s| s.parse().ok()).unwrap_or(20),
         ),
-        _ => eprintln!("usage: cargo run -p xtask -- <gen-table|table-stats|bench-solve [n]>"),
+        _ => eprintln!("usage: cargo run -p xtask -- <gen-table|pack-table|table-stats|bench-solve [n]>"),
     }
 }
 
@@ -27,6 +28,24 @@ fn gen_table() {
 /// the decision is data, not vibes. (The web server should serve the file
 /// with its own transport compression either way; this informs whether a
 /// custom pre-compressed format is worth maintaining.)
+/// table.bin -> assets/table.pack (the asset the app actually ships).
+fn pack_table() {
+    let raw = std::fs::read("assets/table.bin").expect("run gen-table first");
+    let decoded = kewb::fs::decode_table(&raw).expect("decode");
+    let t0 = std::time::Instant::now();
+    let packed = cube_solver::encode_packed(&decoded);
+    let back = cube_solver::decode_packed(&packed).expect("roundtrip decode");
+    assert_eq!(decoded.pruning_table.ep_e, back.pruning_table.ep_e, "roundtrip");
+    std::fs::write("assets/table.pack", &packed).expect("write table.pack");
+    println!(
+        "table.pack: {} bytes ({:.0}% of {}), packed+verified in {:.1?}",
+        packed.len(),
+        packed.len() as f64 / raw.len() as f64 * 100.0,
+        raw.len(),
+        t0.elapsed()
+    );
+}
+
 fn table_stats() {
     let path = std::path::Path::new("assets/table.bin");
     let raw = std::fs::read(path).expect("assets/table.bin missing — run gen-table");
