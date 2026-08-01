@@ -311,7 +311,8 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
                 }
                 let started = view.playing || view.cursor > 0;
                 if started {
-                    // Restart: replay this step's demo from the top.
+                    // Restart = back to the step's start, showing Play
+                    // again (no auto-replay).
                     if icons::big_icon_button(
                         ui,
                         play_size,
@@ -322,7 +323,7 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
                     .clicked()
                     {
                         view.pending = true;
-                        view.playing = true; // replay after the reset
+                        view.playing = false;
                     }
                 } else if icons::big_icon_button(
                     ui,
