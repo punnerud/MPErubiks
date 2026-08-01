@@ -111,6 +111,19 @@ pub fn draw_camera(p: &egui::Painter, r: Rect) {
 }
 
 /// Dumbbell icon (training).
+pub fn draw_star(p: &egui::Painter, r: Rect) {
+    let c = r.center();
+    let outer = r.width().min(r.height()) / 2.2;
+    let inner = outer * 0.45;
+    let mut points = Vec::with_capacity(10);
+    for i in 0..10 {
+        let radius = if i % 2 == 0 { outer } else { inner };
+        let a = -std::f32::consts::FRAC_PI_2 + i as f32 * std::f32::consts::PI / 5.0;
+        points.push(egui::Pos2::new(c.x + radius * a.cos(), c.y + radius * a.sin()));
+    }
+    p.add(egui::Shape::convex_polygon(points, egui::Color32::WHITE, egui::Stroke::NONE));
+}
+
 pub fn draw_dumbbell(p: &egui::Painter, r: Rect) {
     let c = r.center();
     let bar = Rect::from_center_size(c, Vec2::new(r.width() * 0.9, r.height() * 0.14));

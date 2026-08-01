@@ -298,6 +298,34 @@ fn lesson_long_karaoke_practice_phone() {
 }
 
 #[test]
+fn my_way_guide_phone() {
+    std::env::set_var(
+        "RUBIKS_DATA_DIR",
+        std::env::temp_dir().join(format!("rubiks-test-{}", std::process::id())),
+    );
+    let mut h = Harness::builder()
+        .with_size(egui::Vec2::new(390.0, 740.0))
+        .wgpu()
+        .build_eframe(|cc| RubiksApp::new(cc));
+    {
+        let app = h.state_mut();
+        let alg = cube_core::Alg::parse("R U F2 L' D B U2 R' F L2 D'").unwrap();
+        let state = cube_core::FaceletCube::SOLVED.applied_alg(&alg);
+        let plan = cube_solver::my_way(&state, &app.library.rec, &|_| None).unwrap();
+        let guide = cube_app::screens::solve::GuideState::from_my_way(
+            plan,
+            &app.library.rec,
+            state,
+            false,
+        );
+        app.cube = state;
+        app.screen = Screen::Solve(cube_app::screens::solve::SolveScreen::Guide(guide));
+    }
+    h.run_steps(2);
+    h.snapshot("my_way_guide");
+}
+
+#[test]
 fn train_session_ready() {
     let mut h = harness();
     {

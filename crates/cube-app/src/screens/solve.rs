@@ -40,6 +40,8 @@ pub struct GuideState {
     pub practice: bool,
     /// Gated segments whose letters the user asked to see (needed help).
     pub revealed: std::collections::HashSet<u16>,
+    /// «Min vei»: predicted total human time for this plan, ms.
+    pub est_ms: Option<u32>,
 }
 
 impl GuideState {
@@ -57,6 +59,49 @@ impl GuideState {
             seg_id: vec![None; len],
             practice: false,
             revealed: std::collections::HashSet::new(),
+            est_ms: None,
+        }
+    }
+
+    /// Build from a «Min vei» macro plan: every named segment carries its
+    /// algorithm name (and gates under practice mode like any trained
+    /// segment).
+    pub fn from_my_way(
+        plan: cube_solver::MyWayPlan,
+        rec: &cube_core::Recognizer,
+        origin: FaceletCube,
+        practice: bool,
+    ) -> GuideState {
+        let mut moves = Vec::new();
+        let mut labels = Vec::new();
+        let mut seg_id = Vec::new();
+        let mut k: u16 = 0;
+        for seg in &plan.segments {
+            let (label, gate) = match seg.case_idx {
+                Some(idx) => {
+                    k += 1;
+                    (Some(rec.case(idx).name.clone()), Some(k - 1))
+                }
+                None => (None, None),
+            };
+            for (i, &m) in seg.alg.0.iter().enumerate() {
+                moves.push(m);
+                labels.push(label.clone());
+                seg_id.push(if i < seg.auf_len as usize { None } else { gate });
+            }
+        }
+        GuideState {
+            solution: Alg::new(moves),
+            labels,
+            cursor: 0,
+            playing: false,
+            origin,
+            done_at: None,
+            bursts: Vec::new(),
+            seg_id,
+            practice,
+            revealed: std::collections::HashSet::new(),
+            est_ms: Some(plan.total_ms),
         }
     }
 
@@ -106,6 +151,7 @@ impl GuideState {
                     seg_id,
                     practice,
                     revealed: std::collections::HashSet::new(),
+                    est_ms: None,
                 }
             }
         }
@@ -190,7 +236,7 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
                 }
 
                 ui.horizontal(|ui| {
-                    ui.add_space((ui.available_width() - 3.0 * 108.0).max(0.0) / 2.0);
+                    ui.add_space((ui.available_width() - 4.0 * 108.0).max(0.0) / 2.0);
                     let size = Vec2::new(96.0, 76.0);
                     if icons::big_icon_button(
                         ui,
@@ -263,6 +309,60 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
                                         Some(Screen::Solve(SolveScreen::Guide(guide)));
                                 }
                             },
+                        }
+                    }
+                    // «Min vei»: the macro route through the user's OWN
+                    // algorithms, with predicted human time.
+                    if icons::big_icon_button(
+                        ui,
+                        size,
+                        if can_solve {
+                            Color32::from_rgb(0xC7, 0x8A, 0x08)
+                        } else {
+                            Color32::from_gray(70)
+                        },
+                        app.t(TextKey::MyWay),
+                        icons::draw_star,
+                    )
+                    .clicked()
+                        && can_solve
+                    {
+                        match cube_solver::validate(draft) {
+                            Err(e) => *error = Some(e),
+                            Ok(()) => {
+                                let origin = draft.normalize_orientation();
+                                let attempts = app.attempts.clone();
+                                let cost = |case: u16| -> Option<u32> {
+                                    let list = attempts.get(&case)?;
+                                    let ok: Vec<u64> = list
+                                        .iter()
+                                        .filter(|a| a.success)
+                                        .map(|a| a.ms)
+                                        .collect();
+                                    if ok.is_empty() {
+                                        return None;
+                                    }
+                                    Some((ok.iter().sum::<u64>() / ok.len() as u64) as u32)
+                                };
+                                match cube_solver::my_way(&origin, &app.library.rec, &cost) {
+                                    Some(plan) => {
+                                        let practice = matches!(
+                                            app.hints.mode,
+                                            crate::app::HintMode::Practice
+                                        );
+                                        let guide = GuideState::from_my_way(
+                                            plan,
+                                            &app.library.rec,
+                                            origin,
+                                            practice,
+                                        );
+                                        app.cube = origin;
+                                        app.animator.clear();
+                                        next = Some(Screen::Solve(SolveScreen::Guide(guide)));
+                                    }
+                                    None => *error = Some(ValidationError::Unsolvable),
+                                }
+                            }
                         }
                     }
                 });
@@ -392,6 +492,13 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
             guide.practice.then_some(hidden.as_slice()),
         );
 
+        // «Min vei»: predicted total human time for the whole plan.
+        if let Some(ms) = guide.est_ms {
+            ui.colored_label(
+                Color32::from_rgb(0xC7, 0x8A, 0x08),
+                RichText::new(format!("★ ≈ {} s", ms.div_ceil(1000))).size(18.0),
+            );
+        }
         // Trained-algorithm chip: shows WHICH known algorithm this part of
         // the solution is ("you know this bit!").
         if let Some(Some(label)) = guide.labels.get(guide.cursor.min(guide.labels.len().saturating_sub(1))) {
