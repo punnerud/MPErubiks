@@ -176,7 +176,7 @@ fn intro_picker(app: &mut RubiksApp, ui: &mut Ui, next: &mut Option<Screen>) {
                         pending: true,
                         demo_len: 0,
                         cursor: 0,
-                        playing: true,
+                        playing: false,
                         play_at: 0.0,
                     })));
                 }
@@ -219,7 +219,9 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
         }
         view.demo_len = demo_moves.len();
         view.cursor = 0;
-        view.playing = true;
+        // `playing` is left as the caller set it: false on step entry
+        // (the Play button starts the demo), true on Restart (replay
+        // with the same 1s breath).
         view.play_at = now + 1.0;
     }
 
@@ -269,118 +271,89 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
         karaoke_row(app, ui, view, step);
         ui.label(RichText::new(app.t(step.text)).size(22.0));
         ui.add_space(6.0);
-        // TWO centered rows: demo transport (or turn arrows while a
-        // sticker is selected), then lesson-step navigation. One shared
-        // row centered for the first group alone pushed the step buttons
-        // past the right screen edge on phones.
+        // ONE row: prev-step | Play/Restart | next-step. Play starts the
+        // demo (1s breath); once started it becomes Restart. Switching
+        // lesson/algorithm is the top-left back arrow's job — no other
+        // buttons. While a sticker is selected, the row shows the
+        // sandbox turn arrows instead.
         ui.horizontal(|ui| {
             let spacing = ui.spacing().item_spacing.x;
             if app.selected_face.is_some() {
-                // Sandbox mode: the selected layer's turn arrows.
                 let unit = ((ui.available_width() - spacing * 6.0) / 5.0).clamp(40.0, 84.0);
                 ui.add_space((ui.available_width() - 5.0 * (unit + spacing)).max(0.0) / 2.0);
                 super::play::turn_arrows_sized(app, ui, Vec2::new(unit, 60.0));
             } else {
-                // Demo transport, same shape as the solve guide:
-                // step-back | slower faster | play/pause | step-forward.
-                let total = ui.available_width() - spacing * 5.0;
-                let unit = (total / 4.6).clamp(44.0, 96.0);
-                let size = Vec2::new(unit, 60.0f32.min(unit * 0.9));
-                let small = Vec2::new(unit * 0.8, size.y);
+                let unit = ((ui.available_width() - spacing * 4.0) / 3.4).clamp(56.0, 96.0);
+                let size = Vec2::new(unit, 60.0);
+                let play_size = Vec2::new(unit * 1.4, 60.0);
                 ui.add_space(
-                    (ui.available_width() - 3.0 * (unit + spacing) - 2.0 * (small.x + spacing))
+                    (ui.available_width() - 2.0 * (unit + spacing) - (play_size.x + spacing))
                         .max(0.0)
                         / 2.0,
                 );
                 let gray = Color32::from_gray(70);
-                if icons::big_icon_button(ui, size, gray, "", icons::draw_chevron_step_back)
-                    .clicked()
-                    && view.cursor > 0
-                    && app.animator.is_idle()
-                {
-                    view.playing = false;
-                    view.cursor -= 1;
-                    app.animator.enqueue(demo_moves[view.cursor].inverse());
-                }
-                crate::widgets::playback::speed_buttons_sized(app, ui, small);
-                let playing_now = view.playing && view.cursor < demo_moves.len();
+                let first = view.step == 0;
+                let last = view.step + 1 >= lesson.steps.len();
+                let dim_gray = Color32::from_gray(45);
                 if icons::big_icon_button(
                     ui,
                     size,
+                    if first { dim_gray } else { gray },
+                    "",
+                    icons::draw_back_arrow,
+                )
+                .clicked()
+                    && !first
+                {
+                    view.step -= 1;
+                    view.pending = true;
+                    view.playing = false;
+                }
+                let started = view.playing || view.cursor > 0;
+                if started {
+                    // Restart: replay this step's demo from the top.
+                    if icons::big_icon_button(
+                        ui,
+                        play_size,
+                        Color32::from_rgb(0x2A, 0x5C, 0xC2),
+                        "",
+                        icons::draw_reset,
+                    )
+                    .clicked()
+                    {
+                        view.pending = true;
+                        view.playing = true; // replay after the reset
+                    }
+                } else if icons::big_icon_button(
+                    ui,
+                    play_size,
                     Color32::from_rgb(0x1E, 0x88, 0x50),
                     "",
-                    if playing_now { icons::draw_pause } else { icons::draw_play },
+                    icons::draw_play,
                 )
                 .clicked()
                 {
-                    if playing_now {
-                        view.playing = false;
-                    } else if view.cursor >= demo_moves.len() {
-                        // Play at the end = replay, with the 1s breath.
-                        view.pending = true;
-                    } else {
-                        // Resuming mid-demo starts right away.
-                        view.playing = true;
-                        view.play_at = now;
-                    }
+                    view.playing = true;
+                    view.play_at = now + 1.0;
                 }
-                if icons::big_icon_button(ui, size, gray, "", icons::draw_chevron_step_fwd)
-                    .clicked()
-                    && view.cursor < demo_moves.len()
-                    && app.animator.is_idle()
+                if icons::big_icon_button(
+                    ui,
+                    size,
+                    if last { Color32::from_rgb(0x1E, 0x88, 0x50) } else { gray },
+                    "",
+                    if last { icons::draw_check } else { icons::draw_next_arrow },
+                )
+                .clicked()
                 {
-                    view.playing = false;
-                    app.animator.enqueue(demo_moves[view.cursor]);
-                    view.cursor += 1;
-                }
-            }
-        });
-        ui.add_space(4.0);
-        ui.horizontal(|ui| {
-            let spacing2 = ui.spacing().item_spacing.x;
-            let unit2 = ((ui.available_width() - spacing2 * 4.0) / 3.0).clamp(60.0, 96.0);
-            ui.add_space((ui.available_width() - 3.0 * (unit2 + spacing2)).max(0.0) / 2.0);
-            let size = Vec2::new(unit2, 60.0);
-            let gray = Color32::from_gray(70);
-            if icons::big_icon_button(ui, size, gray, "", icons::draw_back_arrow).clicked() {
-                if view.step > 0 {
-                    view.step -= 1;
-                    view.pending = true;
-                } else {
-                    *next = Some(Screen::Train(TrainScreen::Picker {
-                        tab: PickerTab::Intro,
-                    }));
-                }
-            }
-            if icons::big_icon_button(
-                ui,
-                size,
-                Color32::from_rgb(0x2A, 0x5C, 0xC2),
-                app.t(TextKey::Replay),
-                icons::draw_reset,
-            )
-            .clicked()
-            {
-                view.pending = true;
-            }
-            let last = view.step + 1 >= lesson.steps.len();
-
-            if icons::big_icon_button(
-                ui,
-                size,
-                Color32::from_rgb(0x1E, 0x88, 0x50),
-                "",
-                if last { icons::draw_check } else { icons::draw_next_arrow },
-            )
-            .clicked()
-            {
-                if last {
-                    *next = Some(Screen::Train(TrainScreen::Picker {
-                        tab: PickerTab::Intro,
-                    }));
-                } else {
-                    view.step += 1;
-                    view.pending = true;
+                    if last {
+                        *next = Some(Screen::Train(TrainScreen::Picker {
+                            tab: PickerTab::Intro,
+                        }));
+                    } else {
+                        view.step += 1;
+                        view.pending = true;
+                        view.playing = false;
+                    }
                 }
             }
         });

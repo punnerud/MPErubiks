@@ -96,7 +96,7 @@ fn lesson_daisy_phone() {
         .wgpu()
         .build_eframe(|cc| RubiksApp::new(cc));
     h.state_mut().screen = Screen::Train(cube_app::screens::train::TrainScreen::Lesson(
-        cube_app::screens::train::LessonView { lesson: 2, step: 0, pending: true, demo_len: 0, cursor: 0, playing: true, play_at: 0.0 },
+        cube_app::screens::train::LessonView { lesson: 2, step: 0, pending: true, demo_len: 0, cursor: 0, playing: false, play_at: 0.0 },
     ));
     h.run_steps(3);
     h.snapshot("lesson_daisy_phone");
@@ -106,7 +106,7 @@ fn lesson_daisy_phone() {
 fn lesson_daisy_screen() {
     let mut h = harness();
     h.state_mut().screen = Screen::Train(cube_app::screens::train::TrainScreen::Lesson(
-        cube_app::screens::train::LessonView { lesson: 2, step: 0, pending: true, demo_len: 0, cursor: 0, playing: true, play_at: 0.0 },
+        cube_app::screens::train::LessonView { lesson: 2, step: 0, pending: true, demo_len: 0, cursor: 0, playing: false, play_at: 0.0 },
     ));
     h.step(); // applies the step's setup and queues the demo
     {
