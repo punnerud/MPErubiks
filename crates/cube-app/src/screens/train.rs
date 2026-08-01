@@ -235,6 +235,11 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
         app.animator.enqueue(demo_moves[view.cursor]);
         view.cursor += 1;
     }
+    // egui only paints on input or explicit request: without this, the
+    // 1s pre-roll (and the gap between moves) waits forever for a touch.
+    if view.playing && view.cursor < demo_moves.len() {
+        ui.ctx().request_repaint();
+    }
 
     ui.vertical_centered(|ui| {
         ui.label(RichText::new(app.t(lesson.title)).size(24.0).strong());
