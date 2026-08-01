@@ -164,6 +164,7 @@ fn picker(app: &mut RubiksApp, ui: &mut Ui, tab: &mut PickerTab, next: &mut Opti
                         if case_card(app, ui, case_idx) {
                             // See it first: canonical state + demo player.
                             app.animator.clear();
+                            app.selected_face = None;
                             app.cube = app.library.rec.canonical_state(case_idx);
                             *next = Some(Screen::Train(TrainScreen::Session(SessionState {
                                 case_idx,
@@ -558,21 +559,28 @@ fn session_ui(app: &mut RubiksApp, ui: &mut Ui, session: &mut SessionState, next
         ui.label(RichText::new(name).size(26.0).strong());
     });
 
-    // 3D cube shows the case; leave room for the control zone.
-    let controls_height = 210.0;
+    // 3D cube shows the case; leave room for the control zone (+ the
+    // turn-arrow row while a sticker is selected).
+    let controls_height = if app.selected_face.is_some() { 282.0 } else { 210.0 };
     let cube_size = Vec2::new(
         ui.available_width(),
         (ui.available_height() - controls_height).max(120.0),
     );
-    CubeView {
+    let response = CubeView {
         cube: &app.cube,
         animator: &app.animator,
         orbit: &mut app.orbit,
-        highlight: None,
+        // SANDBOX like the lesson cube: tap a sticker to select its
+        // layer and turn it with the arrows — trying the algorithm ON
+        // the cube is half the practice.
+        highlight: app
+            .selected_face
+            .map(|f| cube_core::Move::Face(f, cube_core::Turns::Cw)),
         dim_others: 1.0,
         color_override: None,
     }
     .show(ui, cube_size);
+    super::play::handle_tap_select(app, &response);
 
     // The demo alg from the canonical state (same for every frame).
     let demo_alg = {
@@ -590,6 +598,14 @@ fn session_ui(app: &mut RubiksApp, ui: &mut Ui, session: &mut SessionState, next
     };
 
     ui.vertical_centered(|ui| {
+        if app.selected_face.is_some() {
+            ui.horizontal(|ui| {
+                let spacing = ui.spacing().item_spacing.x;
+                let unit = ((ui.available_width() - spacing * 6.0) / 5.0).clamp(40.0, 84.0);
+                ui.add_space((ui.available_width() - 5.0 * (unit + spacing)).max(0.0) / 2.0);
+                super::play::turn_arrows_sized(app, ui, Vec2::new(unit, 60.0));
+            });
+        }
         match &mut session.phase {
         Phase::Watch { started } => {
             // Karaoke marks each move as it STARTS.
@@ -788,6 +804,7 @@ fn karaoke_row(app: &RubiksApp, ui: &mut Ui, view: &LessonView, step: &crate::le
 
 fn new_case_state(app: &mut RubiksApp, case_idx: u16) {
     app.animator.clear();
+    app.selected_face = None;
     let mut rng = cube_core::SplitMix64::new(app.rng.next_u64());
     app.cube = app.library.rec.setup_state(case_idx, &mut rng);
 }
