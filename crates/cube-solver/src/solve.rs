@@ -54,10 +54,56 @@ fn kewb_moves_to_alg(moves: &[kewb::Move]) -> Alg {
 /// `timeout: None` everywhere — kewb's timeout path burns the full budget
 /// and uses `std::time::Instant`, which panics on wasm.
 pub fn solve(s: &FaceletCube) -> Result<Alg, SolveError> {
-    solve_bounded(s, 23).or_else(|e| match e {
-        SolveError::NoSolution => solve_bounded(s, 23),
-        other => Err(other),
-    })
+    // Nearly-solved cubes first: two-phase returns its FIRST <=23
+    // solution, which can be 15+ moves for a 3-move state ("it forces
+    // extra moves"). A shallow iterative-deepening search finds the
+    // true shortest solution up to 4 moves in a few milliseconds.
+    if let Some(alg) = shallow_solve(s, 4) {
+        return Ok(alg);
+    }
+    solve_bounded(s, 23)
+}
+
+/// Optimal solver for shallow states: iterative deepening over all 18
+/// face moves (skipping same-face successors), depth <= `max_depth`.
+/// Returns the SHORTEST solution or None if deeper than the cap.
+fn shallow_solve(s: &FaceletCube, max_depth: usize) -> Option<Alg> {
+    use cube_core::Move;
+    fn dfs(
+        state: &FaceletCube,
+        depth: usize,
+        last_face: Option<u8>,
+        path: &mut Vec<Move>,
+    ) -> bool {
+        if state.is_solved() {
+            return true;
+        }
+        if depth == 0 {
+            return false;
+        }
+        for idx in 0..18 {
+            let mv = Move::from_index(idx);
+            let face = idx as u8 / 3;
+            if last_face == Some(face) {
+                continue;
+            }
+            let mut next = *state;
+            next.apply(mv);
+            path.push(mv);
+            if dfs(&next, depth - 1, Some(face), path) {
+                return true;
+            }
+            path.pop();
+        }
+        false
+    }
+    for depth in 0..=max_depth {
+        let mut path = Vec::new();
+        if dfs(s, depth, None, &mut path) {
+            return Some(Alg::new(path));
+        }
+    }
+    None
 }
 
 /// Public benchmarking hook: solve with an explicit move bound.
@@ -98,6 +144,19 @@ mod tests {
             .expect("assets/table.bin missing — run: cargo run -p xtask -- gen-table");
             crate::install_table(&bytes).unwrap();
         }
+    }
+
+    #[test]
+    fn nearly_solved_cubes_get_the_short_solution() {
+        ensure_table();
+        // 3 moves from solved: the guide must show ~3 moves, not a full
+        // two-phase solution.
+        let state = FaceletCube::SOLVED.applied_alg(&Alg::parse("R U F2").unwrap());
+        let alg = solve(&state).unwrap();
+        assert!(alg.len_htm() <= 3, "got {} moves: {alg}", alg.len_htm());
+        assert!(state.applied_alg(&alg).is_solved());
+        // Solved cube: zero moves.
+        assert_eq!(solve(&FaceletCube::SOLVED).unwrap().len_htm(), 0);
     }
 
     #[test]
