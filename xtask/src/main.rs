@@ -165,8 +165,16 @@ fn compress_with(tool: &str, args: &[&str], data: &[u8]) -> Option<usize> {
         .stderr(Stdio::null())
         .spawn()
         .ok()?;
-    child.stdin.take()?.write_all(data).ok()?;
+    // Feed stdin from a thread: writing multi-MB input while the child's
+    // stdout pipe fills up deadlocks both processes otherwise (this is
+    // why every previous table-stats run hung forever).
+    let mut stdin = child.stdin.take()?;
+    let owned = data.to_vec();
+    let feeder = std::thread::spawn(move || {
+        let _ = stdin.write_all(&owned);
+    });
     let out = child.wait_with_output().ok()?;
+    let _ = feeder.join();
     out.status.success().then_some(out.stdout.len())
 }
 
