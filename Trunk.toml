@@ -1,2 +1,7 @@
 [build]
 target = "web/index.html"
+
+[[hooks]]
+stage = "post_build"
+command = "bash"
+command_arguments = ["tools/patch_mpedb_clock.sh"]
