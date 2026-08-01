@@ -500,19 +500,34 @@ fn scan_ui(
             // the review net; validation will point at the problem there.
             Err(_) => assemble(screen),
         };
+        // Faces were labeled by CAPTURE ORDER; rotate + relabel so every
+        // color sits on its standard face — the 3D cube and the guide
+        // then speak the physical cube's colors (red shows red), instead
+        // of the capture positions' (red-first showed green).
+        let capture_class = capture_classes(screen);
+        let mut class_of_face = [0usize; 6];
+        for (k, &face) in ORDER.iter().enumerate() {
+            class_of_face[face as usize] = capture_class[k];
+        }
+        let state = cube_solver::relabel_to_standard(&state, &class_of_face).unwrap_or(state);
         *next = Some(Screen::Solve(super::solve::SolveScreen::new_input(state)));
     }
+}
+
+/// Palette class of each capture's center, by OPTIMAL assignment over
+/// the retained evidence (survives unreadable centers and duplicate
+/// center votes).
+fn capture_classes(screen: &ScanScreen) -> [usize; 6] {
+    let center_hists: [[f32; 6]; 6] = core::array::from_fn(|k| {
+        screen.evidence[k].map(|h| h[4]).unwrap_or([0.0; 6])
+    });
+    cube_solver::assign_classes(&center_hists)
 }
 
 /// Evidence histograms mapped into FACE space for the resolver: palette
 /// class -> face via the voted centers (capture order fallback).
 fn face_shares(screen: &ScanScreen) -> cube_solver::Shares {
-    // Class -> face by OPTIMAL assignment over the retained center
-    // evidence (survives unreadable centers and duplicate center votes).
-    let center_hists: [[f32; 6]; 6] = core::array::from_fn(|k| {
-        screen.evidence[k].map(|h| h[4]).unwrap_or([0.0; 6])
-    });
-    let capture_class = cube_solver::assign_classes(&center_hists);
+    let capture_class = capture_classes(screen);
     let mut class_to_face: [Option<Face>; 6] = [None; 6];
     for (k, &face) in ORDER.iter().enumerate() {
         class_to_face[capture_class[k]] = Some(face);

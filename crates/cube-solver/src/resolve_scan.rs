@@ -72,6 +72,48 @@ pub fn assign_classes(centers: &[[f32; 6]; 6]) -> [usize; 6] {
     best
 }
 
+/// Standard color scheme: which palette CLASS (0 w, 1 y, 2 r, 3 o, 4 g,
+/// 5 b) each face carries on a standard cube (U white, D yellow, R red,
+/// L orange, F green, B blue).
+const STD_CLASS: [usize; 6] = [0, 2, 4, 1, 3, 5];
+
+/// The scan labels faces by CAPTURE ORDER (first side shown = "F"), so a
+/// red-first scan renders red as green. Given each capture-face's palette
+/// class, rotate + relabel the cube so every color lands on its standard
+/// face — the display then matches the physical cube, and so does the
+/// guide's language. Returns None for cubes with a mirrored/nonstandard
+/// scheme (keep the capture-order labeling there).
+pub fn relabel_to_standard(
+    cube: &FaceletCube,
+    class_of_face: &[usize; 6],
+) -> Option<FaceletCube> {
+    for xz in ["", "x", "x2", "x'", "z", "z'"] {
+        for y in ["", "y", "y2", "y'"] {
+            let alg = cube_core::Alg::parse(&format!("{xz} {y}")).ok()?;
+            let rotated = cube.applied_alg(&alg);
+            // Does this rotation put every class on its standard face?
+            let ok = (0..6).all(|f| {
+                let old_label = rotated.0[f * 9 + 4] as usize;
+                class_of_face[old_label] == STD_CLASS[f]
+            });
+            if !ok {
+                continue;
+            }
+            // Relabel colors: old label -> the face it now sits on.
+            let mut relabel = [Face::U; 6];
+            for f in 0..6 {
+                relabel[rotated.0[f * 9 + 4] as usize] = Face::from_index(f);
+            }
+            let mut out = rotated;
+            for sticker in out.0.iter_mut() {
+                *sticker = relabel[*sticker as usize];
+            }
+            return Some(out);
+        }
+    }
+    None
+}
+
 pub fn resolve_scan(shares: &Shares) -> Result<FaceletCube, crate::ValidationError> {
     // Initial assignment: argmax per cell; centers are authoritative
     // (facelet 9f+4 is forced to its face by the scan flow).
@@ -290,6 +332,25 @@ mod tests {
         assert_eq!(assigned[5], 4);
         assert_eq!(assigned[0], 2);
         assert_eq!(assigned[4], 5);
+    }
+
+    #[test]
+    fn relabel_puts_every_class_on_its_standard_face() {
+        // Physical mapping from a real scan: capture-order faces carry
+        // classes F=red R=green B=orange D=white L=blue U=yellow.
+        let class_of_face = [1usize, 4, 2, 0, 5, 3]; // indexed U R F D L B
+        // A scrambled cube in capture-order labels.
+        let cube = FaceletCube::SOLVED
+            .applied_alg(&Alg::parse("R U F2 L' D B U2 R' F D2 L").unwrap());
+        let std = relabel_to_standard(&cube, &class_of_face).expect("standard scheme");
+        // Centers canonical and each face now carries its standard class.
+        for f in 0..6 {
+            assert_eq!(std.0[f * 9 + 4] as usize, f, "center {f}");
+        }
+        assert!(crate::validate(&std).is_ok(), "relabeling must stay legal");
+        // Identity mapping: nothing to do, cube unchanged.
+        let identity = [0usize, 2, 4, 1, 3, 5];
+        assert_eq!(relabel_to_standard(&cube, &identity), Some(cube));
     }
 
     #[test]
