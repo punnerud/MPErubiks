@@ -379,16 +379,10 @@ fn scan_ui(
         let shown = Vec2::new(sw * scale, sh * scale);
         let rect = Rect::from_center_size(outer.center(), shown);
         draw_preview(ui, preview.id, rect, rotation);
-        // The guide square follows the auto-aligned grid: canvas-space
-        // offset rotated into screen space.
-        let (dx, dy) = screen.grid_off;
-        let shift = match rotation % 4 {
-            1 => Vec2::new(-dy, dx),
-            2 => Vec2::new(-dx, -dy),
-            3 => Vec2::new(dy, -dx),
-            _ => Vec2::new(dx, dy),
-        } * scale;
-        draw_overlay(ui, rect, screen, now, shift);
+        // The grid GRIPS the cube invisibly (sampling follows the
+        // detected offset); the painted square stays fixed and calm —
+        // a moving frame reads as jitter, not help.
+        draw_overlay(ui, rect, screen, now);
 
         // Rotation cycle button (top-right of the preview): sensor
         // orientation differs per device — one tap fixes it, remembered.
@@ -476,8 +470,27 @@ fn scan_ui(
 
     // --- all six captured: constraint-resolve and hand off to review ---
     if screen.face_idx >= 6 && screen.flash.is_none() {
-        let state = match cube_solver::resolve_scan(&face_shares(screen)) {
-            Ok(resolved) => resolved,
+        let shares = face_shares(screen);
+        let state = match cube_solver::resolve_scan(&shares) {
+            // Trust the resolver only while it stays NEAR the evidence: a
+            // wrong-way rotation scrambles whole faces, and a legal cube
+            // found by changing many cells is legal-but-not-yours. Show
+            // the raw reading in the review net instead in that case.
+            Ok(resolved) => {
+                let corrections = (0..54)
+                    .filter(|&i| {
+                        let am = (0..6)
+                            .max_by(|&a, &b| shares[i][a].partial_cmp(&shares[i][b]).unwrap())
+                            .unwrap();
+                        resolved.0[i] as usize != am
+                    })
+                    .count();
+                if corrections <= 8 {
+                    resolved
+                } else {
+                    assemble(screen)
+                }
+            }
             // Unresolvable even after analysis: show the argmax cube in
             // the review net; validation will point at the problem there.
             Err(_) => assemble(screen),
@@ -641,15 +654,10 @@ fn draw_preview(ui: &Ui, id: egui::TextureId, rect: Rect, rotation: u8) {
     ui.painter().add(egui::Shape::mesh(mesh));
 }
 
-fn draw_overlay(ui: &Ui, rect: Rect, screen: &ScanScreen, now: f64, shift: Vec2) {
+fn draw_overlay(ui: &Ui, rect: Rect, screen: &ScanScreen, now: f64) {
     let p = ui.painter();
     let side = rect.width().min(rect.height()) * 0.6;
-    let max_shift = side / 6.0;
-    let shift = Vec2::new(
-        shift.x.clamp(-max_shift, max_shift),
-        shift.y.clamp(-max_shift, max_shift),
-    );
-    let square = Rect::from_center_size(rect.center() + shift, Vec2::splat(side));
+    let square = Rect::from_center_size(rect.center(), Vec2::splat(side));
 
     // Dim outside the guide square.
     for r in [
@@ -662,6 +670,45 @@ fn draw_overlay(ui: &Ui, rect: Rect, screen: &ScanScreen, now: f64, shift: Vec2)
     }
 
     let cell = side / 3.0;
+    // BIG direction hint while waiting for the next side (reinforces the
+    // mini-cube demo; rotating the wrong way is the costliest mistake):
+    // pulsing chevrons across the square — left for y, up-and-over for
+    // the tilt-away x.
+    if screen.face_idx > 0 && screen.face_idx < 6 && screen.flash.is_none() {
+        let alg = MINI_ALGS[screen.face_idx];
+        let pulse = (((now * 2.0).sin() * 0.5 + 0.5) * 90.0) as u8 + 50;
+        let col = Color32::from_rgba_unmultiplied(0xFF, 0xFF, 0xFF, pulse);
+        let a = side * 0.09;
+        for i in 0..3 {
+            let t = i as f32 - 1.0;
+            if alg == "x" {
+                // Tilt AWAY: chevrons along the top edge pointing up.
+                let c = Pos2::new(square.center().x + t * a * 3.0, square.top() - a * 1.2);
+                p.add(egui::Shape::convex_polygon(
+                    vec![
+                        Pos2::new(c.x, c.y - a * 0.7),
+                        Pos2::new(c.x + a * 0.8, c.y + a * 0.7),
+                        Pos2::new(c.x - a * 0.8, c.y + a * 0.7),
+                    ],
+                    col,
+                    Stroke::NONE,
+                ));
+            } else {
+                // Turn LEFT: chevrons along the left edge pointing left.
+                let c = Pos2::new(square.left() - a * 1.2, square.center().y + t * a * 3.0);
+                p.add(egui::Shape::convex_polygon(
+                    vec![
+                        Pos2::new(c.x - a * 0.7, c.y),
+                        Pos2::new(c.x + a * 0.7, c.y - a * 0.8),
+                        Pos2::new(c.x + a * 0.7, c.y + a * 0.8),
+                    ],
+                    col,
+                    Stroke::NONE,
+                ));
+            }
+        }
+    }
+
     // Locked onto the sticker grid -> green lines (visual "got it!");
     // searching -> soft white.
     let grid_stroke = if screen.grid_conf > 0.4 {
