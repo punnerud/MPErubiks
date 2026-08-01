@@ -63,8 +63,11 @@ impl MoveAnimator {
     }
 
     fn duration(&self, mv: Move) -> f64 {
+        // Half turns take a bit MORE than two quarters: they animate in
+        // two visible stages (turn, tiny rest at 90°, turn) so a double
+        // is unmistakable from a single without reading the notation.
         let quarters = match turns_of(mv) {
-            Turns::Half => 2.0,
+            Turns::Half => 2.4,
             _ => 1.0,
         };
         f64::from(self.secs_per_quarter) * quarters
@@ -104,10 +107,24 @@ impl MoveAnimator {
     pub fn pose(&self, now: f64) -> Option<LayerPose> {
         let a = self.active.as_ref()?;
         let t = ((now - a.start) / self.duration(a.mv)).clamp(0.0, 1.0) as f32;
-        let eased = if t < 0.5 {
-            4.0 * t * t * t
+        let ease = |t: f32| {
+            if t < 0.5 {
+                4.0 * t * t * t
+            } else {
+                1.0 - (-2.0 * t + 2.0).powi(3) / 2.0
+            }
+        };
+        let eased = if matches!(turns_of(a.mv), Turns::Half) {
+            // Two-stage: 0..90° | rest | 90..180° — the eye counts "two".
+            if t < 0.44 {
+                0.5 * ease(t / 0.44)
+            } else if t < 0.56 {
+                0.5
+            } else {
+                0.5 + 0.5 * ease((t - 0.56) / 0.44)
+            }
         } else {
-            1.0 - (-2.0 * t + 2.0).powi(3) / 2.0
+            ease(t)
         };
         let (dir, signed_quarters, _) = move_dir(a.mv);
         let axis = [f32::from(dir[0]), f32::from(dir[1]), f32::from(dir[2])];

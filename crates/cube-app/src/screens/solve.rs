@@ -204,10 +204,17 @@ fn error_text(app: &RubiksApp, e: &ValidationError) -> String {
 }
 
 fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &mut Option<Screen>) {
+    // Calm default tempo at the start of a guide: each move must be
+    // readable on the first viewing (the chevrons adjust it after).
+    if guide.cursor == 0 && app.animator.is_idle() && app.animator.secs_per_quarter < 0.5 {
+        app.animator.secs_per_quarter = 0.5;
+    }
     let done = guide.cursor >= guide.solution.0.len();
 
     // Auto-play: feed the next move once the animator is idle.
-    if guide.playing && !done && app.animator.is_idle() {
+    // Auto-play removed: impossible to follow on a real cube. The guide
+    // is stepped move by move with the big Next button.
+    if false && !done && app.animator.is_idle() {
         app.animator.enqueue(guide.solution.0[guide.cursor]);
         guide.cursor += 1;
         ui.ctx().request_repaint();
@@ -266,47 +273,43 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
         }
 
         ui.horizontal(|ui| {
-            // Five buttons must fit ANY phone width: shrink to available.
+            // Back | slower faster | BIG GREEN NEXT. No auto-play: you
+            // execute each move on the real cube, then tap next.
             let spacing = ui.spacing().item_spacing.x;
             let total = ui.available_width() - spacing * 5.0;
-            let unit = (total / 4.6).clamp(44.0, 96.0); // 3 big + 2 small(0.8)
+            let unit = (total / 4.6).clamp(44.0, 96.0);
             let size = Vec2::new(unit, 64.0f32.min(unit * 0.8));
             let small = Vec2::new(unit * 0.8, size.y);
-            ui.add_space((ui.available_width() - 3.0 * (unit + spacing) - 2.0 * (small.x + spacing)).max(0.0) / 2.0);
+            let next_size = Vec2::new(unit * 1.6, size.y);
+            ui.add_space(
+                (ui.available_width()
+                    - (unit + spacing)
+                    - 2.0 * (small.x + spacing)
+                    - (next_size.x + spacing))
+                    .max(0.0)
+                    / 2.0,
+            );
             let gray = Color32::from_rgb(0x4A, 0x4F, 0x5C);
             if icons::big_icon_button(ui, size, gray, app.t(TextKey::Back), icons::draw_back_arrow)
                 .clicked()
                 && guide.cursor > 0
                 && app.animator.is_idle()
             {
-                guide.playing = false;
                 guide.cursor -= 1;
                 app.animator.enqueue(guide.solution.0[guide.cursor].inverse());
             }
             crate::widgets::playback::speed_buttons_sized(app, ui, small);
-            let play_color = Color32::from_rgb(0x1E, 0x88, 0x50);
-            let caption = if guide.playing {
-                app.t(TextKey::Pause)
-            } else {
-                app.t(TextKey::Play)
-            };
-            if icons::big_icon_button(ui, size, play_color, caption, |p, r| {
-                if guide.playing {
-                    icons::draw_pause(p, r)
-                } else {
-                    icons::draw_play(p, r)
-                }
-            })
+            if icons::big_icon_button(
+                ui,
+                next_size,
+                Color32::from_rgb(0x1E, 0x88, 0x50),
+                app.t(TextKey::Next),
+                icons::draw_next_arrow,
+            )
             .clicked()
-            {
-                guide.playing = !guide.playing;
-            }
-            if icons::big_icon_button(ui, size, gray, app.t(TextKey::Next), icons::draw_next_arrow)
-                .clicked()
                 && !done
                 && app.animator.is_idle()
             {
-                guide.playing = false;
                 app.animator.enqueue(guide.solution.0[guide.cursor]);
                 guide.cursor += 1;
             }

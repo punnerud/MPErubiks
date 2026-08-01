@@ -208,11 +208,12 @@ fn solve_guide_narrow_phone() {
 fn solve_guide_screen() {
     let mut h = harness();
     // Native harness installs the solver table at startup, so we can build
-    // a real guide: scrambled state + its actual ≤21-move solution.
+    // a real guide: scrambled state + its actual solution (<=23 since the
+    // latency-first bound change; most still land <=21).
     let alg = cube_core::Alg::parse("R U F2 L' D B U2 R' F L2 D'").unwrap();
     let state = cube_core::FaceletCube::SOLVED.applied_alg(&alg);
     let solution = cube_solver::solve(&state).expect("solver table installed natively");
-    assert!(solution.len_htm() <= 21, "got {} moves", solution.len_htm());
+    assert!(solution.len_htm() <= 23, "got {} moves", solution.len_htm());
     {
         let app = h.state_mut();
         app.cube = state;
