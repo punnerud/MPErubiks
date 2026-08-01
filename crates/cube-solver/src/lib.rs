@@ -5,6 +5,7 @@
 //! Never generate tables at runtime — multi-second cost on the UI thread.
 
 mod hints;
+mod cross;
 mod resolve_scan;
 mod table_pack;
 mod solve;
@@ -12,6 +13,7 @@ mod table;
 mod validate;
 
 pub use hints::{solve_with_hints, GuidedSolution, HintAt, Segment, SolveOutput};
+pub use cross::solve_cross;
 pub use resolve_scan::{assign_classes, relabel_to_standard, resolve_scan, Shares};
 pub use table_pack::{decode_packed, encode_packed};
 pub use solve::{random_state, scramble_for, solve, solve_bounded_public, SolveError};

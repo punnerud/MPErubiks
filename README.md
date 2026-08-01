@@ -47,6 +47,9 @@ this is what the app looks like right now.
 - 💪 **Training** — PLL · OLL · F2L · beginner cards with demo player, drill
   timer, success/fail stats and a persistent trained-set (MPEdb).
 
+See [INNOVATIONS.md](INNOVATIONS.md) for what this repo invented, borrowed,
+and moved somewhere unusual — including the measured negative results.
+
 ## Layout
 
 | crate | what |
