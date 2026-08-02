@@ -124,6 +124,50 @@ pub fn draw_bulb(p: &egui::Painter, r: Rect) {
     );
 }
 
+/// A small isometric SOLVED 3D cube: white top, green front-left,
+/// red right — each visible face as a 3x3 sticker grid.
+pub fn draw_iso_cube(p: &egui::Painter, r: Rect) {
+    let c = r.center();
+    let s = r.width().min(r.height()) * 0.46;
+    let (w, h) = (s * 0.87, s * 0.5);
+    let top = Pos2::new(c.x, c.y - s);
+    let left = Pos2::new(c.x - w, c.y - h);
+    let right = Pos2::new(c.x + w, c.y - h);
+    let mid = c;
+    let bl = Pos2::new(c.x - w, c.y + h);
+    let br = Pos2::new(c.x + w, c.y + h);
+    let bottom = Pos2::new(c.x, c.y + s);
+    let lerp = |a: Pos2, b: Pos2, t: f32| Pos2::new(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t);
+    // Draw one face (quad q0..q3, row-major) as base + 3x3 stickers.
+    let mut face = |q: [Pos2; 4], color: egui::Color32| {
+        p.add(egui::Shape::convex_polygon(
+            q.to_vec(),
+            egui::Color32::from_gray(25),
+            egui::Stroke::NONE,
+        ));
+        for i in 0..3 {
+            for j in 0..3 {
+                let (u0, u1) = (i as f32 / 3.0 + 0.02, (i as f32 + 1.0) / 3.0 - 0.02);
+                let (v0, v1) = (j as f32 / 3.0 + 0.02, (j as f32 + 1.0) / 3.0 - 0.02);
+                let at = |u: f32, v: f32| {
+                    let a = lerp(q[0], q[1], u);
+                    let b = lerp(q[3], q[2], u);
+                    lerp(a, b, v)
+                };
+                p.add(egui::Shape::convex_polygon(
+                    vec![at(u0, v0), at(u1, v0), at(u1, v1), at(u0, v1)],
+                    color,
+                    egui::Stroke::NONE,
+                ));
+            }
+        }
+    };
+    // Top (white), front-left (green, slightly darker), right (red, darkest).
+    face([top, right, mid, left], egui::Color32::from_rgb(0xF5, 0xF5, 0xF5));
+    face([left, mid, bottom, bl], egui::Color32::from_rgb(0x00, 0x96, 0x56));
+    face([mid, right, br, bottom], egui::Color32::from_rgb(0xC4, 0x1A, 0x2A));
+}
+
 pub fn draw_camera(p: &egui::Painter, r: Rect) {
     let body = Rect::from_min_max(
         Pos2::new(r.left(), r.top() + r.height() * 0.22),

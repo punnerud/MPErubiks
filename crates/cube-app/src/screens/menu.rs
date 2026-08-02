@@ -7,10 +7,12 @@ use crate::widgets::{flags, icons};
 use egui::{Color32, Rect, Ui, Vec2};
 
 pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
-    // Theme toggle top left, language flags top right.
+    // Theme toggle top left, gear + language flags top right — all on
+    // the SAME center line (fixed 40px row, center-aligned cluster).
     ui.horizontal(|ui| {
+        ui.set_min_size(Vec2::new(ui.available_width(), 40.0));
         let (rect, resp) =
-            ui.allocate_exact_size(Vec2::new(48.0, 40.0), egui::Sense::click());
+            ui.allocate_exact_size(Vec2::new(44.0, 40.0), egui::Sense::click());
         let p = ui.painter();
         let c = rect.center();
         if app.light_mode {
@@ -44,7 +46,7 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
                 crate::persist::persist(store);
             }
         }
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             if flags::flag_button(ui, Lang::No, app.i18n.lang == Lang::No) {
                 app.set_lang(Lang::No);
             }
@@ -79,17 +81,19 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
             Color32::from_rgb(0x1E, 0x88, 0x50),
             app.t(TextKey::MenuSolve),
             |p, r| {
-                // Solve = light bulb + cube: "the answer for your cube".
-                let half = Vec2::new(r.width() * 0.46, r.height());
-                icons::draw_bulb(p, Rect::from_min_size(r.min, half));
-                icons::draw_mini_cube(
-                    p,
-                    Rect::from_min_size(
-                        r.min + Vec2::new(r.width() * 0.54, 0.0),
-                        half,
-                    ),
-                    icons::solved_face(Color32::from_rgb(0xFF, 0xD5, 0x00)),
+                // Solve = light bulb + SOLVED 3D cube, vertically
+                // centered with each other.
+                let side = r.height().min(r.width() * 0.46);
+                let left_sq = Rect::from_center_size(
+                    egui::Pos2::new(r.left() + r.width() * 0.27, r.center().y),
+                    Vec2::splat(side),
                 );
+                let right_sq = Rect::from_center_size(
+                    egui::Pos2::new(r.left() + r.width() * 0.73, r.center().y),
+                    Vec2::splat(side),
+                );
+                icons::draw_bulb(p, left_sq);
+                icons::draw_iso_cube(p, right_sq);
             },
         )
         .clicked()
