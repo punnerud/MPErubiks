@@ -41,6 +41,7 @@ fn language_picker_phone() {
         .build_eframe(|cc| RubiksApp::new(cc));
     h.state_mut().screen = Screen::Language(cube_app::screens::language::LanguageScreen {
         prev: Box::new(Screen::Menu),
+        close_at: None,
     });
     h.run_steps(2);
     h.snapshot("language_picker");

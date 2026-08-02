@@ -51,7 +51,10 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
             if flags::flag_button(ui, app.i18n.lang, false) {
                 let prev = std::mem::replace(&mut app.screen, crate::app::Screen::Menu);
                 app.screen = crate::app::Screen::Language(
-                    crate::screens::language::LanguageScreen { prev: Box::new(prev) },
+                    crate::screens::language::LanguageScreen {
+                        prev: Box::new(prev),
+                        close_at: None,
+                    },
                 );
             }
             // Solution settings (gear).

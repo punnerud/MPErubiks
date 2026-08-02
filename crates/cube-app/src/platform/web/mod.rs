@@ -36,6 +36,18 @@ pub fn query_flag(flag: &str) -> bool {
         .unwrap_or(false)
 }
 
+/// Value of a `?name=value` query parameter, if present.
+pub fn query_value(name: &str) -> Option<String> {
+    let search = web_sys::window()?.location().search().ok()?;
+    search
+        .trim_start_matches('?')
+        .split('&')
+        .find_map(|pair| {
+            let (k, v) = pair.split_once('=')?;
+            (k == name).then(|| v.to_string())
+        })
+}
+
 /// Screen rotation angle (0/90/180/270) from the Screen Orientation API;
 /// 0 when unavailable.
 pub fn screen_angle() -> u16 {

@@ -24,12 +24,20 @@ pub fn flag_button(ui: &mut Ui, lang: Lang, active: bool) -> bool {
     } else {
         Stroke::new(1.0, Color32::from_gray(90))
     };
+    // Square corners: several flags (Union Jack diagonals, cantons,
+    // Nordic crosses) draw all the way to the edge, so a rounded frame
+    // would clip inconsistently — one flag looked rounded, the next
+    // spilled past it.
     ui.painter()
-        .rect_stroke(flag_rect, 3.0, ring, egui::StrokeKind::Outside);
+        .rect_stroke(flag_rect, 0.0, ring, egui::StrokeKind::Outside);
     response.clicked()
 }
 
 pub fn draw_flag(p: &egui::Painter, r: Rect, flag: Flag) {
+    // Strokes are drawn with round caps, so the Union Jack's diagonals
+    // (and the canton sun's rays) spill past the corners as spikes.
+    // Clipping to the flag keeps every design inside its own rectangle.
+    let p = &p.with_clip_rect(r);
     match flag {
         Flag::HBands(colors) => {
             let h = r.height() / colors.len() as f32;
@@ -253,7 +261,7 @@ fn star_shape(p: &egui::Painter, c: Pos2, radius: f32, color: Color32) {
 fn draw_union_jack(p: &egui::Painter, r: Rect) {
     let blue = Color32::from_rgb(0x01, 0x22, 0x69);
     let red = Color32::from_rgb(0xC8, 0x10, 0x2E);
-    p.rect_filled(r, 2.0, blue);
+    p.rect_filled(r, 0.0, blue);
     let (w, h) = (r.width(), r.height());
     for (stroke_w, color) in [(5.0, Color32::WHITE), (2.0, red)] {
         p.line_segment(

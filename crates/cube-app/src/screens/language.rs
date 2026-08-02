@@ -11,16 +11,23 @@ use egui::{Color32, ScrollArea, Sense, Stroke, StrokeKind, Ui, Vec2};
 pub struct LanguageScreen {
     /// The screen to return to (the picker is opened over it).
     pub prev: Box<Screen>,
+    /// Set when a language is picked: the list closes itself shortly
+    /// after, so the choice is confirmed on screen without a second tap.
+    pub close_at: Option<f64>,
 }
 
 pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
     let back_clicked = super::play::top_bar_clicked(ui);
-    let Screen::Language(screen) = std::mem::replace(&mut app.screen, Screen::Menu) else {
+    let Screen::Language(mut screen) = std::mem::replace(&mut app.screen, Screen::Menu) else {
         return;
     };
-    if back_clicked {
+    let now = ui.input(|i| i.time);
+    if back_clicked || screen.close_at.is_some_and(|t| now >= t) {
         app.screen = *screen.prev;
         return;
+    }
+    if screen.close_at.is_some() {
+        ui.ctx().request_repaint();
     }
     // Opening the picker is the moment to fetch the script fonts: the
     // list itself wants to show 简体中文 / 日本語 / 한국어 in their own
@@ -66,7 +73,7 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
                 flags::draw_flag(p, flag_rect, def.flag);
                 p.rect_stroke(
                     flag_rect,
-                    3.0,
+                    0.0,
                     Stroke::new(1.0, Color32::from_black_alpha(90)),
                     StrokeKind::Outside,
                 );
@@ -118,6 +125,9 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
     });
     if let Some(lang) = chosen {
         app.set_lang(lang, ui.ctx());
+        // Show the new language applied (the whole UI switches under the
+        // list), then close on its own.
+        screen.close_at = Some(now + 0.7);
     }
     app.screen = Screen::Language(screen);
 }

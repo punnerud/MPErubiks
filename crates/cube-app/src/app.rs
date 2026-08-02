@@ -176,8 +176,16 @@ impl RubiksApp {
             .and_then(|s| s.setting("theme").ok().flatten())
             .is_some_and(|v| v == "light");
         apply_theme(&cc.egui_ctx, app.light_mode);
-        // A remembered CJK language needs its font subset before the
-        // first frame draws text.
+        // ?lang=<code> overrides the stored language: handy for sharing
+        // a link in someone's own language, and for testing scripts.
+        #[cfg(target_arch = "wasm32")]
+        if let Some(lang) = crate::platform::web::query_value("lang")
+            .and_then(|c| crate::i18n::Lang::from_code(&c))
+        {
+            app.i18n.lang = lang;
+        }
+        // A remembered (or requested) language may need its font subset
+        // before the first frame draws text.
         let lang = app.i18n.lang;
         app.ensure_font(lang, &cc.egui_ctx);
         #[cfg(target_arch = "wasm32")]
@@ -321,7 +329,14 @@ impl RubiksApp {
         while let Ok(msg) = self.rx.try_recv() {
             match msg {
                 AsyncMsg::FontBytes(name, Ok(bytes)) => install_font(ctx, name, bytes),
-                AsyncMsg::FontBytes(name, Err(e)) => log::warn!("font {name}: {e}"),
+                AsyncMsg::FontBytes(name, Err(e)) => {
+                    // A transient failure (a deploy still propagating,
+                    // a flaky connection) must not disable the script
+                    // for the whole session: forget it so the next
+                    // visit to the picker tries again.
+                    self.fonts_loaded.remove(name);
+                    log::warn!("font {name}: {e}");
+                }
                 AsyncMsg::TableBytes(Ok(bytes)) => {
                     // Packed asset (table.pack) since M7.
                     #[cfg(target_arch = "wasm32")]
