@@ -291,10 +291,10 @@ pub static LANGS: &[LangDef] = &[
     },
     LangDef {
         code: "vi",
-        latin: None,
+        latin: Some("Vietnamese"),
         native: "Tiếng Việt",
         flag: Flag::Star { field: 0xDA251D, star: 0xFFFF00 },
-        font: None,
+        font: Some("vi"),
         csv: include_str!("../../../assets/i18n/vi.csv"),
     },
 ];

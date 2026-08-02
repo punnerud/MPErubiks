@@ -170,6 +170,16 @@ impl RubiksApp {
             rx,
         };
         crate::persist::warm_app(&mut app);
+        // ?screen=lang deep-links straight into the language picker
+        // (shareable: "change it here", and it makes the picker's font
+        // path testable without simulating taps).
+        #[cfg(target_arch = "wasm32")]
+        if crate::platform::web::query_value("screen").as_deref() == Some("lang") {
+            app.screen = Screen::Language(crate::screens::language::LanguageScreen {
+                prev: Box::new(Screen::Menu),
+                close_at: None,
+            });
+        }
         app.light_mode = app
             .store
             .as_ref()

@@ -10,13 +10,17 @@ fn rgb(c: u32) -> Color32 {
     Color32::from_rgb((c >> 16) as u8, ((c >> 8) & 0xFF) as u8, (c & 0xFF) as u8)
 }
 
+/// Corner radius shared by every flag.
+const ROUNDING: f32 = 3.0;
+
 /// A clickable flag; draws a selection ring when active. Returns true
 /// when clicked.
 pub fn flag_button(ui: &mut Ui, lang: Lang, active: bool) -> bool {
     let size = Vec2::new(34.0, 24.0);
     let (rect, response) = ui.allocate_exact_size(size + Vec2::splat(6.0), Sense::click());
     let flag_rect = Rect::from_center_size(rect.center(), size);
-    draw_flag(ui.painter(), flag_rect, lang.def().flag);
+    let bg = ui.visuals().panel_fill;
+    draw_flag_rounded(ui.painter(), flag_rect, lang.def().flag, bg);
     let ring = if active {
         Stroke::new(2.5, ui.visuals().selection.stroke.color)
     } else if response.hovered() {
@@ -24,13 +28,27 @@ pub fn flag_button(ui: &mut Ui, lang: Lang, active: bool) -> bool {
     } else {
         Stroke::new(1.0, Color32::from_gray(90))
     };
-    // Square corners: several flags (Union Jack diagonals, cantons,
-    // Nordic crosses) draw all the way to the edge, so a rounded frame
-    // would clip inconsistently — one flag looked rounded, the next
-    // spilled past it.
     ui.painter()
-        .rect_stroke(flag_rect, 0.0, ring, egui::StrokeKind::Outside);
+        .rect_stroke(flag_rect, ROUNDING, ring, egui::StrokeKind::Outside);
     response.clicked()
+}
+
+/// Draw a flag with ROUNDED corners. egui can clip to a rectangle but
+/// not to a rounded one, and several designs (Union Jack diagonals,
+/// cantons, crosses) paint all the way to the edge — so the corners are
+/// carved back afterwards with the surrounding colour. `bg` must be
+/// whatever sits behind the flag, or the notches will show.
+pub fn draw_flag_rounded(p: &egui::Painter, r: Rect, flag: Flag, bg: Color32) {
+    draw_flag(p, r, flag);
+    p.rect_stroke(
+        r,
+        ROUNDING,
+        Stroke::new(2.0, bg),
+        egui::StrokeKind::Outside,
+    );
+    // Outside-stroke leaves the square corners themselves; a second,
+    // inside pass rounds the flag's own edge.
+    p.rect_stroke(r, ROUNDING, Stroke::new(1.5, bg), egui::StrokeKind::Inside);
 }
 
 pub fn draw_flag(p: &egui::Painter, r: Rect, flag: Flag) {

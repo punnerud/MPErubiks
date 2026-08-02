@@ -26,6 +26,9 @@ FAMILIES = {
     "zh-Hant": "Noto Sans TC",
     "ja": "Noto Sans JP",
     "ko": "Noto Sans KR",
+    # Vietnamese: the default UI font has no Latin Extended Additional
+    # (ế, ệ, ữ …), so its own text renders as boxes without this.
+    "vi": "Noto Sans",
 }
 
 # A legacy UA makes the API answer with TTF instead of woff2 (egui's
@@ -33,11 +36,22 @@ FAMILIES = {
 UA_TTF = "Mozilla/4.0"
 
 
-def chars_used(code: str) -> str:
-    """Every distinct character in this language's translation, plus the
-    digits and punctuation the UI composes at runtime."""
+def native_names() -> dict:
+    """The language names shown in the picker, read from the registry.
+    They are UI text too — and they are NOT in the translation files, so
+    forgetting them is exactly how 简体中文 became 口口中文."""
+    src = open(os.path.join(ROOT, "crates", "cube-app", "src", "i18n.rs"), encoding="utf-8").read()
+    entries = re.findall(r'code:\s*"([^"]+)",\s*latin:[^\n]*\n\s*native:\s*"([^"]+)"', src)
+    return dict(entries)
+
+
+def chars_used(code: str, names: dict) -> str:
+    """Every distinct character this language can put on screen: its
+    translated strings, its own name in the picker, plus the digits and
+    punctuation the UI composes at runtime."""
     path = os.path.join(ROOT, "assets", "i18n", f"{code}.csv")
     seen = set("0123456789.,:;!?()[]%+-–—…'\"/ ")
+    seen.update(names.get(code, ""))
     with open(path, encoding="utf-8") as f:
         for row in csv.reader(f):
             if len(row) >= 2:
@@ -68,10 +82,11 @@ def main() -> None:
     codes = sys.argv[1:] or list(FAMILIES)
     out_dir = os.path.join(ROOT, "assets", "fonts")
     os.makedirs(out_dir, exist_ok=True)
+    names = native_names()
     total = 0
     for code in codes:
         family = FAMILIES[code]
-        text = chars_used(code)
+        text = chars_used(code, names)
         data = fetch_subset(family, text)
         path = os.path.join(out_dir, f"{code}.ttf")
         with open(path, "wb") as f:

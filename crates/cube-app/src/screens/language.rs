@@ -70,10 +70,15 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
                     egui::Pos2::new(rect.left() + 34.0, rect.center().y),
                     Vec2::new(34.0, 24.0),
                 );
-                flags::draw_flag(p, flag_rect, def.flag);
+                let row_bg = if active {
+                    Color32::from_rgb(0x1E, 0x88, 0x50)
+                } else {
+                    Color32::from_gray(38)
+                };
+                flags::draw_flag_rounded(p, flag_rect, def.flag, row_bg);
                 p.rect_stroke(
                     flag_rect,
-                    0.0,
+                    3.0,
                     Stroke::new(1.0, Color32::from_black_alpha(90)),
                     StrokeKind::Outside,
                 );

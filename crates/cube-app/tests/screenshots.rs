@@ -45,6 +45,23 @@ fn language_picker_phone() {
     });
     h.run_steps(2);
     h.snapshot("language_picker");
+    // Scroll to the bottom of the list: the CJK rows must show their
+    // own scripts (the picker fetches those font subsets on open).
+    for _ in 0..24 {
+        // The scroll area only reacts under the pointer.
+        h.input_mut()
+            .events
+            .push(egui::Event::PointerMoved(egui::Pos2::new(195.0, 400.0)));
+        h.input_mut().events.push(egui::Event::MouseWheel {
+            unit: egui::MouseWheelUnit::Point,
+            delta: egui::Vec2::new(0.0, -120.0),
+            modifiers: egui::Modifiers::NONE,
+            phase: egui::TouchPhase::Move,
+        });
+        h.step();
+    }
+    h.run_steps(2);
+    h.snapshot("language_picker_cjk");
 }
 
 #[test]
