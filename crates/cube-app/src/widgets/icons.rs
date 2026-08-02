@@ -94,6 +94,36 @@ pub fn draw_gear(p: &egui::Painter, r: Rect) {
     p.circle_filled(c, radius * 0.45, egui::Color32::from_gray(40));
 }
 
+/// A glowing light bulb: the universal "here's the answer" symbol.
+pub fn draw_bulb(p: &egui::Painter, r: Rect) {
+    let c = Pos2::new(r.center().x, r.top() + r.height() * 0.38);
+    let rad = r.width().min(r.height()) * 0.30;
+    let glass = egui::Color32::from_rgb(0xFF, 0xD5, 0x00);
+    // Rays.
+    for i in 0..7 {
+        let a = -std::f32::consts::PI * 0.95 + i as f32 * std::f32::consts::PI * 0.9 / 6.0;
+        let d = egui::Vec2::new(a.cos(), a.sin());
+        p.line_segment(
+            [c + d * (rad * 1.25), c + d * (rad * 1.7)],
+            egui::Stroke::new(rad * 0.16, glass),
+        );
+    }
+    // Glass + filament dot.
+    p.circle_filled(c, rad, glass);
+    p.circle_filled(c, rad * 0.4, egui::Color32::from_rgb(0xFF, 0xF3, 0xB0));
+    // Base (screw cap).
+    let base_w = rad * 0.9;
+    let base_top = c.y + rad * 0.85;
+    p.rect_filled(
+        Rect::from_min_max(
+            Pos2::new(c.x - base_w / 2.0, base_top),
+            Pos2::new(c.x + base_w / 2.0, base_top + rad * 0.75),
+        ),
+        rad * 0.15,
+        egui::Color32::from_gray(200),
+    );
+}
+
 pub fn draw_camera(p: &egui::Painter, r: Rect) {
     let body = Rect::from_min_max(
         Pos2::new(r.left(), r.top() + r.height() * 0.22),

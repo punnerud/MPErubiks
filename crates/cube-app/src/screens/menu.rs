@@ -79,9 +79,9 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
             Color32::from_rgb(0x1E, 0x88, 0x50),
             app.t(TextKey::MenuSolve),
             |p, r| {
-                // Solve = camera + solved face: scan your cube, get help.
+                // Solve = light bulb + cube: "the answer for your cube".
                 let half = Vec2::new(r.width() * 0.46, r.height());
-                icons::draw_camera(p, Rect::from_min_size(r.min, half));
+                icons::draw_bulb(p, Rect::from_min_size(r.min, half));
                 icons::draw_mini_cube(
                     p,
                     Rect::from_min_size(
