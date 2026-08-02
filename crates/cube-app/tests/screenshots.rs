@@ -176,6 +176,7 @@ fn train_session_watch_phone() {
                     playing: false,
                 },
                 from_lesson: None,
+                example: origin,
             },
         ));
     }
@@ -338,6 +339,7 @@ fn train_session_ready() {
                 case_idx: t_idx,
                 phase: cube_app::screens::train::Phase::Ready,
                 from_lesson: None,
+                example: app.cube,
             },
         ));
     }

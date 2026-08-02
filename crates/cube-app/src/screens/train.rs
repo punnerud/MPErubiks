@@ -41,6 +41,9 @@ pub struct LessonView {
 pub struct SessionState {
     pub case_idx: u16,
     pub phase: Phase,
+    /// The current example's start state: the recipe's live progress is
+    /// derived by matching the cube against its prefix states.
+    pub example: cube_core::FaceletCube,
     /// Set when Practice was launched from a lesson step: the top-left
     /// back arrow returns THERE, not to the picker.
     pub from_lesson: Option<(usize, usize)>,
@@ -196,6 +199,7 @@ fn picker(app: &mut RubiksApp, ui: &mut Ui, tab: &mut PickerTab, next: &mut Opti
                                     playing: false,
                                 },
                                 from_lesson: None,
+                                example: origin,
                             })));
                         }
                     }
@@ -448,6 +452,7 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
                             case_idx,
                             phase: Phase::Ready,
                             from_lesson: Some((view.lesson, view.step)),
+                            example: app.cube,
                         })));
                     }
                 }
@@ -613,6 +618,7 @@ fn session_ui(app: &mut RubiksApp, ui: &mut Ui, session: &mut SessionState, next
     .show(ui, cube_size);
     super::play::handle_tap_select(app, &response);
 
+    let (recipe_example, recipe_case) = (session.example, session.case_idx);
     ui.vertical_centered(|ui| {
         // Fixed-height arrow slot: filled while a sticker is selected,
         // empty otherwise — the layout below never shifts.
@@ -715,6 +721,7 @@ fn session_ui(app: &mut RubiksApp, ui: &mut Ui, session: &mut SessionState, next
             .clicked()
             {
                 new_case_state(app, session.case_idx);
+                session.example = app.cube;
                 session.phase = Phase::Ready;
             }
             ui.label(RichText::new(alg_text.clone()).size(16.0).weak());
@@ -768,11 +775,13 @@ fn session_ui(app: &mut RubiksApp, ui: &mut Ui, session: &mut SessionState, next
                 .clicked()
                 {
                     new_case_state(app, session.case_idx);
+                    session.example = app.cube;
                 }
             });
-            ui.label(RichText::new(alg_text).size(16.0).weak());
+            live_recipe(app, ui, recipe_example, recipe_case);
         }
         Phase::Timing { start } => {
+            live_recipe(app, ui, recipe_example, recipe_case);
             let elapsed = ((now - *start) * 1000.0) as u64;
             ui.label(
                 RichText::new(format_ms(elapsed))
@@ -823,6 +832,7 @@ fn session_ui(app: &mut RubiksApp, ui: &mut Ui, session: &mut SessionState, next
                 stats_row(app, ui, session.case_idx);
                 if big_tap_zone(ui, Color32::from_rgb(0x2A, 0x5C, 0xC2), "GO", 42.0) {
                     new_case_state(app, session.case_idx);
+                    session.example = app.cube;
                     session.phase = Phase::Ready;
                 }
             }
@@ -860,6 +870,44 @@ fn demo_exec(
             y_frame: 0,
         });
     app.library.rec.execution_alg(m)
+}
+
+/// The recipe, LIVE: a big karaoke row where every move lights green as
+/// the user actually performs it on the cube (state-prefix matching, so
+/// undoing a wrong turn naturally rolls the marker back). Shown when
+/// hints are on; practice mode shows progress dots without letters.
+fn live_recipe(app: &RubiksApp, ui: &mut Ui, example: cube_core::FaceletCube, case_idx: u16) {
+    if matches!(app.hints.mode, crate::app::HintMode::Off) {
+        return;
+    }
+    let exec = demo_exec(app, case_idx, &example);
+    if exec.0.is_empty() {
+        return;
+    }
+    // Largest prefix of the recipe the cube has actually reached.
+    let mut done = 0;
+    let mut probe = example;
+    for (k, &m) in exec.0.iter().enumerate() {
+        if probe == app.cube {
+            done = k;
+            break;
+        }
+        probe.apply(m);
+        done = k + 1;
+    }
+    if probe != app.cube && done == exec.0.len() {
+        // Cube is off the recipe path entirely: mark nothing.
+        done = 0;
+    }
+    let practice = matches!(app.hints.mode, crate::app::HintMode::Practice);
+    let hidden: Vec<bool> = vec![practice; exec.0.len()];
+    crate::widgets::playback::karaoke_row_masked(
+        ui,
+        &exec.0,
+        done,
+        false,
+        practice.then_some(hidden.as_slice()),
+    );
 }
 
 fn new_case_state(app: &mut RubiksApp, case_idx: u16) {
