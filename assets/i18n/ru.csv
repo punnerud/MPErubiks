@@ -67,3 +67,12 @@ LessonMiddleLeft,Отправь ребро влево
 LessonTopTitle,Верх
 LessonTopCross,Жёлтый крест: F R U R' U' F'
 LessonTopNext,Теперь попробуй вкладку ABC — ты почти у цели!
+PracticeShuffle,Перемешай для практики
+ShareOfSolution,решения
+PickAlgorithms,Выбери алгоритмы для тренировки
+ScrambleModeRandom,Настоящее
+ScrambleModeBuilt,Построенное
+ScrambleModeAuto,Авто
+HowManyTimes,Сколько раз
+PlayAffectsGuide,"Что выберешь тут, то подскажу и в «Собери»"
+Moves,ходов

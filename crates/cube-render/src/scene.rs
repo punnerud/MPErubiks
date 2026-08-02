@@ -24,6 +24,7 @@ pub struct Instance {
     /// 6 palette indices, 4 bits each, in Face order U R F D L B.
     pub colors: u32,
     /// bit 0: highlighted (next-move layer pulse).
+    /// bit 1: dimmed. bit 2: yellow "current letter" hint.
     pub flags: u32,
     pub _pad1: [u32; 2],
 }
@@ -74,6 +75,18 @@ pub fn instances_from_state(
     highlight_mask: u32,
     color_override: Option<&dyn Fn(usize) -> Option<u32>>,
 ) -> [Instance; 27] {
+    instances_from_state_hinted(state, pose, highlight_mask, 0, color_override)
+}
+
+/// As [`instances_from_state`], plus a second mask painted yellow: the
+/// layer the current recipe letter turns.
+pub fn instances_from_state_hinted(
+    state: &FaceletCube,
+    pose: Option<&LayerPose>,
+    highlight_mask: u32,
+    hint_mask: u32,
+    color_override: Option<&dyn Fn(usize) -> Option<u32>>,
+) -> [Instance; 27] {
     let table = sticker_table();
     core::array::from_fn(|i| {
         let q = grid_coord(i);
@@ -108,7 +121,9 @@ pub fn instances_from_state(
             _pad0: 0.0,
             rot,
             colors,
-            flags: u32::from(highlighted) | (u32::from(dimmed) << 1),
+            flags: u32::from(highlighted)
+                | (u32::from(dimmed) << 1)
+                | (u32::from(hint_mask & (1 << i) != 0) << 2),
             _pad1: [0, 0],
         }
     })

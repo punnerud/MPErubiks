@@ -67,3 +67,12 @@ LessonMiddleLeft,Изпрати ръбчето наляво
 LessonTopTitle,Върхът
 LessonTopCross,Жълт кръст: F R U R' U' F'
 LessonTopNext,Сега пробвай раздела ABC — почти успя!
+PracticeShuffle,Разбъркай за упражнение
+ShareOfSolution,от решението
+PickAlgorithms,Избери алгоритми за тренировка
+ScrambleModeRandom,Истинско
+ScrambleModeBuilt,Нагласено
+ScrambleModeAuto,Авто
+HowManyTimes,Колко пъти
+PlayAffectsGuide,"Каквото избереш тук, го предпочита и разделът Нареди"
+Moves,хода

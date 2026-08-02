@@ -2,7 +2,7 @@
 //! children who can't read yet — each mode has a distinct icon and color.
 
 use crate::app::{RubiksApp, Screen};
-use crate::i18n::{Lang, TextKey};
+use crate::i18n::TextKey;
 use crate::widgets::{flags, icons};
 use egui::{Color32, Rect, Ui, Vec2};
 
@@ -64,7 +64,7 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
             if resp.clicked() {
                 let prev = std::mem::replace(&mut app.screen, crate::app::Screen::Menu);
                 app.screen = crate::app::Screen::Settings(
-                    crate::screens::settings::SettingsScreen { prev: Box::new(prev) },
+                    crate::screens::settings::SettingsScreen { prev: Box::new(prev), focus: crate::screens::settings::SettingsFocus::General },
                 );
             }
         });

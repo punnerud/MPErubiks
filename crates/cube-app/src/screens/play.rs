@@ -9,7 +9,23 @@ use cube_core::{FaceletCube, Move, Turns};
 use egui::{Color32, Sense, Ui, Vec2};
 
 pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
-    top_bar(app, ui);
+    // Gear here opens the SAME settings screen, focused on the practice
+    // selection (which also feeds the solve guide).
+    match top_bar_with_gear(ui) {
+        TopBarAction::Back => {
+            app.screen = Screen::Menu;
+            return;
+        }
+        TopBarAction::Gear => {
+            let prev = std::mem::replace(&mut app.screen, Screen::Menu);
+            app.screen = Screen::Settings(crate::screens::settings::SettingsScreen {
+                prev: Box::new(prev),
+                focus: crate::screens::settings::SettingsFocus::Play,
+            });
+            return;
+        }
+        TopBarAction::None => {}
+    }
 
     // Actions ABOVE the cube (thumb-reach + clear of the iOS bottom bar).
     ui.vertical_centered(|ui| {
@@ -18,6 +34,10 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
             action_buttons(app, ui);
         });
     });
+    if app.last_practice.is_some() {
+        // Drawn in flow: the cube below simply gets the remaining space.
+        practice_card(app, ui);
+    }
 
     let controls_height = 96.0 + crate::app::BOTTOM_INSET;
     let cube_size = Vec2::new(
@@ -32,6 +52,7 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
         highlight,
         dim_others: 1.0,
         color_override: None,
+        hint: None,
     }
     .show(ui, cube_size);
     handle_tap_select(app, &response);
@@ -43,6 +64,123 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
         });
         ui.add_space(crate::app::BOTTOM_INSET);
     });
+}
+
+/// Shuffle: a PRACTICE scramble when algorithms are selected (its
+/// solution contains them), otherwise the plain random one.
+fn practice_or_plain_scramble(app: &mut RubiksApp) {
+    let wanted: Vec<u16> = app.play.include.clone();
+    if wanted.is_empty() || !matches!(app.table, crate::app::TableState::Ready) {
+        app.last_practice = None;
+        app.scramble();
+        return;
+    }
+    let mut rng = cube_core::SplitMix64::new(app.rng.next_u64());
+    match cube_solver::practice_scramble(
+        &mut rng,
+        &app.library.rec,
+        &wanted,
+        app.play.target,
+        app.play.mode,
+        app.hints.max_extra,
+    ) {
+        Some(ps) => {
+            app.animator.clear();
+            app.cube = ps.state;
+            app.history.clear();
+            app.last_practice = Some(crate::app::PracticeInfo {
+                counts: ps
+                    .counts
+                    .iter()
+                    .map(|(idx, n)| (app.library.rec.case(*idx).name.clone(), *n))
+                    .collect(),
+                moves: ps.solution.total_htm,
+                share: ps.share,
+                state: ps.state,
+                solution: ps.solution,
+            });
+        }
+        // No practice scramble available (e.g. only beginner steps
+        // chosen, which the weave engine cannot target): plain shuffle.
+        None => {
+            app.last_practice = None;
+            app.scramble();
+        }
+    }
+}
+
+/// What the last practice shuffle produced: which algorithms, how many
+/// times, how long the solution is, and how much of it is the
+/// algorithms — with a bar showing that share.
+fn practice_card(app: &mut RubiksApp, ui: &mut Ui) {
+    let Some(info) = &app.last_practice else { return };
+    let names: Vec<String> = info
+        .counts
+        .iter()
+        .map(|(name, n)| {
+            if *n > 1 {
+                format!("{name} ×{n}")
+            } else {
+                name.clone()
+            }
+        })
+        .collect();
+    let title = format!("★ {}", names.join(" · "));
+    let detail = format!(
+        "{} {} · {:.0} % {}",
+        info.moves,
+        app.t(TextKey::Moves),
+        info.share * 100.0,
+        app.t(TextKey::ShareOfSolution)
+    );
+    let share = info.share.clamp(0.0, 1.0);
+    let show_clicked = ui
+        .vertical_centered(|ui| {
+            let w = 320.0f32.min(ui.available_width() - 16.0);
+            let (rect, resp) = ui.allocate_exact_size(Vec2::new(w, 70.0), Sense::click());
+            let p = ui.painter();
+            p.rect_filled(rect, 12.0, Color32::from_gray(34));
+            p.text(
+                egui::Pos2::new(rect.left() + 14.0, rect.top() + 18.0),
+                egui::Align2::LEFT_CENTER,
+                title,
+                egui::FontId::proportional(18.0),
+                Color32::from_rgb(0xFF, 0xD5, 0x00),
+            );
+            p.text(
+                egui::Pos2::new(rect.left() + 14.0, rect.top() + 40.0),
+                egui::Align2::LEFT_CENTER,
+                detail,
+                egui::FontId::proportional(14.0),
+                Color32::from_gray(190),
+            );
+            // Share bar: the green part is the algorithms.
+            let bar = egui::Rect::from_min_size(
+                egui::Pos2::new(rect.left() + 14.0, rect.bottom() - 16.0),
+                Vec2::new(rect.width() - 28.0, 6.0),
+            );
+            p.rect_filled(bar, 3.0, Color32::from_gray(60));
+            p.rect_filled(
+                egui::Rect::from_min_size(bar.min, Vec2::new(bar.width() * share, 6.0)),
+                3.0,
+                Color32::from_rgb(0x1E, 0x88, 0x50),
+            );
+            resp.clicked()
+        })
+        .inner;
+    if show_clicked {
+        if let Some(info) = app.last_practice.take() {
+            let guide = crate::screens::solve::GuideState::from_guided(
+                info.solution,
+                &app.library.rec,
+                info.state,
+                matches!(app.hints.mode, crate::app::HintMode::Practice),
+            );
+            app.cube = info.state;
+            app.animator.clear();
+            app.screen = Screen::Solve(crate::screens::solve::SolveScreen::Guide(guide));
+        }
+    }
 }
 
 /// Scramble / reset / undo — compact, above the cube.
@@ -57,7 +195,7 @@ fn action_buttons(app: &mut RubiksApp, ui: &mut Ui) {
     )
     .clicked()
     {
-        app.scramble();
+        practice_or_plain_scramble(app);
     }
     if icons::big_icon_button(
         ui,
@@ -71,6 +209,7 @@ fn action_buttons(app: &mut RubiksApp, ui: &mut Ui) {
         app.animator.clear();
         app.cube = FaceletCube::SOLVED;
         app.history.clear();
+        app.last_practice = None;
     }
     if icons::big_icon_button(
         ui,

@@ -7,6 +7,7 @@
 mod hints;
 mod cross;
 mod my_way;
+mod practice_scramble;
 mod resolve_scan;
 mod table_pack;
 mod solve;
@@ -16,6 +17,7 @@ mod validate;
 pub use hints::{solve_with_hints, GuidedSolution, HintAt, Segment, SolveOutput};
 pub use cross::solve_cross;
 pub use my_way::{my_way, MySeg, MyWayPlan};
+pub use practice_scramble::{practice_scramble, Mode as ScrambleMode, PracticeScramble};
 pub use resolve_scan::{assign_classes, relabel_to_standard, resolve_scan, Shares};
 pub use table_pack::{decode_packed, encode_packed};
 pub use solve::{random_state, scramble_for, solve, solve_bounded_public, SolveError};

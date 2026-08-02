@@ -134,7 +134,35 @@ font's shapes. Adding a script costs other users nothing.
 own translation files, and treating "which glyphs does this product need"
 as a build-time question, is the combination.
 
-## 7. Small disciplines worth naming
+## 7. Practice scrambles: a scramble that needs YOUR algorithm [I]
+
+**Problem.** Drilling one algorithm means meeting it, and a random
+scramble hits a specific PLL about one time in twenty. Drill modes
+usually solve this by setting up the case in isolation — which teaches
+the fingers but never the *recognition in context*.
+
+**Mechanism.** Two generators behind one button, both honest:
+*Random* draws real random states and keeps one whose guided solution
+(the weave engine, §2) actually uses the chosen algorithms; *Built*
+walks backwards from solved along algorithm inverses in distinct
+whole-cube frames, so the case is guaranteed to be there. Auto tries
+random first. Either way the reported numbers — occurrences, total
+moves, and the **share of the solution that is your algorithm** — are
+measured on the solution the app will show, never on the route it was
+built from, so the engine finding something better cannot make the card
+lie.
+
+**What the construction taught us** (all three found by tests, not
+guessed): random filler between two inverses destroys the case the next
+inverse is supposed to leave behind, because a PLL pattern is only a
+PLL pattern over an intact F2L; a last-layer algorithm can never appear
+twice in one solve (it ends the solve — two compose into a *different*
+case); and beginner steps with no recognition pattern can never be
+targeted at all, since the weave engine matches cases in states. So the
+feature promises "at least once", maximizes occurrences over several
+attempts, and reports the truth.
+
+## 8. Small disciplines worth naming
 
 - **Derived, never stored, UI gates [I-ish].** The practice-stop gate is a
   pure function of `(mode, cursor, segment_ids, revealed)` — no stored flag
@@ -155,7 +183,7 @@ as a build-time question, is the combination.
   exactly nine stickers per class and form a legal cube through the grid
   tables.
 
-## 8. Negative results
+## 9. Negative results
 
 Measured, then rejected — kept because the numbers are the point.
 

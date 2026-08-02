@@ -67,3 +67,12 @@ LessonMiddleLeft,エッジを左におくろう
 LessonTopTitle,いちばん上の段
 LessonTopCross,黄色いクロス：F R U R' U' F'
 LessonTopNext,つぎはABCのタブへ—ゴールまであと少し！
+PracticeShuffle,練習スクランブル
+ShareOfSolution,が手順
+PickAlgorithms,練習する手順を選ぼう
+ScrambleModeRandom,本物
+ScrambleModeBuilt,手作り
+ScrambleModeAuto,おまかせ
+HowManyTimes,何回出てくる？
+PlayAffectsGuide,選んだ手順は、解き方ガイドでも先に出てくるよ
+Moves,手

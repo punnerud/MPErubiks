@@ -63,6 +63,26 @@ impl GuideState {
         }
     }
 
+    /// Build from a guided solution the caller already computed (the
+    /// practice scramble in Play knows its own answer).
+    pub fn from_guided(
+        guided: cube_solver::GuidedSolution,
+        rec: &cube_core::Recognizer,
+        origin: FaceletCube,
+        practice: bool,
+    ) -> GuideState {
+        GuideState::from_output(
+            cube_solver::SolveOutput {
+                base: Alg::new(Vec::new()),
+                inline_hints: Vec::new(),
+                guided: Some(guided),
+            },
+            rec,
+            origin,
+            practice,
+        )
+    }
+
     /// Build from a «Min vei» macro plan: every named segment carries its
     /// algorithm name (and gates under practice mode like any trained
     /// segment).
@@ -192,6 +212,7 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
         let prev = std::mem::replace(&mut app.screen, Screen::Menu);
         app.screen = Screen::Settings(crate::screens::settings::SettingsScreen {
             prev: Box::new(prev),
+            focus: crate::screens::settings::SettingsFocus::General,
         });
         return;
     }
@@ -452,6 +473,7 @@ fn show_guide(app: &mut RubiksApp, ui: &mut Ui, guide: &mut GuideState, next: &m
         highlight,
         dim_others: if done { 0.0 } else { 0.35 },
         color_override: None,
+        hint: None,
     }
     .show(ui, cube_size);
     if guide.done_at.is_some() {

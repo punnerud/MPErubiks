@@ -3,7 +3,7 @@
 
 use cube_core::{FaceletCube, Move};
 use cube_render::{
-    instances_from_state, mask_for_move, CubeCallback, FrameData, MoveAnimator, OrbitCamera,
+    instances_from_state_hinted, mask_for_move, CubeCallback, FrameData, MoveAnimator, OrbitCamera,
 };
 use egui::{Response, Sense, Ui, Vec2};
 
@@ -18,6 +18,9 @@ pub struct CubeView<'a> {
     pub dim_others: f32,
     /// Per-facelet palette override (scan preview): index -> palette color.
     pub color_override: Option<&'a dyn Fn(usize) -> Option<u32>>,
+    /// Layer to wash YELLOW: the pieces the current letter of a recipe
+    /// takes with it, so a learner can follow letter -> pieces.
+    pub hint: Option<Move>,
 }
 
 impl CubeView<'_> {
@@ -37,6 +40,7 @@ impl CubeView<'_> {
         let now = ui.input(|i| i.time);
         let pose = self.animator.pose(now);
         let highlight_mask = self.highlight.map(mask_for_move).unwrap_or(0);
+        let hint_mask = self.hint.map(mask_for_move).unwrap_or(0);
         let ppp = ui.ctx().pixels_per_point();
         let frame = FrameData {
             view_proj: self.orbit.view_proj(rect.aspect_ratio()),
@@ -46,10 +50,11 @@ impl CubeView<'_> {
                 (rect.width() * ppp).round().max(1.0) as u32,
                 (rect.height() * ppp).round().max(1.0) as u32,
             ],
-            instances: instances_from_state(
+            instances: instances_from_state_hinted(
                 self.cube,
                 pose.as_ref(),
                 highlight_mask,
+                hint_mask,
                 self.color_override,
             ),
         };

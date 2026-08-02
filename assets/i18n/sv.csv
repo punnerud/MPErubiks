@@ -67,3 +67,12 @@ LessonMiddleLeft,Skicka kantbiten åt vänster
 LessonTopTitle,Toppen
 LessonTopCross,Gult kryss: F R U R' U' F'
 LessonTopNext,Testa ABC-fliken nu — du är nästan framme!
+PracticeShuffle,Övningsblandning
+ShareOfSolution,av lösningen
+PickAlgorithms,Välj algoritmer att öva
+ScrambleModeRandom,Äkta
+ScrambleModeBuilt,Byggd
+ScrambleModeAuto,Auto
+HowManyTimes,Hur många gånger
+PlayAffectsGuide,Det du väljer här används helst i lösningsguiden också
+Moves,drag

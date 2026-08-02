@@ -67,3 +67,12 @@ LessonMiddleLeft,把邊塊送到左邊
 LessonTopTitle,頂面
 LessonTopCross,黃色十字：F R U R' U' F'
 LessonTopNext,現在去試試 ABC 分頁—你快成功了！
+PracticeShuffle,練習打亂
+ShareOfSolution,的解法
+PickAlgorithms,選要練習的公式
+ScrambleModeRandom,真實
+ScrambleModeBuilt,特製
+ScrambleModeAuto,自動
+HowManyTimes,出現幾次
+PlayAffectsGuide,這裡選的，還原指引也會優先用
+Moves,步

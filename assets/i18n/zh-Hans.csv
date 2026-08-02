@@ -67,3 +67,12 @@ LessonMiddleLeft,把棱块送到左边
 LessonTopTitle,顶层
 LessonTopCross,黄色十字：F R U R' U' F'
 LessonTopNext,现在试试 ABC 那一页——你就快成功啦！
+PracticeShuffle,练习打乱
+ShareOfSolution,是公式
+PickAlgorithms,选几个公式来练
+ScrambleModeRandom,真实
+ScrambleModeBuilt,定制
+ScrambleModeAuto,自动
+HowManyTimes,出现几次
+PlayAffectsGuide,这里选的，还原时也优先用
+Moves,步

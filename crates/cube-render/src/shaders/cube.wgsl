@@ -71,6 +71,12 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
         let pulse = 0.30 + 0.20 * sin(globals.misc.x * 6.0);
         c = mix(c, vec3<f32>(1.0, 1.0, 1.0), pulse * sticker);
     }
+    if (in.flags & 4u) != 0u {
+        // The layer the CURRENT letter of the recipe turns: a warm
+        // yellow wash, so a learner can see which pieces the move takes.
+        let pulse = 0.35 + 0.15 * sin(globals.misc.x * 5.0);
+        c = mix(c, vec3<f32>(1.0, 0.84, 0.0), pulse * sticker);
+    }
     if (in.flags & 2u) != 0u {
         // Everything else DARKENS so the highlight pops — but keeps its
         // hue: users follow the guide on a real cube, and grayed

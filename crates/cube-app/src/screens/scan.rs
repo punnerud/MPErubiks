@@ -867,6 +867,7 @@ fn mini_guide(app: &mut RubiksApp, ui: &mut Ui, screen: &mut ScanScreen, outer: 
                 highlight: None,
                 dim_others: 1.0,
                 color_override: Some(&override_fn),
+                hint: None,
             }
             .show(ui, Vec2::splat(size));
             // Six progress squares under the mini cube.

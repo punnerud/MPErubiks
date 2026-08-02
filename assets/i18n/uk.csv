@@ -67,3 +67,12 @@ LessonMiddleLeft,Відправ ребро ліворуч
 LessonTopTitle,Верх
 LessonTopCross,Жовтий хрест: F R U R' U' F'
 LessonTopNext,Тепер спробуй вкладку ABC — уже майже все!
+PracticeShuffle,Перемішай для практики
+ShareOfSolution,розв’язку
+PickAlgorithms,Вибери алгоритми для тренування
+ScrambleModeRandom,Справжнє
+ScrambleModeBuilt,Складене
+ScrambleModeAuto,Авто
+HowManyTimes,Скільки разів
+PlayAffectsGuide,"Те, що вибереш тут, підказка в розділі Збери теж любить"
+Moves,ходів

@@ -90,6 +90,76 @@ fn menu_screen() {
 }
 
 #[test]
+fn play_practice_card_phone() {
+    // Pick a PLL to drill, shuffle, and show the card that reports how
+    // much of the solution is that algorithm.
+    std::env::set_var(
+        "RUBIKS_DATA_DIR",
+        std::env::temp_dir().join(format!("rubiks-test-{}", std::process::id())),
+    );
+    let mut h = Harness::builder()
+        .with_size(egui::Vec2::new(390.0, 740.0))
+        .wgpu()
+        .build_eframe(|cc| RubiksApp::new(cc));
+    {
+        let app = h.state_mut();
+        let t_idx = app.library.rec.find_by_id("pll-t").unwrap();
+        app.trained.insert(t_idx);
+        app.play.include = vec![t_idx];
+        app.hints.include = vec![t_idx];
+        let mut rng = cube_core::SplitMix64::new(7);
+        let ps = cube_solver::practice_scramble(
+            &mut rng,
+            &app.library.rec,
+            &[t_idx],
+            1,
+            cube_solver::ScrambleMode::Built,
+            6,
+        )
+        .expect("practice scramble");
+        app.cube = ps.state;
+        app.last_practice = Some(cube_app::app::PracticeInfo {
+            counts: ps
+                .counts
+                .iter()
+                .map(|(i, n)| (app.library.rec.case(*i).name.clone(), *n))
+                .collect(),
+            moves: ps.solution.total_htm,
+            share: ps.share,
+            state: ps.state,
+            solution: ps.solution,
+        });
+        app.screen = Screen::Play;
+    }
+    h.run_steps(2);
+    h.snapshot("play_practice_card");
+}
+
+#[test]
+fn settings_play_focus_phone() {
+    std::env::set_var(
+        "RUBIKS_DATA_DIR",
+        std::env::temp_dir().join(format!("rubiks-test-{}", std::process::id())),
+    );
+    let mut h = Harness::builder()
+        .with_size(egui::Vec2::new(390.0, 740.0))
+        .wgpu()
+        .build_eframe(|cc| RubiksApp::new(cc));
+    {
+        let app = h.state_mut();
+        let t_idx = app.library.rec.find_by_id("pll-t").unwrap();
+        app.play.include = vec![t_idx];
+        app.play.target = 2;
+        app.screen = Screen::Settings(cube_app::screens::settings::SettingsScreen {
+            prev: Box::new(Screen::Play),
+            focus: cube_app::screens::settings::SettingsFocus::Play,
+        });
+    }
+    h.run_steps(2);
+    h.snapshot("settings_play");
+}
+
+#[test]
 fn play_screen_solved() {
     let mut h = harness();
     h.state_mut().screen = Screen::Play;
@@ -284,6 +354,7 @@ fn settings_screen_phone() {
         app.hints.mode = cube_app::app::HintMode::Practice;
         app.screen = Screen::Settings(cube_app::screens::settings::SettingsScreen {
             prev: Box::new(Screen::Menu),
+            focus: cube_app::screens::settings::SettingsFocus::General,
         });
     }
     h.run_steps(2);

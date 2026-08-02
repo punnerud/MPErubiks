@@ -363,6 +363,7 @@ fn lesson_ui(app: &mut RubiksApp, ui: &mut Ui, view: &mut LessonView, next: &mut
         highlight,
         dim_others: 1.0,
         color_override: None,
+        hint: None,
     }
     .show(ui, cube_size);
     super::play::handle_tap_select(app, &response);
@@ -595,6 +596,14 @@ fn session_ui(app: &mut RubiksApp, ui: &mut Ui, session: &mut SessionState, next
         ui.label(RichText::new(name).size(26.0).strong());
     });
 
+    let (recipe_example, recipe_case) = (session.example, session.case_idx);
+    // The letter the learner is on: its layer gets a yellow wash so the
+    // notation and the pieces it takes are visibly the same thing.
+    let recipe_hint = if matches!(app.hints.mode, crate::app::HintMode::Off) {
+        None
+    } else {
+        recipe_next_move(app, recipe_example, recipe_case)
+    };
     // 3D cube shows the case; the turn-arrow row's space is ALWAYS
     // reserved so the cube never jumps when arrows appear/disappear.
     let controls_height = 282.0;
@@ -614,11 +623,11 @@ fn session_ui(app: &mut RubiksApp, ui: &mut Ui, session: &mut SessionState, next
             .map(|f| cube_core::Move::Face(f, cube_core::Turns::Cw)),
         dim_others: 1.0,
         color_override: None,
+        hint: recipe_hint,
     }
     .show(ui, cube_size);
     super::play::handle_tap_select(app, &response);
 
-    let (recipe_example, recipe_case) = (session.example, session.case_idx);
     ui.vertical_centered(|ui| {
         // Fixed-height arrow slot: filled while a sticker is selected,
         // empty otherwise — the layout below never shifts.
@@ -870,6 +879,25 @@ fn demo_exec(
             y_frame: 0,
         });
     app.library.rec.execution_alg(m)
+}
+
+/// The move the learner is on in the recipe (the first one not yet
+/// performed), for the yellow piece highlight.
+fn recipe_next_move(
+    app: &RubiksApp,
+    example: cube_core::FaceletCube,
+    case_idx: u16,
+) -> Option<cube_core::Move> {
+    let exec = demo_exec(app, case_idx, &example);
+    let mut probe = example;
+    for (k, &m) in exec.0.iter().enumerate() {
+        if probe == app.cube {
+            return exec.0.get(k).copied();
+        }
+        probe.apply(m);
+        let _ = k;
+    }
+    None
 }
 
 /// The recipe, LIVE: a big karaoke row where every move lights green as

@@ -67,3 +67,12 @@ LessonMiddleLeft,Envoie l'arête à gauche
 LessonTopTitle,Le dessus
 LessonTopCross,Croix jaune : F R U R' U' F'
 LessonTopNext,Essaie l'onglet ABC maintenant — tu y es presque !
+PracticeShuffle,Mélange d'exercice
+ShareOfSolution,de la solution
+PickAlgorithms,Choisis les algos à travailler
+ScrambleModeRandom,Vrai
+ScrambleModeBuilt,Construit
+ScrambleModeAuto,Auto
+HowManyTimes,Combien de fois
+PlayAffectsGuide,Ce que tu choisis ici est aussi préféré dans Résoudre
+Moves,mouvements

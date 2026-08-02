@@ -114,6 +114,24 @@ pub fn warm_app(app: &mut RubiksApp) {
             }
         }
         app.hints.include = include;
+        // Play practice-scramble prefs.
+        if let Some(ids) = store.setting("play.include").ok().flatten() {
+            app.play.include = ids
+                .split(',')
+                .filter(|s| !s.is_empty())
+                .filter_map(|id| app.library.rec.find_by_id(id))
+                .collect();
+        }
+        if let Some(v) = store.setting("play.target").ok().flatten() {
+            if let Ok(n) = v.parse::<usize>() {
+                app.play.target = n.clamp(1, 3);
+            }
+        }
+        app.play.mode = match store.setting("play.mode").ok().flatten().as_deref() {
+            Some("random") => cube_solver::ScrambleMode::Random,
+            Some("built") => cube_solver::ScrambleMode::Built,
+            _ => cube_solver::ScrambleMode::Auto,
+        };
         app.tap_cell = store
             .setting("tap_select")
             .ok()

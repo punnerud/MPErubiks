@@ -67,3 +67,12 @@ LessonMiddleLeft,Send kanten til venstre
 LessonTopTitle,Toppen
 LessonTopCross,Gult kors: F R U R' U' F'
 LessonTopNext,Prøv ABC-fanen nå — du er nesten i mål!
+PracticeShuffle,Øveblanding
+ShareOfSolution,av løsningen
+PickAlgorithms,Velg algoritmer å øve på
+ScrambleModeRandom,Ekte
+ScrambleModeBuilt,Bygd
+ScrambleModeAuto,Auto
+HowManyTimes,Hvor mange ganger
+PlayAffectsGuide,"Det du velger her, brukes helst i Løs også"
+Moves,trekk

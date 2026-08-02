@@ -67,3 +67,12 @@ LessonMiddleLeft,Envia l'aresta a l'esquerra
 LessonTopTitle,La cara de dalt
 LessonTopCross,Creu groga: F R U R' U' F'
 LessonTopNext,Ara prova la pestanya ABC — ja gairebé ho tens!
+PracticeShuffle,Barreja de pràctica
+ShareOfSolution,de la solució
+PickAlgorithms,Tria algorismes per practicar
+ScrambleModeRandom,Real
+ScrambleModeBuilt,Construïda
+ScrambleModeAuto,Automàtica
+HowManyTimes,Quants cops
+PlayAffectsGuide,El que tries aquí també val a la guia de solució
+Moves,moviments

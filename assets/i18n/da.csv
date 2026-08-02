@@ -67,3 +67,12 @@ LessonMiddleLeft,Send kanten til venstre
 LessonTopTitle,Toppen
 LessonTopCross,Gult kors: F R U R' U' F'
 LessonTopNext,Prøv ABC-fanen nu — du er der næsten!
+PracticeShuffle,Øveblanding
+ShareOfSolution,af løsningen
+PickAlgorithms,Vælg algoritmer at øve på
+ScrambleModeRandom,Ægte
+ScrambleModeBuilt,Bygget
+ScrambleModeAuto,Auto
+HowManyTimes,Hvor mange gange
+PlayAffectsGuide,"Det du vælger her, bruges helst i Løs også"
+Moves,træk

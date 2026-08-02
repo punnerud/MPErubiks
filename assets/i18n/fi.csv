@@ -67,3 +67,12 @@ LessonMiddleLeft,Lähetä särmäpala vasemmalle
 LessonTopTitle,Yläkerros
 LessonTopCross,Keltainen risti: F R U R' U' F'
 LessonTopNext,Kokeile nyt ABC-välilehteä — olet jo melkein perillä!
+PracticeShuffle,Treenisekoitus
+ShareOfSolution,ratkaisusta
+PickAlgorithms,Valitse treenattavat algoritmit
+ScrambleModeRandom,Aito
+ScrambleModeBuilt,Rakennettu
+ScrambleModeAuto,Automaatti
+HowManyTimes,Montako kertaa
+PlayAffectsGuide,Tässä valitut ovat etusijalla myös ratkaisuopastuksessa
+Moves,siirtoa

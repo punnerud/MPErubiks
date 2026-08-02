@@ -49,6 +49,10 @@ this is what the app looks like right now.
   top) with a steppable demo player and Practice buttons into the drill loop.
 - 💪 **Training** — PLL · OLL · F2L · beginner cards with demo player, drill
   timer, success/fail stats and a persistent trained-set (MPEdb).
+- 🎲 **Practice scrambles** — pick the algorithms you are drilling (gear in
+  Play): the shuffle then produces a scramble whose solution actually uses
+  them, and a card reports how many moves it is and what share of it is your
+  algorithm.
 - 🌍 **31 languages** — Nordic, most of Europe, and Chinese (Simplified and
   Traditional), Japanese, Korean, Vietnamese. Tap the flag for a scrollable
   picker. CJK scripts arrive as **font subsets fetched on demand** (38-94 KB,

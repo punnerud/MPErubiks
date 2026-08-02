@@ -10,7 +10,7 @@ use std::sync::mpsc::{Receiver, Sender};
 
 /// Extra bottom breathing room: iOS Safari's collapsing URL bar overlays
 /// the bottom of the viewport; buttons must sit above it.
-pub const BOTTOM_INSET: f32 = 14.0;
+pub const BOTTOM_INSET: f32 = 26.0;
 
 pub enum Screen {
     Menu,
@@ -47,6 +47,37 @@ pub enum HintMode {
     Practice,
     /// Pure shortest solution, no algorithm weaving.
     Off,
+}
+
+/// What the Play screen's Shuffle should build, and from which
+/// algorithms. Its selection also feeds the general hint settings: an
+/// algorithm you choose to drill here is one the solve guide should
+/// prefer too.
+pub struct PlaySettings {
+    pub include: Vec<u16>,
+    /// How many times to aim for (1..=3); the true count is reported.
+    pub target: usize,
+    pub mode: cube_solver::ScrambleMode,
+}
+
+impl Default for PlaySettings {
+    fn default() -> Self {
+        PlaySettings {
+            include: Vec::new(),
+            target: 1,
+            mode: cube_solver::ScrambleMode::Auto,
+        }
+    }
+}
+
+/// The card shown over the cube after a practice scramble.
+pub struct PracticeInfo {
+    /// (algorithm name, times it appears in the solution).
+    pub counts: Vec<(String, usize)>,
+    pub moves: usize,
+    pub share: f32,
+    pub state: cube_core::FaceletCube,
+    pub solution: cube_solver::GuidedSolution,
 }
 
 pub struct HintSettings {
@@ -91,6 +122,10 @@ pub struct RubiksApp {
     pub light_mode: bool,
     /// Guided-solution preferences (gear settings; persisted).
     pub hints: HintSettings,
+    /// Play-screen practice-scramble preferences (persisted).
+    pub play: PlaySettings,
+    /// Result of the last practice scramble (drives the card in Play).
+    pub last_practice: Option<PracticeInfo>,
     /// Font subsets already requested (script name -> loaded).
     pub fonts_loaded: std::collections::HashSet<&'static str>,
     /// Tap-select mode: false = tap selects the SIDE you touched,
@@ -164,6 +199,8 @@ impl RubiksApp {
             store,
             light_mode: false,
             hints: HintSettings::default(),
+            play: PlaySettings::default(),
+            last_practice: None,
             fonts_loaded: std::collections::HashSet::new(),
             tap_cell: false,
             tx,
@@ -267,8 +304,47 @@ impl RubiksApp {
                 "tap_select",
                 if self.tap_cell { "cell" } else { "side" },
             );
+            let play_ids: Vec<String> = self
+                .play
+                .include
+                .iter()
+                .map(|&c| self.library.rec.case(c).id.clone())
+                .collect();
+            let _ = store.set_setting("play.include", &play_ids.join(","));
+            let _ = store.set_setting("play.target", &self.play.target.to_string());
+            let _ = store.set_setting(
+                "play.mode",
+                match self.play.mode {
+                    cube_solver::ScrambleMode::Random => "random",
+                    cube_solver::ScrambleMode::Built => "built",
+                    cube_solver::ScrambleMode::Auto => "auto",
+                },
+            );
             crate::persist::persist(store);
         }
+    }
+
+    /// Choosing an algorithm to DRILL in Play also promotes it in the
+    /// solve guide: one decision, both places (Morten's rule).
+    pub fn toggle_play_algorithm(&mut self, case_idx: u16) {
+        if let Some(pos) = self.play.include.iter().position(|&c| c == case_idx) {
+            self.play.include.remove(pos);
+        } else {
+            self.play.include.push(case_idx);
+            self.trained.insert(case_idx);
+            if let Some(pos) = self.hints.include.iter().position(|&c| c == case_idx) {
+                // Already woven in: lift it to the top of the priority.
+                let c = self.hints.include.remove(pos);
+                self.hints.include.insert(0, c);
+            } else {
+                self.hints.include.insert(0, case_idx);
+            }
+            if let Some(store) = &self.store {
+                let id = self.library.rec.case(case_idx).id.clone();
+                let _ = store.set_trained(&id, true);
+            }
+        }
+        self.save_hint_settings();
     }
 
     pub fn set_lang(&mut self, lang: crate::i18n::Lang, ctx: &egui::Context) {
