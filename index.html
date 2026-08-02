@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Rubik's Cube</title>
+    
+<script type="module">
+import init, * as bindings from '/MPErubiks/cube-app-f7e1abc41c3db8b7.js';
+const wasm = await init({ module_or_path: '/MPErubiks/cube-app-f7e1abc41c3db8b7_bg.wasm' });
+
+
+window.wasmBindings = bindings;
+
+
+dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
+
+</script>
+    
+    
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            /* iOS Safari: the URL bar overlays the layout viewport; dvh
+               tracks the VISIBLE viewport so nothing hides behind it. */
+            height: 100dvh;
+            /* iOS draws its home indicator / URL bar over the bottom of
+               the viewport: reserve that strip so the app's own buttons
+               are never half-hidden behind it. */
+            height: calc(100dvh - env(safe-area-inset-bottom, 0px));
+            overflow: hidden;
+            background: #12151d;
+        }
+        #rubiks_canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            width: 100dvw;
+            height: 100%;
+            height: calc(100dvh - env(safe-area-inset-bottom, 0px));
+            outline: none;
+        }
+    </style>
+<link rel="modulepreload" href="/MPErubiks/cube-app-f7e1abc41c3db8b7.js" crossorigin="anonymous" integrity="sha384-xWvMfKO/dtTLb19/RS3XIfGqfrAkOd1tz48BZ61BRR9xpyjJMSX/uJWcv0XQbbHb"><link rel="preload" href="/MPErubiks/cube-app-f7e1abc41c3db8b7_bg.wasm" crossorigin="anonymous" integrity="sha384-DMr0Np6URoBqZwHdM5P4RgILqsZTjryAlhsxKC2RSCcxx1pU3nDTcBo7iJu6P+68" as="fetch" type="application/wasm"></head>
+<body>
+    <canvas id="rubiks_canvas"></canvas>
+</body>
+</html>
