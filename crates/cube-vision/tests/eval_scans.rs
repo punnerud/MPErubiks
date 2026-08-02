@@ -129,6 +129,43 @@ fn grid_offset_on_a_real_frame() {
     );
 }
 
+/// The real uploaded frame contains a cube; an all-background crop of
+/// the same photo (the table beside it) must NOT.
+#[test]
+fn cube_detection_on_a_real_frame() {
+    let Some(dir) = std::env::var_os("RUBIKS_SCANS_DIR") else {
+        return;
+    };
+    let path = std::path::PathBuf::from(dir).join("20260731-234151-233/cell_0.png");
+    let Some((w, h, rgba)) = read_png(&path) else {
+        eprintln!("frame upload not present - skipping");
+        return;
+    };
+    let crop = |cx: usize, cy: usize, side: usize| -> Vec<u8> {
+        let mut out = Vec::with_capacity(side * side * 4);
+        for y in 0..side {
+            for x in 0..side {
+                let sx = (cx + x).min(w - 1);
+                let sy = (cy + y).min(h - 1);
+                out.extend_from_slice(&rgba[(sy * w + sx) * 4..(sy * w + sx) * 4 + 4]);
+            }
+        }
+        out
+    };
+    let side = (0.6 * w.min(h) as f32) as usize;
+    let cube = crop((w - side) / 2, (h - side) / 2, side);
+    let fit = cube_vision::grid_fit(&cube, side, side);
+    eprintln!("cube crop: is_cube={} conf={:.2}", fit.is_cube, fit.conf);
+    assert!(fit.is_cube, "the guide square holds a cube here");
+
+    // Top strip of the same photo: table only.
+    let bg_side = side.min(h / 6);
+    let bg = crop(0, 0, bg_side);
+    let bg_fit = cube_vision::grid_fit(&bg, bg_side, bg_side);
+    eprintln!("background crop: is_cube={} conf={:.2}", bg_fit.is_cube, bg_fit.conf);
+    assert!(!bg_fit.is_cube, "plain background must not read as a cube");
+}
+
 #[test]
 fn field_captures_match_ground_truth() {
     let Some(dir) = std::env::var_os("RUBIKS_SCANS_DIR") else {

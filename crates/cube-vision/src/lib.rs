@@ -562,6 +562,10 @@ pub struct GridFit {
     pub sx: f32,
     pub sy: f32,
     pub conf: f32,
+    /// Is a CUBE actually in the square? A table, a wall or a hand is a
+    /// smooth expanse; a cube face is nine bright patches separated by
+    /// dark gaps, in BOTH directions. See [`cubeness`].
+    pub is_cube: bool,
 }
 
 pub fn grid_fit(rgba: &[u8], width: usize, height: usize) -> GridFit {
@@ -647,7 +651,51 @@ pub fn grid_fit(rgba: &[u8], width: usize, height: usize) -> GridFit {
         sx,
         sy,
         conf: cx.min(cy),
+        is_cube: cubeness(&col, dx, sx) && cubeness(&row, dy, sy),
     }
+}
+
+/// Does this projection look like a cube face rather than a flat
+/// surface? A cube shows three bright bands (the sticker rows/columns)
+/// with two dark valleys between them; a table, a wall or a hand
+/// projects an almost flat profile. Evaluated in the FITTED grid frame
+/// (`offset`/`scale` from the same search), so a cube held off-centre
+/// still counts.
+fn cubeness(proj: &[f32], offset: f32, scale: f32) -> bool {
+    let n = proj.len();
+    if n < 12 {
+        return false;
+    }
+    let nf = n as f32;
+    let span = nf * scale;
+    let g0 = offset + nf * (1.0 - scale) / 2.0;
+    let at = |from: f32, to: f32| -> (f32, f32) {
+        let a = from.max(0.0) as usize;
+        let b = (to.min(nf)) as usize;
+        if b <= a {
+            return (0.0, 0.0);
+        }
+        let slice = &proj[a..b];
+        let mean = slice.iter().sum::<f32>() / slice.len() as f32;
+        let min = slice.iter().copied().fold(f32::MAX, f32::min);
+        (mean, min)
+    };
+    let third = span / 3.0;
+    // Bands, trimmed 15% at each end so the sticker gaps do not bleed in.
+    let band = |k: f32| at(g0 + third * (k + 0.15), g0 + third * (k + 0.85)).0;
+    let bands = [band(0.0), band(1.0), band(2.0)];
+    let weakest = bands.iter().copied().fold(f32::MAX, f32::min);
+    let peak = bands.iter().copied().fold(0.0f32, f32::max);
+    if peak <= 1e-3 {
+        return false;
+    }
+    // Gaps: the darkest point in a narrow window at each interior third.
+    let gap_w = span / 24.0;
+    let gap = |k: f32| at(g0 + third * k - gap_w, g0 + third * k + gap_w).1;
+    let deepest_gap = gap(1.0).max(gap(2.0));
+    // Every row/column must carry stickers, and the gaps between them
+    // must be clearly darker than the bands.
+    weakest > peak * 0.25 && deepest_gap < weakest * 0.55
 }
 
 #[cfg(test)]
@@ -720,6 +768,35 @@ mod grid_tests {
         let (dx, dy, conf) = grid_offset(&img, 120, 120);
         assert!((dx - 8.0).abs() <= 3.0 && (dy + 6.0).abs() <= 3.0, "({dx:.1},{dy:.1})");
         assert!(conf > 0.5, "confidence {conf}");
+    }
+
+    /// A flat expanse (table, wall, hand) fills the square with an even
+    /// colour: it must NOT read as a cube, or the scanner captures
+    /// nine identical "white" cells.
+    #[test]
+    fn flat_surfaces_are_not_cubes() {
+        let mut plain = vec![0u8; 120 * 120 * 4];
+        for px in plain.chunks_exact_mut(4) {
+            px.copy_from_slice(&[210, 205, 195, 255]); // a pale table top
+        }
+        assert!(!grid_fit(&plain, 120, 120).is_cube, "table read as a cube");
+
+        // A gentle gradient (a wall lit from one side) is not a cube either.
+        let mut wall = vec![0u8; 120 * 120 * 4];
+        for y in 0..120usize {
+            for x in 0..120usize {
+                let v = (150 + x / 3) as u8;
+                wall[(y * 120 + x) * 4..(y * 120 + x) * 4 + 4]
+                    .copy_from_slice(&[v, v, v.saturating_sub(10), 255]);
+            }
+        }
+        assert!(!grid_fit(&wall, 120, 120).is_cube, "wall read as a cube");
+
+        // The synthetic 3x3 sticker sheet MUST read as a cube.
+        let centered = sheet(120, 120, 0, 0);
+        assert!(grid_fit(&centered, 120, 120).is_cube, "sticker sheet missed");
+        // Shifted and scaled sheets too (that is the point of the fit).
+        assert!(grid_fit(&sheet(120, 120, 9, -7), 120, 120).is_cube);
     }
 
     #[test]

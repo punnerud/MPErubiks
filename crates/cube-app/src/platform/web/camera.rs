@@ -135,8 +135,9 @@ impl Camera {
     /// Detect where the sticker grid sits inside the guide square:
     /// offset AND per-axis scale, in working-canvas terms (downscaled
     /// 120x120 readback + projection matcher). Returns (dx, dy, sx, sy,
-    /// confidence); apply only when confidence is high.
-    pub fn grid_align(&self) -> Option<(f32, f32, f32, f32, f32)> {
+    /// confidence, is_cube); apply only when confidence is high, and
+    /// only capture when a cube is actually there.
+    pub fn grid_align(&self) -> Option<(f32, f32, f32, f32, f32, bool)> {
         let (w, h) = self.canvas_dims();
         if w == 0 || h == 0 {
             return None;
@@ -170,6 +171,7 @@ impl Camera {
             f.sx,
             f.sy,
             f.conf,
+            f.is_cube,
         ))
     }
 

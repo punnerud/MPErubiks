@@ -90,6 +90,9 @@ pub struct ScanScreen {
     /// invisibly — the painted grid stays fixed.
     grid_fit: (f32, f32, f32, f32),
     grid_conf: f32,
+    /// Is a CUBE in the square (not a table, a wall or a hand)? Pointing
+    /// at a pale surface used to capture nine "white" cells.
+    grid_is_cube: bool,
     last_sample: f64,
     cal: Calibration,
     /// Preview rotation in CW quarter turns; 255 = auto-guess. User can
@@ -134,6 +137,7 @@ impl ScanScreen {
             stable_ticks: 0,
             grid_fit: (0.0, 0.0, 1.0, 1.0),
             grid_conf: 0.0,
+            grid_is_cube: false,
             last_sample: 0.0,
             cal: Calibration::default_stickers(),
             rotation: app
@@ -243,8 +247,9 @@ fn scan_ui(
     if cam_ready && !in_flash && screen.face_idx < 6 && now - screen.last_sample > 0.1 {
         screen.last_sample = now;
         if let CameraState::Ready(cam) = &screen.camera {
-            if let Some((dx, dy, sx, sy, conf)) = cam.grid_align() {
+            if let Some((dx, dy, sx, sy, conf, is_cube)) = cam.grid_align() {
                 screen.grid_conf = conf;
+                screen.grid_is_cube = is_cube;
                 let target = if conf > 0.4 {
                     (dx, dy, sx, sy)
                 } else {
@@ -292,7 +297,10 @@ fn scan_ui(
                     .count()
                     >= 3
             });
-            let aligned = screen.grid_conf > 0.4;
+            // A cube must actually BE there: a table or a wall fills the
+            // square with one smooth colour and would capture nine
+            // identical "white" cells.
+            let aligned = screen.grid_conf > 0.4 && screen.grid_is_cube;
             if all_detected && same && rotated_away && aligned {
                 screen.stable_ticks = screen.stable_ticks.saturating_add(1);
                 for (i, (buf, w, h)) in cells.iter().enumerate() {
@@ -712,7 +720,7 @@ fn draw_overlay(ui: &Ui, rect: Rect, screen: &ScanScreen, now: f64) {
     let cell = side / 3.0;
     // Locked onto the sticker grid -> green lines (visual "got it!");
     // searching -> soft white.
-    let grid_stroke = if screen.grid_conf > 0.4 {
+    let grid_stroke = if screen.grid_conf > 0.4 && screen.grid_is_cube {
         Stroke::new(2.5, Color32::from_rgba_unmultiplied(0x39, 0xD3, 0x76, 220))
     } else {
         Stroke::new(2.0, Color32::from_white_alpha(190))
