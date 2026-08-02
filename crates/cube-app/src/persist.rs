@@ -132,8 +132,7 @@ pub fn warm_app(app: &mut RubiksApp) {
     }
     if let Ok(Some(lang)) = store.setting("lang") {
         app.i18n.lang = match lang.as_str() {
-            "no" => crate::i18n::Lang::No,
-            _ => crate::i18n::Lang::En,
+            code => crate::i18n::Lang::from_code(code).unwrap_or(crate::i18n::Lang::EN),
         };
     }
 }

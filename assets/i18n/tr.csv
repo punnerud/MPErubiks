@@ -1,0 +1,69 @@
+key,text
+Practice,Alıştırma
+SettingsTitle,Çözüm ayarları
+HintModeFull,Tam rehber
+HintModePractice,Alıştırma molası
+HintModeOff,Kapalı
+MaxExtraMoves,Maks. ek hamle
+IDidIt,Başardım!
+NeededHelp,Azıcık baktım
+PracticeYouKnow,Bunu biliyorsun!
+SettingsNoTrained,Önce Çalış bölümünde algoritmaları yıldızla işaretle
+TapSelectTitle,Dokununca seçilir
+TapSelectSide,Yüz
+TapSelectCell,Kare
+MyWay,Benim yolum
+AppTitle,Rubik Küpü
+MenuSolve,Çöz
+MenuTrain,Çalış
+MenuPlay,Oyna
+Back,Geri
+Scramble,Karıştır
+Reset,Sıfırla
+Undo,Geri al
+ComingSoon,Yakında!
+Play,Oynat
+Pause,Duraklat
+Next,İleri
+GuideDone,Çözüldü! Harikasın!
+TableLoading,Çözücü yükleniyor…
+ErrColorCounts,Bazı renklerden çok fazla ya da çok az etiket var
+ErrCenters,Altı orta etiketin hepsi farklı renkte olmalı
+ErrImpossiblePiece,Bir parçada birbirine uymayan renkler var
+ErrUnsolvable,Az kaldı! Bir etiket yanlış görünüyor — tekrar bak
+ShowSolution,Bana göster
+Best,En iyi
+Average,Ao5
+Attempts,Deneme
+CameraStarting,Kamera açılıyor…
+EnterManually,Elle gir
+Capture,Çek!
+ScanHoldSteady,Küpü karenin içinde sabit tut
+ScanTurnLeft,Bütün küpü sola çevir
+ScanTiltUp,Üst yüzü kendinden UZAĞA yatır
+LessonsTabCaption,Buradan başla
+Replay,Tekrar!
+LessonCubeTitle,Küpü tanı
+LessonCubeCenters,Ortalar hiç kıpırdamaz — her yüzün rengini onlar gösterir
+LessonCubeSides,Bütün küpü döndür — kararı yine ortalar verir
+LessonCubePieces,"Çevir, parçalar yola çıksın — bak, evlerine dönüyorlar!"
+LessonMovesTitle,Hamleleri oku
+LessonMovesR,"R şu demek: sağ yüzü bir kez çevir, saat gibi"
+LessonMovesPrime,R' şu demek: ters yöne
+LessonMovesDouble,R2 şu demek: iki kez
+LessonMovesAll,Her yüzün kendi harfi var: U F L D …
+LessonDaisyTitle,Papatya
+LessonDaisyGoal,Bir çiçek yap: sarı ortanın çevresinde beyaz yapraklar
+LessonDaisyFind,Beyaz kenarları bul ve yukarı kaldır
+LessonCrossTitle,Beyaz artı
+LessonCrossTurnDown,Her yaprağı iki kez aşağı çevir — çiçek artıya dönüşür
+LessonCrossDone,Çevirmeden önce yaprağın yan rengini eşleştir
+LessonCornersTitle,Beyaz köşeler
+LessonCornersMagic,Sihirli hamle: R' D' R D
+LessonCornersRepeat,Köşe yerine oturana kadar tekrarla
+LessonMiddleTitle,Orta kat
+LessonMiddleRight,Kenarı sağa gönder
+LessonMiddleLeft,Kenarı sola gönder
+LessonTopTitle,Üst kat
+LessonTopCross,Sarı artı: F R U R' U' F'
+LessonTopNext,Şimdi ABC sekmesini dene — az kaldı!

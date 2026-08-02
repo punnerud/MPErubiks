@@ -18,6 +18,7 @@ pub enum Screen {
     Solve(SolveScreen),
     Train(TrainScreen),
     Settings(crate::screens::settings::SettingsScreen),
+    Language(crate::screens::language::LanguageScreen),
     #[cfg(target_arch = "wasm32")]
     Scan(crate::screens::scan::ScanScreen),
 }
@@ -31,6 +32,8 @@ pub enum TableState {
 /// Messages from async tasks (wasm fetch, camera init) into the UI loop.
 pub enum AsyncMsg {
     TableBytes(Result<Vec<u8>, String>),
+    /// A lazily fetched font subset for a script the default font lacks.
+    FontBytes(&'static str, Result<Vec<u8>, String>),
     #[cfg(target_arch = "wasm32")]
     CameraReady(Result<crate::platform::web::camera::Camera, String>),
 }
@@ -88,6 +91,8 @@ pub struct RubiksApp {
     pub light_mode: bool,
     /// Guided-solution preferences (gear settings; persisted).
     pub hints: HintSettings,
+    /// Font subsets already requested (script name -> loaded).
+    pub fonts_loaded: std::collections::HashSet<&'static str>,
     /// Tap-select mode: false = tap selects the SIDE you touched,
     /// true = CELL mode (center = that face, edge cell = the adjacent
     /// side it borders). Gear setting; persisted.
@@ -145,7 +150,7 @@ impl RubiksApp {
 
         let mut app = RubiksApp {
             screen: Screen::Menu,
-            i18n: I18n { lang: Lang::En },
+            i18n: I18n { lang: Lang::EN },
             cube: FaceletCube::SOLVED,
             animator: MoveAnimator::default(),
             orbit: OrbitCamera::default(),
@@ -159,6 +164,7 @@ impl RubiksApp {
             store,
             light_mode: false,
             hints: HintSettings::default(),
+            fonts_loaded: std::collections::HashSet::new(),
             tap_cell: false,
             tx,
             rx,
@@ -170,6 +176,10 @@ impl RubiksApp {
             .and_then(|s| s.setting("theme").ok().flatten())
             .is_some_and(|v| v == "light");
         apply_theme(&cc.egui_ctx, app.light_mode);
+        // A remembered CJK language needs its font subset before the
+        // first frame draws text.
+        let lang = app.i18n.lang;
+        app.ensure_font(lang, &cc.egui_ctx);
         #[cfg(target_arch = "wasm32")]
         crate::platform::web::crumb("new(): app warmed — startup complete");
         app
@@ -243,17 +253,43 @@ impl RubiksApp {
         }
     }
 
-    pub fn set_lang(&mut self, lang: crate::i18n::Lang) {
+    pub fn set_lang(&mut self, lang: crate::i18n::Lang, ctx: &egui::Context) {
         self.i18n.lang = lang;
+        self.ensure_font(lang, ctx);
         if let Some(store) = &self.store {
-            let code = match lang {
-                crate::i18n::Lang::En => "en",
-                crate::i18n::Lang::No => "no",
-            };
-            if let Err(e) = store.set_setting("lang", code) {
+            if let Err(e) = store.set_setting("lang", lang.code()) {
                 log::error!("set lang: {e}");
             }
             crate::persist::persist(store);
+        }
+    }
+
+    /// Scripts the default font cannot draw (CJK) get a SUBSET font —
+    /// only the characters this UI uses — fetched the first time such a
+    /// language is chosen. Nothing ships in the bundle, so adding
+    /// languages never grows the download for anyone else.
+    pub fn ensure_font(&mut self, lang: crate::i18n::Lang, ctx: &egui::Context) {
+        let Some(name) = lang.def().font else { return };
+        if !self.fonts_loaded.insert(name) {
+            return; // already loaded (or loading)
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            let tx = self.tx.clone();
+            let ctx = ctx.clone();
+            wasm_bindgen_futures::spawn_local(async move {
+                let result = crate::platform::web::fetch_bytes(&format!("fonts/{name}.ttf")).await;
+                let _ = tx.send(AsyncMsg::FontBytes(name, result));
+                ctx.request_repaint();
+            });
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fonts/");
+            match std::fs::read(format!("{path}{name}.ttf")) {
+                Ok(bytes) => install_font(ctx, name, bytes),
+                Err(e) => log::warn!("font {name}: {e}"),
+            }
         }
     }
 
@@ -281,9 +317,11 @@ impl RubiksApp {
         }
     }
 
-    fn drain_async(&mut self) {
+    fn drain_async(&mut self, ctx: &egui::Context) {
         while let Ok(msg) = self.rx.try_recv() {
             match msg {
+                AsyncMsg::FontBytes(name, Ok(bytes)) => install_font(ctx, name, bytes),
+                AsyncMsg::FontBytes(name, Err(e)) => log::warn!("font {name}: {e}"),
                 AsyncMsg::TableBytes(Ok(bytes)) => {
                     // Packed asset (table.pack) since M7.
                     #[cfg(target_arch = "wasm32")]
@@ -312,7 +350,7 @@ impl RubiksApp {
 impl eframe::App for RubiksApp {
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         let _ = &frame;
-        self.drain_async();
+        self.drain_async(ui.ctx());
         let now = ui.input(|i| i.time);
         for m in self.animator.tick(now) {
             self.cube.apply(m);
@@ -329,6 +367,7 @@ impl eframe::App for RubiksApp {
                 Screen::Solve(_) => screens::solve::show(self, ui),
                 Screen::Train(_) => screens::train::show(self, ui),
                 Screen::Settings(_) => screens::settings::show(self, ui),
+                Screen::Language(_) => screens::language::show(self, ui),
                 #[cfg(target_arch = "wasm32")]
                 Screen::Scan(_) => screens::scan::show(self, ui, frame),
             });
@@ -360,6 +399,26 @@ fn install_table_for_platform(ctx: &egui::Context, tx: &Sender<AsyncMsg>) -> Tab
         ctx.request_repaint();
     });
     TableState::Loading
+}
+
+/// Install a fetched font as the LOWEST-priority fallback: the default
+/// font keeps its shapes for Latin, and the subset only fills glyphs it
+/// cannot draw.
+pub fn install_font(ctx: &egui::Context, name: &'static str, bytes: Vec<u8>) {
+    ctx.add_font(egui::epaint::text::FontInsert::new(
+        name,
+        egui::FontData::from_owned(bytes),
+        vec![
+            egui::epaint::text::InsertFontFamily {
+                family: egui::FontFamily::Proportional,
+                priority: egui::epaint::text::FontPriority::Lowest,
+            },
+            egui::epaint::text::InsertFontFamily {
+                family: egui::FontFamily::Monospace,
+                priority: egui::epaint::text::FontPriority::Lowest,
+            },
+        ],
+    ));
 }
 
 fn style(ctx: &egui::Context) {

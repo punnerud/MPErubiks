@@ -1,0 +1,69 @@
+key,text
+Practice,Æfing
+SettingsTitle,Lausnarstillingar
+HintModeFull,Full leiðsögn
+HintModePractice,Æfingastopp
+HintModeOff,Slökkt
+MaxExtraMoves,Hámark aukasnúninga
+IDidIt,Ég gerði það!
+NeededHelp,Þurfti að kíkja
+PracticeYouKnow,Þú kannt þetta!
+SettingsNoTrained,Merktu fyrst algrím með stjörnunni í Æfa-flipanum
+TapSelectTitle,Snerting velur
+TapSelectSide,Hliðina
+TapSelectCell,Reitinn
+MyWay,Mín leið
+AppTitle,Rubik-kubburinn
+MenuSolve,Leysa
+MenuTrain,Æfa
+MenuPlay,Leika
+Back,Til baka
+Scramble,Rugla
+Reset,Byrja aftur
+Undo,Afturkalla
+ComingSoon,Kemur bráðum!
+Play,Spila
+Pause,Pása
+Next,Næsta
+GuideDone,Leystur! Frábært hjá þér!
+TableLoading,Hleð lausnarann…
+ErrColorCounts,Sumir litir hafa of marga eða of fáa límmiða
+ErrCenters,Miðjurnar sex verða allar að vera í ólíkum litum
+ErrImpossiblePiece,Eitt stykki er með liti sem eiga ekki saman
+ErrUnsolvable,Næstum því! Einn límmiði lítur rangt út — athugaðu aftur
+ShowSolution,Sýndu mér
+Best,Met
+Average,Meðaltal (5)
+Attempts,Tilraunir
+CameraStarting,Ræsi myndavélina…
+EnterManually,Slá inn
+Capture,Smelltu!
+ScanHoldSteady,Haltu kubbnum kyrrum í reitnum
+ScanTurnLeft,Snúðu öllum kubbnum til vinstri
+ScanTiltUp,Hallaðu toppnum FRÁ þér
+LessonsTabCaption,Byrjaðu hér
+Replay,Aftur!
+LessonCubeTitle,Kynnstu kubbnum
+LessonCubeCenters,Miðjurnar hreyfast aldrei — þær sýna lit hverrar hliðar
+LessonCubeSides,Snúðu öllum kubbnum — miðjurnar ráða samt
+LessonCubePieces,"Snúðu, og stykkin ferðast — sjáðu þau koma heim!"
+LessonMovesTitle,Lesa snúninga
+LessonMovesR,"R þýðir: snúðu hægri hliðinni einu sinni, eins og klukka"
+LessonMovesPrime,R' þýðir: í hina áttina
+LessonMovesDouble,R2 þýðir: tvisvar
+LessonMovesAll,Hver hlið á sinn staf: U F L D …
+LessonDaisyTitle,Blómið
+LessonDaisyGoal,Búðu til blóm: hvít krónublöð í kringum gulu miðjuna
+LessonDaisyFind,Finndu hvíta kanta og lyftu þeim upp
+LessonCrossTitle,Hvíti krossinn
+LessonCrossTurnDown,Snúðu hverju krónublaði niður tvisvar — blómið verður kross
+LessonCrossDone,Litur krónublaðsins verður að passa áður en þú snýrð
+LessonCornersTitle,Hvítu hornin
+LessonCornersMagic,Töfrabragðið: R' D' R D
+LessonCornersRepeat,Endurtaktu þar til hornið situr rétt
+LessonMiddleTitle,Miðlagið
+LessonMiddleRight,Sendu kantinn til hægri
+LessonMiddleLeft,Sendu kantinn til vinstri
+LessonTopTitle,Toppurinn
+LessonTopCross,Gulur kross: F R U R' U' F'
+LessonTopNext,Prófaðu ABC-flipann núna — þetta er alveg að koma!

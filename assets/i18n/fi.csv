@@ -1,0 +1,69 @@
+key,text
+Practice,Harjoittele
+SettingsTitle,Ratkaisun asetukset
+HintModeFull,Koko opastus
+HintModePractice,Treenitauko
+HintModeOff,Pois
+MaxExtraMoves,Maks. lisäsiirrot
+IDidIt,Osasin!
+NeededHelp,Piti kurkata
+PracticeYouKnow,Tämän sinä osaat!
+SettingsNoTrained,Merkitse ensin algoritmeja tähdellä Treenaa-osiossa
+TapSelectTitle,Napautus valitsee
+TapSelectSide,Sivun
+TapSelectCell,Ruudun
+MyWay,Oma reitti
+AppTitle,Rubikin kuutio
+MenuSolve,Ratkaise
+MenuTrain,Treenaa
+MenuPlay,Leiki
+Back,Takaisin
+Scramble,Sekoita
+Reset,Nollaa
+Undo,Kumoa
+ComingSoon,Tulossa pian!
+Play,Toista
+Pause,Tauko
+Next,Seuraava
+GuideDone,Ratkaistu! Hienoa!
+TableLoading,Ladataan ratkaisijaa…
+ErrColorCounts,Joillakin väreillä on liikaa tai liian vähän tarroja
+ErrCenters,Kuuden keskiruudun pitää olla eri värisiä
+ErrImpossiblePiece,"Yhdessä palassa on värejä, jotka eivät kuulu yhteen"
+ErrUnsolvable,Melkein! Yksi ruutu näyttää väärältä — tarkista vielä
+ShowSolution,Näytä
+Best,Paras
+Average,Ka. (5)
+Attempts,Yritykset
+CameraStarting,Käynnistetään kameraa…
+EnterManually,Kirjoita itse
+Capture,Naps!
+ScanHoldSteady,Pidä kuutio paikallaan ruudussa
+ScanTurnLeft,Käännä koko kuutiota vasemmalle
+ScanTiltUp,Kallista yläosaa POISPÄIN sinusta
+LessonsTabCaption,Aloita tästä
+Replay,Uudestaan!
+LessonCubeTitle,Tutustu kuutioon
+LessonCubeCenters,Keskipalat eivät liiku ikinä — ne näyttävät joka sivun värin
+LessonCubeSides,Pyöritä koko kuutiota — keskipalat päättävät silti
+LessonCubePieces,"Käännä, niin palat lähtevät matkalle — katso, ne tulevat kotiin!"
+LessonMovesTitle,Näin luet siirtoja
+LessonMovesR,"R tarkoittaa: käännä oikeaa sivua kerran, kellon suuntaan"
+LessonMovesPrime,R' tarkoittaa: toiseen suuntaan
+LessonMovesDouble,R2 tarkoittaa: kaksi kertaa
+LessonMovesAll,Joka sivulla on oma kirjaimensa: U F L D …
+LessonDaisyTitle,Kukka
+LessonDaisyGoal,Tee kukka: valkoiset terälehdet keltaisen keskipalan ympärille
+LessonDaisyFind,Etsi valkoiset särmäpalat ja nosta ne ylös
+LessonCrossTitle,Valkoinen risti
+LessonCrossTurnDown,Käännä jokainen terälehti alas kahdesti — kukasta tulee risti
+LessonCrossDone,"Sovita terälehden sivuväri, ennen kuin käännät"
+LessonCornersTitle,Valkoiset kulmat
+LessonCornersMagic,Taikatemppu: R' D' R D
+LessonCornersRepeat,"Toista sitä, kunnes kulma asettuu paikalleen"
+LessonMiddleTitle,Keskikerros
+LessonMiddleRight,Lähetä särmäpala oikealle
+LessonMiddleLeft,Lähetä särmäpala vasemmalle
+LessonTopTitle,Yläkerros
+LessonTopCross,Keltainen risti: F R U R' U' F'
+LessonTopNext,Kokeile nyt ABC-välilehteä — olet jo melkein perillä!

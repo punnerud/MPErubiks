@@ -1,0 +1,69 @@
+key,text
+Practice,Practicar
+SettingsTitle,Ajustes de solución
+HintModeFull,Guía completa
+HintModePractice,Pausa de práctica
+HintModeOff,Sin ayuda
+MaxExtraMoves,Máx. movimientos extra
+IDidIt,¡Lo logré!
+NeededHelp,Tuve que mirar
+PracticeYouKnow,¡Esta te la sabes!
+SettingsNoTrained,Primero marca algoritmos con la estrella en Entrenar
+TapSelectTitle,Tocar selecciona
+TapSelectSide,La cara
+TapSelectCell,La casilla
+MyWay,Mi camino
+AppTitle,Cubo de Rubik
+MenuSolve,Resolver
+MenuTrain,Entrenar
+MenuPlay,Jugar
+Back,Atrás
+Scramble,Mezclar
+Reset,Reiniciar
+Undo,Deshacer
+ComingSoon,¡Muy pronto!
+Play,Reproducir
+Pause,Pausa
+Next,Siguiente
+GuideDone,¡Resuelto! ¡Muy bien!
+TableLoading,Cargando el solucionador…
+ErrColorCounts,Algunos colores tienen demasiadas o muy pocas pegatinas
+ErrCenters,Los seis centros deben tener colores distintos
+ErrImpossiblePiece,Una pieza tiene colores que no van juntos
+ErrUnsolvable,¡Casi! Una pegatina parece estar mal — revísalo otra vez
+ShowSolution,Muéstrame
+Best,Mejor
+Average,Media (5)
+Attempts,Intentos
+CameraStarting,Encendiendo la cámara…
+EnterManually,Escribirlo
+Capture,¡Foto!
+ScanHoldSteady,Sujeta el cubo quieto dentro del cuadrado
+ScanTurnLeft,Gira todo el cubo hacia la izquierda
+ScanTiltUp,Inclina la parte de arriba LEJOS de ti
+LessonsTabCaption,Empieza aquí
+Replay,¡Otra vez!
+LessonCubeTitle,Conoce el cubo
+LessonCubeCenters,Los centros nunca se mueven — marcan el color de cada cara
+LessonCubeSides,Gira todo el cubo — los centros siguen mandando
+LessonCubePieces,"Gira, y las piezas viajan — ¡mira cómo vuelven a casa!"
+LessonMovesTitle,Leer movimientos
+LessonMovesR,"R significa: gira la cara derecha una vez, como un reloj"
+LessonMovesPrime,R' significa: al revés
+LessonMovesDouble,R2 significa: dos veces
+LessonMovesAll,Cada cara tiene su letra: U F L D …
+LessonDaisyTitle,La margarita
+LessonDaisyGoal,Haz una flor: pétalos blancos alrededor del centro amarillo
+LessonDaisyFind,Busca las aristas blancas y llévalas arriba
+LessonCrossTitle,La cruz blanca
+LessonCrossTurnDown,Gira cada pétalo dos veces hacia abajo — la flor se vuelve cruz
+LessonCrossDone,Haz que el color del lado coincida antes de girar
+LessonCornersTitle,Esquinas blancas
+LessonCornersMagic,El movimiento mágico: R' D' R D
+LessonCornersRepeat,Repítelo hasta que la esquina quede bien
+LessonMiddleTitle,La capa del medio
+LessonMiddleRight,Manda la arista a la derecha
+LessonMiddleLeft,Manda la arista a la izquierda
+LessonTopTitle,La cara de arriba
+LessonTopCross,Cruz amarilla: F R U R' U' F'
+LessonTopNext,Ahora prueba la pestaña ABC — ¡ya casi lo tienes!

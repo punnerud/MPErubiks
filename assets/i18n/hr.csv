@@ -1,0 +1,69 @@
+key,text
+Practice,Vježbaj
+SettingsTitle,Postavke rješenja
+HintModeFull,Puna pomoć
+HintModePractice,Pauza za vježbu
+HintModeOff,Isključeno
+MaxExtraMoves,Maks. dodatnih poteza
+IDidIt,Uspjelo mi je!
+NeededHelp,Trebala mi je pomoć
+PracticeYouKnow,Ovo već znaš!
+SettingsNoTrained,Prvo označi algoritme zvjezdicom u Treniraj
+TapSelectTitle,Dodir bira
+TapSelectSide,Stranu
+TapSelectCell,Kvadratić
+MyWay,Moj put
+AppTitle,Rubikova kocka
+MenuSolve,Složi
+MenuTrain,Treniraj
+MenuPlay,Igraj
+Back,Natrag
+Scramble,Izmiješaj
+Reset,Ispočetka
+Undo,Vrati potez
+ComingSoon,Uskoro!
+Play,Kreni
+Pause,Pauza
+Next,Dalje
+GuideDone,Složeno! Bravo!
+TableLoading,Učitavam rješavač…
+ErrColorCounts,Neke boje imaju previše ili premalo naljepnica
+ErrCenters,Svih šest sredina mora biti različite boje
+ErrImpossiblePiece,Jedna kockica ima boje koje ne idu zajedno
+ErrUnsolvable,Skoro! Jedna naljepnica izgleda krivo — provjeri još jednom
+ShowSolution,Pokaži mi
+Best,Rekord
+Average,Prosjek (5)
+Attempts,Pokušaji
+CameraStarting,Pokrećem kameru…
+EnterManually,Upiši ručno
+Capture,Škljoc!
+ScanHoldSteady,Drži kocku mirno u kvadratu
+ScanTurnLeft,Okreni cijelu kocku ulijevo
+ScanTiltUp,Nagni vrh OD sebe
+LessonsTabCaption,Počni ovdje
+Replay,Opet!
+LessonCubeTitle,Upoznaj kocku
+LessonCubeCenters,Sredine se nikad ne miču — one pokazuju boju svake strane
+LessonCubeSides,Okreni cijelu kocku — sredine i dalje odlučuju
+LessonCubePieces,Zavrti i kockice putuju — gledaj kako se vraćaju kući!
+LessonMovesTitle,Čitamo poteze
+LessonMovesR,"R znači: okreni desnu stranu jednom, kao sat"
+LessonMovesPrime,R' znači: obrnuto
+LessonMovesDouble,R2 znači: dva puta
+LessonMovesAll,Svaka strana ima svoje slovo: U F L D …
+LessonDaisyTitle,Cvjetić
+LessonDaisyGoal,Napravi cvijet: bijele latice oko žute sredine
+LessonDaisyFind,Nađi bijele bridove i podigni ih gore
+LessonCrossTitle,Bijeli križ
+LessonCrossTurnDown,Okreni svaku laticu dvaput dolje — cvijet postaje križ
+LessonCrossDone,Prije okretanja poravnaj bočnu boju latice
+LessonCornersTitle,Bijeli kutovi
+LessonCornersMagic,Čarobni potez: R' D' R D
+LessonCornersRepeat,Ponavljaj dok kut ne sjedne na mjesto
+LessonMiddleTitle,Srednji sloj
+LessonMiddleRight,Pošalji brid udesno
+LessonMiddleLeft,Pošalji brid ulijevo
+LessonTopTitle,Vrh
+LessonTopCross,Žuti križ: F R U R' U' F'
+LessonTopNext,Sad probaj karticu ABC — skoro si na cilju!

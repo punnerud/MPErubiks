@@ -1,0 +1,69 @@
+key,text
+Practice,Exercice
+SettingsTitle,Réglages de la solution
+HintModeFull,Guide complet
+HintModePractice,Pause exercice
+HintModeOff,Aucun
+MaxExtraMoves,Max. mouvements en plus
+IDidIt,J'ai réussi !
+NeededHelp,J'ai regardé
+PracticeYouKnow,Tu sais le faire !
+SettingsNoTrained,Marque d'abord tes algos avec l'étoile dans Entraînement
+TapSelectTitle,Le doigt choisit
+TapSelectSide,La face
+TapSelectCell,La case
+MyWay,Ma méthode
+AppTitle,Rubik's Cube
+MenuSolve,Résoudre
+MenuTrain,Entraînement
+MenuPlay,Jouer
+Back,Retour
+Scramble,Mélanger
+Reset,Recommencer
+Undo,Annuler
+ComingSoon,Bientôt !
+Play,Lecture
+Pause,Pause
+Next,Suivant
+GuideDone,Résolu ! Bravo !
+TableLoading,Chargement du solveur…
+ErrColorCounts,Certaines couleurs ont trop ou pas assez d'autocollants
+ErrCenters,Les six centres doivent avoir six couleurs différentes
+ErrImpossiblePiece,Une pièce a des couleurs qui ne vont pas ensemble
+ErrUnsolvable,Presque ! Un autocollant semble faux — regarde encore
+ShowSolution,Montre-moi
+Best,Record
+Average,Moy (5)
+Attempts,Essais
+CameraStarting,Démarrage de la caméra…
+EnterManually,À la main
+Capture,Clic !
+ScanHoldSteady,Tiens le cube immobile dans le carré
+ScanTurnLeft,Tourne tout le cube vers la gauche
+ScanTiltUp,Penche le haut LOIN de toi
+LessonsTabCaption,Commence ici
+Replay,Encore !
+LessonCubeTitle,Découvre le cube
+LessonCubeCenters,Les centres ne bougent jamais — ils donnent la couleur de chaque face
+LessonCubeSides,Tourne tout le cube — ce sont toujours les centres qui décident
+LessonCubePieces,"Tourne, et les pièces voyagent — regarde-les rentrer à la maison !"
+LessonMovesTitle,Lire les mouvements
+LessonMovesR,"R veut dire : tourne la face droite une fois, comme une horloge"
+LessonMovesPrime,R' veut dire : dans l'autre sens
+LessonMovesDouble,R2 veut dire : deux fois
+LessonMovesAll,Chaque face a sa lettre : U F L D …
+LessonDaisyTitle,La marguerite
+LessonDaisyGoal,Fais une fleur : des pétales blancs autour du centre jaune
+LessonDaisyFind,Trouve les arêtes blanches et remonte-les
+LessonCrossTitle,La croix blanche
+LessonCrossTurnDown,Tourne chaque pétale deux fois vers le bas — la fleur devient croix
+LessonCrossDone,Aligne la couleur du pétale avec son centre avant de tourner
+LessonCornersTitle,Les coins blancs
+LessonCornersMagic,Le mouvement magique : R' D' R D
+LessonCornersRepeat,Répète-le jusqu'à ce que le coin soit bien placé
+LessonMiddleTitle,La couronne du milieu
+LessonMiddleRight,Envoie l'arête à droite
+LessonMiddleLeft,Envoie l'arête à gauche
+LessonTopTitle,Le dessus
+LessonTopCross,Croix jaune : F R U R' U' F'
+LessonTopNext,Essaie l'onglet ABC maintenant — tu y es presque !

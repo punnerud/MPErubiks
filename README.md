@@ -49,6 +49,11 @@ this is what the app looks like right now.
   top) with a steppable demo player and Practice buttons into the drill loop.
 - 💪 **Training** — PLL · OLL · F2L · beginner cards with demo player, drill
   timer, success/fail stats and a persistent trained-set (MPEdb).
+- 🌍 **31 languages** — Nordic, most of Europe, and Chinese (Simplified and
+  Traditional), Japanese, Korean, Vietnamese. Tap the flag for a scrollable
+  picker. CJK scripts arrive as **font subsets fetched on demand** (38-94 KB,
+  containing only the characters this UI uses), so the download stays small
+  no matter how many scripts are supported.
 
 See [INNOVATIONS.md](INNOVATIONS.md) for what this repo invented, borrowed,
 and moved somewhere unusual — including the measured negative results.

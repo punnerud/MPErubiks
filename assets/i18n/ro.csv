@@ -1,0 +1,69 @@
+key,text
+Practice,Exersează
+SettingsTitle,Setări rezolvare
+HintModeFull,Ghid complet
+HintModePractice,Pauză exercițiu
+HintModeOff,Fără ajutor
+MaxExtraMoves,Max. mutări în plus
+IDidIt,Am reușit!
+NeededHelp,Am tras cu ochiul
+PracticeYouKnow,Pe asta o știi!
+SettingsNoTrained,Marchează mai întâi algoritmii cu steluța în Antrenament
+TapSelectTitle,Atingerea alege
+TapSelectSide,Fața
+TapSelectCell,Pătrățelul
+MyWay,Drumul meu
+AppTitle,Cubul Rubik
+MenuSolve,Rezolvă
+MenuTrain,Antrenament
+MenuPlay,Joacă
+Back,Înapoi
+Scramble,Amestecă
+Reset,Resetează
+Undo,Pas înapoi
+ComingSoon,Vine curând!
+Play,Pornește
+Pause,Pauză
+Next,Următorul
+GuideDone,Rezolvat! Bravo!
+TableLoading,Se încarcă solverul…
+ErrColorCounts,Unele culori au prea multe sau prea puține pătrățele
+ErrCenters,Cele șase pătrățele din mijloc trebuie să aibă culori diferite
+ErrImpossiblePiece,O piesă are culori care nu merg împreună
+ErrUnsolvable,Aproape! Un pătrățel pare greșit — mai verifică o dată
+ShowSolution,Arată-mi
+Best,Record
+Average,Medie (5)
+Attempts,Încercări
+CameraStarting,Se pornește camera…
+EnterManually,Scrie tu
+Capture,Poză!
+ScanHoldSteady,Ține cubul nemișcat în pătrat
+ScanTurnLeft,Rotește tot cubul spre stânga
+ScanTiltUp,Înclină partea de sus DEPARTE de tine
+LessonsTabCaption,Începe aici
+Replay,Din nou!
+LessonCubeTitle,Cunoaște cubul
+LessonCubeCenters,Centrele nu se mișcă niciodată — ele arată culoarea fiecărei fețe
+LessonCubeSides,Rotește tot cubul — centrele tot ele decid
+LessonCubePieces,"Răsucește, iar piesele călătoresc — privește-le cum ajung acasă!"
+LessonMovesTitle,Citim mutările
+LessonMovesR,"R înseamnă: rotește fața dreaptă o dată, ca un ceas"
+LessonMovesPrime,R' înseamnă: invers
+LessonMovesDouble,R2 înseamnă: de două ori
+LessonMovesAll,Fiecare față are litera ei: U F L D …
+LessonDaisyTitle,Margareta
+LessonDaisyGoal,Fă o floare: petale albe în jurul centrului galben
+LessonDaisyFind,Găsește muchiile albe și ridică-le sus
+LessonCrossTitle,Crucea albă
+LessonCrossTurnDown,Rotește fiecare petală de două ori în jos — floarea devine cruce
+LessonCrossDone,Potrivește culoarea din lateral înainte să rotești
+LessonCornersTitle,Colțuri albe
+LessonCornersMagic,Mutarea magică: R' D' R D
+LessonCornersRepeat,Repetă până când colțul stă bine
+LessonMiddleTitle,Stratul din mijloc
+LessonMiddleRight,Trimite muchia spre dreapta
+LessonMiddleLeft,Trimite muchia spre stânga
+LessonTopTitle,Fața de sus
+LessonTopCross,Crucea galbenă: F R U R' U' F'
+LessonTopNext,Acum încearcă fila ABC — aproape ai reușit!

@@ -1,0 +1,69 @@
+key,text
+Practice,Oefenen
+SettingsTitle,Oplos-instellingen
+HintModeFull,Volle hulp
+HintModePractice,Oefenstop
+HintModeOff,Uit
+MaxExtraMoves,Max. extra zetten
+IDidIt,Gelukt!
+NeededHelp,Even gegluurd
+PracticeYouKnow,Deze ken je!
+SettingsNoTrained,Markeer algoritmes eerst met de ster in Trainen
+TapSelectTitle,Tikken kiest
+TapSelectSide,De kant
+TapSelectCell,Het vakje
+MyWay,Mijn route
+AppTitle,Rubiks kubus
+MenuSolve,Oplossen
+MenuTrain,Trainen
+MenuPlay,Spelen
+Back,Terug
+Scramble,Husselen
+Reset,Opnieuw
+Undo,Terugdraaien
+ComingSoon,Komt eraan!
+Play,Afspelen
+Pause,Pauze
+Next,Volgende
+GuideDone,Opgelost! Goed gedaan!
+TableLoading,Oplosser laden…
+ErrColorCounts,Sommige kleuren hebben te veel of te weinig stickers
+ErrCenters,De zes middelste stickers moeten allemaal een andere kleur hebben
+ErrImpossiblePiece,Eén steentje heeft kleuren die niet bij elkaar horen
+ErrUnsolvable,Bijna! Eén sticker lijkt fout — kijk nog eens
+ShowSolution,Laat zien
+Best,Beste
+Average,Gem. (5)
+Attempts,Pogingen
+CameraStarting,Camera start…
+EnterManually,Intikken
+Capture,Klik!
+ScanHoldSteady,Houd de kubus stil in het vierkant
+ScanTurnLeft,Draai de hele kubus naar links
+ScanTiltUp,Kantel de bovenkant VAN JE AF
+LessonsTabCaption,Begin hier
+Replay,Nog een keer!
+LessonCubeTitle,Dit is de kubus
+LessonCubeCenters,De middens bewegen nooit — ze tonen de kleur van elke kant
+LessonCubeSides,Draai de hele kubus — de middens bepalen nog steeds
+LessonCubePieces,"Draai, en de steentjes reizen — kijk hoe ze thuiskomen!"
+LessonMovesTitle,Zetten lezen
+LessonMovesR,"R betekent: draai de rechterkant één keer, met de klok mee"
+LessonMovesPrime,R' betekent: de andere kant op
+LessonMovesDouble,R2 betekent: twee keer
+LessonMovesAll,Elke kant heeft een eigen letter: U F L D …
+LessonDaisyTitle,De bloem
+LessonDaisyGoal,Maak een bloem: witte blaadjes rond het gele midden
+LessonDaisyFind,Zoek de witte randjes en til ze omhoog
+LessonCrossTitle,Het witte kruis
+LessonCrossTurnDown,Draai elk blaadje twee keer naar beneden — de bloem wordt een kruis
+LessonCrossDone,Laat de zijkleur van het blaadje kloppen voordat je draait
+LessonCornersTitle,Witte hoeken
+LessonCornersMagic,De toverzet: R' D' R D
+LessonCornersRepeat,Herhaal hem tot de hoek goed zit
+LessonMiddleTitle,De middelste laag
+LessonMiddleRight,Stuur het randje naar rechts
+LessonMiddleLeft,Stuur het randje naar links
+LessonTopTitle,De bovenkant
+LessonTopCross,Geel kruis: F R U R' U' F'
+LessonTopNext,Probeer nu het ABC-tabblad — je bent er bijna!

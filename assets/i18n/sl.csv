@@ -1,0 +1,69 @@
+key,text
+Practice,Vadi
+SettingsTitle,Nastavitve rešitve
+HintModeFull,Cel vodnik
+HintModePractice,Premor za vajo
+HintModeOff,Izklopljeno
+MaxExtraMoves,Maks. dodatnih potez
+IDidIt,Uspelo mi je!
+NeededHelp,Z malo pomoči
+PracticeYouKnow,To že znaš!
+SettingsNoTrained,Najprej v Treniraj označi algoritme z zvezdico
+TapSelectTitle,Dotik izbere
+TapSelectSide,Stranico
+TapSelectCell,Ploščico
+MyWay,Moja pot
+AppTitle,Rubikova kocka
+MenuSolve,Reši
+MenuTrain,Treniraj
+MenuPlay,Igraj
+Back,Nazaj
+Scramble,Premešaj
+Reset,Ponastavi
+Undo,Razveljavi
+ComingSoon,Kmalu!
+Play,Predvajaj
+Pause,Premor
+Next,Naprej
+GuideDone,Rešena! Bravo!
+TableLoading,Nalagam reševalnik…
+ErrColorCounts,Nekatere barve imajo preveč ali premalo nalepk
+ErrCenters,Vseh šest sredinskih nalepk mora biti različnih barv
+ErrImpossiblePiece,"En delček ima barve, ki ne gredo skupaj"
+ErrUnsolvable,Skoraj! Ena nalepka je videti napačna — preveri še enkrat
+ShowSolution,Pokaži mi
+Best,Rekord
+Average,Povpr. (5)
+Attempts,Poskusi
+CameraStarting,Zaganjam kamero…
+EnterManually,Vnesi ročno
+Capture,Klik!
+ScanHoldSteady,Drži kocko pri miru v kvadratu
+ScanTurnLeft,Zavrti celo kocko v levo
+ScanTiltUp,Nagni vrh PROČ od sebe
+LessonsTabCaption,Začni tu
+Replay,Še enkrat!
+LessonCubeTitle,Spoznaj kocko
+LessonCubeCenters,Sredine se nikoli ne premaknejo — kažejo barvo vsake stranice
+LessonCubeSides,Zavrti celo kocko — sredine še vedno odločajo
+LessonCubePieces,"Zavrti in delčki potujejo — glej, kako pridejo domov!"
+LessonMovesTitle,Beremo poteze
+LessonMovesR,"R pomeni: zavrti desno stranico enkrat, kot ura"
+LessonMovesPrime,R' pomeni: v drugo smer
+LessonMovesDouble,R2 pomeni: dvakrat
+LessonMovesAll,Vsaka stranica ima svojo črko: U F L D …
+LessonDaisyTitle,Marjetica
+LessonDaisyGoal,Naredi rožo: beli lističi okoli rumene sredine
+LessonDaisyFind,Poišči bele robnike in jih dvigni gor
+LessonCrossTitle,Beli križ
+LessonCrossTurnDown,Vsak listič zavrti dvakrat navzdol — iz rože nastane križ
+LessonCrossDone,"Uskladi stransko barvo lističa, preden zavrtiš"
+LessonCornersTitle,Beli vogali
+LessonCornersMagic,Čarobna poteza: R' D' R D
+LessonCornersRepeat,"Ponavljaj, dokler vogal ne sede na svoje mesto"
+LessonMiddleTitle,Srednja plast
+LessonMiddleRight,Pošlji robnik v desno
+LessonMiddleLeft,Pošlji robnik v levo
+LessonTopTitle,Vrh
+LessonTopCross,Rumeni križ: F R U R' U' F'
+LessonTopNext,Zdaj poskusi zavihek ABC — skoraj si na cilju!

@@ -1,0 +1,69 @@
+key,text
+Practice,Praticar
+SettingsTitle,Definições da solução
+HintModeFull,Guia completo
+HintModePractice,Pausa para praticar
+HintModeOff,Sem ajuda
+MaxExtraMoves,Máx. movimentos extra
+IDidIt,Consegui!
+NeededHelp,Tive de espreitar
+PracticeYouKnow,Este já sabes!
+SettingsNoTrained,Primeiro marca algoritmos com a estrela em Treinar
+TapSelectTitle,Tocar seleciona
+TapSelectSide,A face
+TapSelectCell,O quadradinho
+MyWay,À minha maneira
+AppTitle,Cubo de Rubik
+MenuSolve,Resolver
+MenuTrain,Treinar
+MenuPlay,Jogar
+Back,Voltar
+Scramble,Baralhar
+Reset,Recomeçar
+Undo,Desfazer
+ComingSoon,Em breve!
+Play,Reproduzir
+Pause,Pausa
+Next,Seguinte
+GuideDone,Resolvido! Muito bem!
+TableLoading,A carregar o solucionador…
+ErrColorCounts,Algumas cores têm autocolantes a mais ou a menos
+ErrCenters,Os seis centros têm de ser todos de cores diferentes
+ErrImpossiblePiece,Uma peça tem cores que não combinam
+ErrUnsolvable,Quase! Um autocolante parece errado — vê outra vez
+ShowSolution,Mostra-me
+Best,Melhor
+Average,Média (5)
+Attempts,Tentativas
+CameraStarting,A ligar a câmara…
+EnterManually,Escrever
+Capture,Foto!
+ScanHoldSteady,Segura o cubo quieto dentro do quadrado
+ScanTurnLeft,Roda o cubo todo para a esquerda
+ScanTiltUp,Inclina o topo PARA LONGE de ti
+LessonsTabCaption,Começa aqui
+Replay,Outra vez!
+LessonCubeTitle,Conhece o cubo
+LessonCubeCenters,Os centros nunca se mexem — mostram a cor de cada face
+LessonCubeSides,Roda o cubo todo — os centros continuam a mandar
+LessonCubePieces,"Roda, e as peças viajam — vê-as voltar a casa!"
+LessonMovesTitle,Ler os movimentos
+LessonMovesR,"R quer dizer: roda a face direita uma vez, como um relógio"
+LessonMovesPrime,R' quer dizer: ao contrário
+LessonMovesDouble,R2 quer dizer: duas vezes
+LessonMovesAll,Cada face tem a sua letra: U F L D …
+LessonDaisyTitle,A margarida
+LessonDaisyGoal,Faz uma flor: pétalas brancas à volta do centro amarelo
+LessonDaisyFind,Encontra as arestas brancas e leva-as para cima
+LessonCrossTitle,A cruz branca
+LessonCrossTurnDown,Roda cada pétala duas vezes para baixo — a flor vira cruz
+LessonCrossDone,Faz coincidir a cor do lado antes de rodar
+LessonCornersTitle,Cantos brancos
+LessonCornersMagic,O movimento mágico: R' D' R D
+LessonCornersRepeat,Repete até o canto ficar bem
+LessonMiddleTitle,A camada do meio
+LessonMiddleRight,Manda a aresta para a direita
+LessonMiddleLeft,Manda a aresta para a esquerda
+LessonTopTitle,A face de cima
+LessonTopCross,Cruz amarela: F R U R' U' F'
+LessonTopNext,Agora experimenta o separador ABC — já falta pouco!

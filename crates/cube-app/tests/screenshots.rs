@@ -30,6 +30,41 @@ fn menu_light_mode() {
 }
 
 #[test]
+fn language_picker_phone() {
+    std::env::set_var(
+        "RUBIKS_DATA_DIR",
+        std::env::temp_dir().join(format!("rubiks-test-{}", std::process::id())),
+    );
+    let mut h = Harness::builder()
+        .with_size(egui::Vec2::new(390.0, 740.0))
+        .wgpu()
+        .build_eframe(|cc| RubiksApp::new(cc));
+    h.state_mut().screen = Screen::Language(cube_app::screens::language::LanguageScreen {
+        prev: Box::new(Screen::Menu),
+    });
+    h.run_steps(2);
+    h.snapshot("language_picker");
+}
+
+#[test]
+fn menu_japanese() {
+    // Exercises the whole non-Latin path: CSV translation + the lazily
+    // loaded font subset (native builds read it straight from assets/).
+    let mut h = harness();
+    {
+        let app = h.state_mut();
+        app.i18n.lang = cube_app::i18n::Lang::from_code("ja").unwrap();
+    }
+    h.run_steps(1);
+    let lang = h.state().i18n.lang;
+    h.state_mut().fonts_loaded.clear();
+    let ctx = h.ctx.clone();
+    h.state_mut().ensure_font(lang, &ctx);
+    h.run_steps(2);
+    h.snapshot("menu_japanese");
+}
+
+#[test]
 fn menu_screen() {
     let mut h = harness();
     h.run();
@@ -59,7 +94,7 @@ fn play_screen_scrambled() {
 #[test]
 fn menu_norwegian() {
     let mut h = harness();
-    h.state_mut().i18n.lang = cube_app::i18n::Lang::No;
+    h.state_mut().i18n.lang = cube_app::i18n::Lang::NO;
     h.run();
     h.snapshot("menu_no");
 }

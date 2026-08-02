@@ -1,0 +1,69 @@
+key,text
+Practice,Luyện tập
+SettingsTitle,Cài đặt lời giải
+HintModeFull,Hướng dẫn đầy đủ
+HintModePractice,Dừng để luyện
+HintModeOff,Tắt
+MaxExtraMoves,Số bước thêm tối đa
+IDidIt,Mình làm được rồi!
+NeededHelp,Mình xem trộm tí
+PracticeYouKnow,Cái này bạn biết rồi!
+SettingsNoTrained,Hãy gắn sao cho công thức ở mục Luyện trước nhé
+TapSelectTitle,Chạm để chọn
+TapSelectSide,Cả mặt
+TapSelectCell,Một ô
+MyWay,Cách của mình
+AppTitle,Khối Rubik
+MenuSolve,Giải
+MenuTrain,Luyện
+MenuPlay,Chơi
+Back,Trở lại
+Scramble,Xáo trộn
+Reset,Làm lại
+Undo,Lùi lại
+ComingSoon,Sắp có rồi!
+Play,Phát
+Pause,Dừng
+Next,Tiếp
+GuideDone,Xong rồi! Giỏi quá!
+TableLoading,Đang tải bộ giải…
+ErrColorCounts,Vài màu có quá nhiều hoặc quá ít ô dán
+ErrCenters,Sáu ô giữa phải có màu khác nhau
+ErrImpossiblePiece,Một viên có các màu không thể đi cùng nhau
+ErrUnsolvable,Gần đúng rồi! Một ô có vẻ sai — xem lại nhé
+ShowSolution,Xem lời giải
+Best,Nhanh nhất
+Average,Ao5
+Attempts,Số lần
+CameraStarting,Đang bật máy ảnh…
+EnterManually,Nhập tay
+Capture,Chụp!
+ScanHoldSteady,Giữ khối Rubik thật yên trong khung vuông
+ScanTurnLeft,Xoay cả khối Rubik sang trái
+ScanTiltUp,Nghiêng mặt trên RA XA bạn
+LessonsTabCaption,Bắt đầu ở đây
+Replay,Lại nào!
+LessonCubeTitle,Làm quen khối Rubik
+LessonCubeCenters,Ô giữa không bao giờ di chuyển — chúng cho biết màu của mỗi mặt
+LessonCubeSides,Xoay cả khối Rubik — ô giữa vẫn quyết định
+LessonCubePieces,"Xoay một cái, các viên đi chơi xa — xem chúng về nhà nhé!"
+LessonMovesTitle,Đọc ký hiệu
+LessonMovesR,"R là: xoay mặt phải một lần, theo chiều kim đồng hồ"
+LessonMovesPrime,R' là: xoay ngược lại
+LessonMovesDouble,R2 là: xoay hai lần
+LessonMovesAll,Mỗi mặt có một chữ riêng: U F L D …
+LessonDaisyTitle,Bông hoa
+LessonDaisyGoal,Làm một bông hoa: cánh trắng quanh ô giữa vàng
+LessonDaisyFind,Tìm các viên cạnh trắng rồi đưa lên trên
+LessonCrossTitle,Chữ thập trắng
+LessonCrossTurnDown,Xoay từng cánh hoa xuống hai lần — hoa thành chữ thập
+LessonCrossDone,Khớp màu bên của cánh hoa trước khi xoay nhé
+LessonCornersTitle,Góc trắng
+LessonCornersMagic,Công thức thần kỳ: R' D' R D
+LessonCornersRepeat,Làm lại đến khi viên góc vào đúng chỗ
+LessonMiddleTitle,Tầng giữa
+LessonMiddleRight,Đưa viên cạnh sang phải
+LessonMiddleLeft,Đưa viên cạnh sang trái
+LessonTopTitle,Tầng trên
+LessonTopCross,Chữ thập vàng: F R U R' U' F'
+LessonTopNext,Giờ thử mục ABC nhé — sắp xong rồi đấy!

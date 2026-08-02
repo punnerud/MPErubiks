@@ -1,0 +1,69 @@
+key,text
+Practice,Εξάσκηση
+SettingsTitle,Ρυθμίσεις λύσης
+HintModeFull,Πλήρης οδηγός
+HintModePractice,Στοπ εξάσκησης
+HintModeOff,Χωρίς βοήθεια
+MaxExtraMoves,Μέγ. επιπλέον κινήσεις
+IDidIt,Τα κατάφερα!
+NeededHelp,Έριξα μια ματιά
+PracticeYouKnow,Αυτό το ξέρεις!
+SettingsNoTrained,Σημάδεψε πρώτα αλγόριθμους με το αστέρι στην Προπόνηση
+TapSelectTitle,Το πάτημα επιλέγει
+TapSelectSide,Την πλευρά
+TapSelectCell,Το τετραγωνάκι
+MyWay,Ο δρόμος μου
+AppTitle,Κύβος του Ρούμπικ
+MenuSolve,Λύση
+MenuTrain,Προπόνηση
+MenuPlay,Παιχνίδι
+Back,Πίσω
+Scramble,Ανακάτεψε
+Reset,Επαναφορά
+Undo,Αναίρεση
+ComingSoon,Έρχεται σύντομα!
+Play,Ξεκίνα
+Pause,Παύση
+Next,Επόμενο
+GuideDone,Λύθηκε! Μπράβο σου!
+TableLoading,Φορτώνει ο λύτης…
+ErrColorCounts,Κάποια χρώματα έχουν πάρα πολλά ή πολύ λίγα αυτοκόλλητα
+ErrCenters,Τα έξι κεντρικά αυτοκόλλητα πρέπει να έχουν όλα διαφορετικό χρώμα
+ErrImpossiblePiece,Ένα κομμάτι έχει χρώματα που δεν πάνε μαζί
+ErrUnsolvable,Σχεδόν! Ένα αυτοκόλλητο δείχνει λάθος — κοίτα ξανά
+ShowSolution,Δείξε μου
+Best,Ρεκόρ
+Average,Μ.Ο. (5)
+Attempts,Προσπάθειες
+CameraStarting,Ανοίγει η κάμερα…
+EnterManually,Γράψ' το
+Capture,Κλικ!
+ScanHoldSteady,Κράτα τον κύβο ακίνητο μέσα στο τετράγωνο
+ScanTurnLeft,Γύρισε όλο τον κύβο προς τα αριστερά
+ScanTiltUp,Γείρε την πάνω πλευρά ΜΑΚΡΙΑ από σένα
+LessonsTabCaption,Ξεκίνα εδώ
+Replay,Ξανά!
+LessonCubeTitle,Γνώρισε τον κύβο
+LessonCubeCenters,Τα κέντρα δεν κουνιούνται ποτέ — δείχνουν το χρώμα κάθε πλευράς
+LessonCubeSides,Γύρνα όλο τον κύβο — πάλι τα κέντρα αποφασίζουν
+LessonCubePieces,"Στρίψε, και τα κομμάτια ταξιδεύουν — δες τα να γυρίζουν σπίτι!"
+LessonMovesTitle,Διάβασε τις κινήσεις
+LessonMovesR,"R σημαίνει: γύρισε τη δεξιά πλευρά μία φορά, σαν ρολόι"
+LessonMovesPrime,R' σημαίνει: από την άλλη
+LessonMovesDouble,R2 σημαίνει: δύο φορές
+LessonMovesAll,Κάθε πλευρά έχει το δικό της γράμμα: U F L D …
+LessonDaisyTitle,Η μαργαρίτα
+LessonDaisyGoal,Φτιάξε ένα λουλούδι: άσπρα πέταλα γύρω από το κίτρινο κέντρο
+LessonDaisyFind,Βρες τις άσπρες ακμές και ανέβασέ τις
+LessonCrossTitle,Ο άσπρος σταυρός
+LessonCrossTurnDown,Γύρισε κάθε πέταλο δύο φορές κάτω — το λουλούδι γίνεται σταυρός
+LessonCrossDone,Ταίριαξε το πλαϊνό χρώμα του πετάλου πριν γυρίσεις
+LessonCornersTitle,Άσπρες γωνίες
+LessonCornersMagic,Η μαγική κίνηση: R' D' R D
+LessonCornersRepeat,Επανάλαβέ την μέχρι η γωνία να κάτσει σωστά
+LessonMiddleTitle,Η μεσαία στρώση
+LessonMiddleRight,Στείλε την ακμή δεξιά
+LessonMiddleLeft,Στείλε την ακμή αριστερά
+LessonTopTitle,Η πάνω πλευρά
+LessonTopCross,Κίτρινος σταυρός: F R U R' U' F'
+LessonTopNext,Τώρα δοκίμασε την καρτέλα ABC — σχεδόν τα κατάφερες!

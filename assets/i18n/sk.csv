@@ -1,0 +1,69 @@
+key,text
+Practice,Cvič
+SettingsTitle,Nastavenia riešenia
+HintModeFull,Celý návod
+HintModePractice,Pauza na cvičenie
+HintModeOff,Vypnuté
+MaxExtraMoves,Max. ťahov navyše
+IDidIt,Podarilo sa!
+NeededHelp,Bolo treba nakuknúť
+PracticeYouKnow,Toto už vieš!
+SettingsNoTrained,Najprv označ algoritmy hviezdičkou v Trénuj
+TapSelectTitle,Ťuknutie vyberá
+TapSelectSide,Stenu
+TapSelectCell,Políčko
+MyWay,Moja cesta
+AppTitle,Rubikova kocka
+MenuSolve,Poskladaj
+MenuTrain,Trénuj
+MenuPlay,Hraj
+Back,Späť
+Scramble,Zamiešaj
+Reset,Odznova
+Undo,Vráť ťah
+ComingSoon,Už čoskoro!
+Play,Spusti
+Pause,Pauza
+Next,Ďalej
+GuideDone,Poskladaná! Skvelá práca!
+TableLoading,Načítavam solver…
+ErrColorCounts,Niektoré farby majú priveľa alebo primálo nálepiek
+ErrCenters,Každý zo šiestich stredov musí mať inú farbu
+ErrImpossiblePiece,"Jeden dielik má farby, ktoré k sebe nepatria"
+ErrUnsolvable,Skoro! Jedna nálepka vyzerá zle — skontroluj ešte raz
+ShowSolution,Ukáž mi
+Best,Rekord
+Average,Priemer (5)
+Attempts,Pokusy
+CameraStarting,Spúšťam kameru…
+EnterManually,Zadaj ručne
+Capture,Cvak!
+ScanHoldSteady,Drž kocku nehybne v štvorci
+ScanTurnLeft,Otoč celú kocku doľava
+ScanTiltUp,Nakloň vrch OD seba
+LessonsTabCaption,Začni tu
+Replay,Ešte raz!
+LessonCubeTitle,Spoznaj kocku
+LessonCubeCenters,Stredy sa nikdy nehýbu — ukazujú farbu každej steny
+LessonCubeSides,Otoč celú kocku — stredy aj tak rozhodujú
+LessonCubePieces,"Zatoč a dieliky cestujú — pozeraj, ako sa vracajú domov!"
+LessonMovesTitle,Čítame ťahy
+LessonMovesR,"R znamená: otoč pravú stenu raz, ako hodiny"
+LessonMovesPrime,R' znamená: na druhú stranu
+LessonMovesDouble,R2 znamená: dvakrát
+LessonMovesAll,Každá stena má svoje písmeno: U F L D …
+LessonDaisyTitle,Sedmokráska
+LessonDaisyGoal,Urob kvet: biele lupienky okolo žltého stredu
+LessonDaisyFind,Nájdi biele hrany a vytiahni ich hore
+LessonCrossTitle,Biely kríž
+LessonCrossTurnDown,Otoč každý lupienok dvakrát dole — z kvetu je kríž
+LessonCrossDone,Zlaď bočnú farbu lupienka a potom otoč
+LessonCornersTitle,Biele rohy
+LessonCornersMagic,Kúzelný ťah: R' D' R D
+LessonCornersRepeat,"Opakuj ho, kým roh nesadne na miesto"
+LessonMiddleTitle,Stredná vrstva
+LessonMiddleRight,Pošli hranu doprava
+LessonMiddleLeft,Pošli hranu doľava
+LessonTopTitle,Vrch
+LessonTopCross,Žltý kríž: F R U R' U' F'
+LessonTopNext,Teraz skús kartu ABC — už to skoro máš!

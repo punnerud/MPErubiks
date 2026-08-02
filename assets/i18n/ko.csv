@@ -1,0 +1,69 @@
+key,text
+Practice,연습
+SettingsTitle,해법 설정
+HintModeFull,전체 안내
+HintModePractice,연습 멈춤
+HintModeOff,끄기
+MaxExtraMoves,최대 추가 회전 수
+IDidIt,해냈어요!
+NeededHelp,살짝 봤어요
+PracticeYouKnow,이건 알잖아요!
+SettingsNoTrained,먼저 훈련에서 아는 공식에 별을 달아요
+TapSelectTitle,탭하면 선택
+TapSelectSide,면 전체
+TapSelectCell,칸 하나
+MyWay,내 방식
+AppTitle,루빅스 큐브
+MenuSolve,맞추기
+MenuTrain,훈련
+MenuPlay,놀이
+Back,뒤로
+Scramble,섞기
+Reset,처음으로
+Undo,되돌리기
+ComingSoon,곧 만나요!
+Play,재생
+Pause,멈춤
+Next,다음
+GuideDone,완성! 정말 잘했어요!
+TableLoading,해법 준비 중…
+ErrColorCounts,어떤 색은 스티커가 너무 많거나 적어요
+ErrCenters,가운데 스티커 여섯 개는 모두 색이 달라야 해요
+ErrImpossiblePiece,한 조각에 함께 있을 수 없는 색이 있어요
+ErrUnsolvable,거의 다 됐어요! 스티커 하나가 이상해요 — 다시 봐요
+ShowSolution,답 보기
+Best,최고
+Average,Ao5
+Attempts,횟수
+CameraStarting,카메라 켜는 중…
+EnterManually,직접 입력
+Capture,찰칵!
+ScanHoldSteady,네모 안에 큐브를 가만히 들고 있어요
+ScanTurnLeft,큐브 전체를 왼쪽으로 돌려요
+ScanTiltUp,윗면을 몸에서 멀리 기울여요
+LessonsTabCaption,여기서 시작
+Replay,다시!
+LessonCubeTitle,큐브 만나기
+LessonCubeCenters,가운데 조각은 절대 안 움직여요 — 각 면의 색을 알려줘요
+LessonCubeSides,큐브를 통째로 돌려 봐요 — 그래도 가운데가 정해요
+LessonCubePieces,돌리면 조각들이 여행을 떠나요 — 집으로 돌아오는 걸 봐요!
+LessonMovesTitle,기호 읽기
+LessonMovesR,R은 오른쪽 면을 시계처럼 한 번 돌려요
+LessonMovesPrime,R'은 반대로 돌려요
+LessonMovesDouble,R2는 두 번 돌려요
+LessonMovesAll,면마다 자기 글자가 있어요: U F L D …
+LessonDaisyTitle,꽃 모양
+LessonDaisyGoal,꽃을 만들어요: 노란 가운데 둘레에 흰 꽃잎
+LessonDaisyFind,흰색 모서리 조각을 찾아 위로 올려요
+LessonCrossTitle,흰색 십자
+LessonCrossTurnDown,꽃잎을 하나씩 두 번 내려요 — 꽃이 십자가 돼요
+LessonCrossDone,돌리기 전에 꽃잎 옆 색을 맞춰요
+LessonCornersTitle,흰색 코너
+LessonCornersMagic,마법의 공식: R' D' R D
+LessonCornersRepeat,코너가 제자리에 들어올 때까지 반복해요
+LessonMiddleTitle,가운데 층
+LessonMiddleRight,모서리 조각을 오른쪽으로 보내요
+LessonMiddleLeft,모서리 조각을 왼쪽으로 보내요
+LessonTopTitle,윗면
+LessonTopCross,노란 십자: F R U R' U' F'
+LessonTopNext,이제 ABC 탭을 열어 봐요 — 거의 다 왔어요!

@@ -1,0 +1,69 @@
+key,text
+Practice,Øv
+SettingsTitle,Løsningsvalg
+HintModeFull,Fuld hjælp
+HintModePractice,Øvestop
+HintModeOff,Fra
+MaxExtraMoves,Maks ekstra træk
+IDidIt,Jeg klarede den!
+NeededHelp,Måtte kigge
+PracticeYouKnow,Den kan du!
+SettingsNoTrained,Marker algoritmer med stjernen i Træn først
+TapSelectTitle,Tryk vælger
+TapSelectSide,Siden
+TapSelectCell,Feltet
+MyWay,Min vej
+AppTitle,Rubiks terning
+MenuSolve,Løs
+MenuTrain,Træn
+MenuPlay,Leg
+Back,Tilbage
+Scramble,Bland
+Reset,Nulstil
+Undo,Fortryd
+ComingSoon,Kommer snart!
+Play,Afspil
+Pause,Pause
+Next,Næste
+GuideDone,Løst! Flot klaret!
+TableLoading,Henter løseren…
+ErrColorCounts,Nogle farver har for mange eller for få klistermærker
+ErrCenters,De seks midterfelter skal have hver sin farve
+ErrImpossiblePiece,"En brik har farver, der ikke hører sammen"
+ErrUnsolvable,Næsten! Et klistermærke ser forkert ud — tjek igen
+ShowSolution,Vis mig
+Best,Bedste
+Average,Gns. (5)
+Attempts,Forsøg
+CameraStarting,Starter kameraet…
+EnterManually,Skriv selv
+Capture,Knips!
+ScanHoldSteady,Hold terningen stille i firkanten
+ScanTurnLeft,Drej hele terningen mod venstre
+ScanTiltUp,Vip toppen VÆK fra dig
+LessonsTabCaption,Start her
+Replay,Igen!
+LessonCubeTitle,Mød terningen
+LessonCubeCenters,Midterne flytter sig aldrig — de viser hver sides farve
+LessonCubeSides,Drej hele terningen — midterne bestemmer stadig
+LessonCubePieces,"Drej, og brikkerne rejser rundt — se dem finde hjem!"
+LessonMovesTitle,Sådan læser du træk
+LessonMovesR,"R betyder: drej højre side én gang, med uret"
+LessonMovesPrime,R' betyder: den anden vej
+LessonMovesDouble,R2 betyder: to gange
+LessonMovesAll,Hver side har sit eget bogstav: U F L D …
+LessonDaisyTitle,Blomsten
+LessonDaisyGoal,Lav en blomst: hvide kronblade rundt om den gule midte
+LessonDaisyFind,Find de hvide kanter og løft dem op
+LessonCrossTitle,Det hvide kors
+LessonCrossTurnDown,Drej hvert kronblad ned to gange — blomsten bliver et kors
+LessonCrossDone,"Farven på siden skal passe, før du drejer"
+LessonCornersTitle,Hvide hjørner
+LessonCornersMagic,Trylletrækket: R' D' R D
+LessonCornersRepeat,"Gentag, indtil hjørnet sidder rigtigt"
+LessonMiddleTitle,Midterlaget
+LessonMiddleRight,Send kanten til højre
+LessonMiddleLeft,Send kanten til venstre
+LessonTopTitle,Toppen
+LessonTopCross,Gult kors: F R U R' U' F'
+LessonTopNext,Prøv ABC-fanen nu — du er der næsten!

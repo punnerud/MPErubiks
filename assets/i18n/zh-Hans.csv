@@ -1,0 +1,69 @@
+key,text
+Practice,练习
+SettingsTitle,解法设置
+HintModeFull,全程指导
+HintModePractice,练习暂停
+HintModeOff,关闭
+MaxExtraMoves,最多额外步数
+IDidIt,我做到了！
+NeededHelp,偷看了一眼
+PracticeYouKnow,这个你会！
+SettingsNoTrained,先在训练里用星星标记公式
+TapSelectTitle,点击选择
+TapSelectSide,整个面
+TapSelectCell,单个格
+MyWay,我的解法
+AppTitle,魔方
+MenuSolve,还原
+MenuTrain,训练
+MenuPlay,游戏
+Back,返回
+Scramble,打乱
+Reset,重置
+Undo,撤销
+ComingSoon,马上就来！
+Play,播放
+Pause,暂停
+Next,下一步
+GuideDone,还原啦！真棒！
+TableLoading,正在加载求解器…
+ErrColorCounts,有的颜色贴纸太多或太少
+ErrCenters,六个中心块必须是六种不同的颜色
+ErrImpossiblePiece,有一块的颜色凑不到一起
+ErrUnsolvable,差一点！有个贴纸好像不对——再看看
+ShowSolution,看答案
+Best,最佳
+Average,Ao5
+Attempts,次数
+CameraStarting,正在打开相机…
+EnterManually,手动输入
+Capture,咔嚓！
+ScanHoldSteady,把魔方稳稳放在方框里
+ScanTurnLeft,把整个魔方向左转
+ScanTiltUp,把顶面往前翻，远离自己
+LessonsTabCaption,从这里开始
+Replay,再来一次！
+LessonCubeTitle,认识魔方
+LessonCubeCenters,中心块永远不动——它们代表每一面的颜色
+LessonCubeSides,转动整个魔方——中心块还是说了算
+LessonCubePieces,一转动，小块就会跑——看它们回家啦！
+LessonMovesTitle,看懂转法
+LessonMovesR,R 就是：把右面转一下，像时钟那样
+LessonMovesPrime,R' 就是：反着转
+LessonMovesDouble,R2 就是：转两下
+LessonMovesAll,每一面都有自己的字母：U F L D …
+LessonDaisyTitle,小花
+LessonDaisyGoal,摆出一朵小花：白色花瓣围着黄色中心
+LessonDaisyFind,找到白色棱块，把它们送到顶上
+LessonCrossTitle,白色十字
+LessonCrossTurnDown,每片花瓣往下转两次——小花就变成十字
+LessonCrossDone,转之前，先让花瓣侧面的颜色对上
+LessonCornersTitle,白色角块
+LessonCornersMagic,魔法公式：R' D' R D
+LessonCornersRepeat,一直重复，直到角块归位
+LessonMiddleTitle,中间层
+LessonMiddleRight,把棱块送到右边
+LessonMiddleLeft,把棱块送到左边
+LessonTopTitle,顶层
+LessonTopCross,黄色十字：F R U R' U' F'
+LessonTopNext,现在试试 ABC 那一页——你就快成功啦！

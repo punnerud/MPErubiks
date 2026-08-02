@@ -1,0 +1,69 @@
+key,text
+Practice,Cvičit
+SettingsTitle,Nastavení řešení
+HintModeFull,Plná nápověda
+HintModePractice,Cvičná pauza
+HintModeOff,Vypnuto
+MaxExtraMoves,Max. tahů navíc
+IDidIt,Mám to!
+NeededHelp,Kouknu se
+PracticeYouKnow,Tohle umíš!
+SettingsNoTrained,Nejdřív si označ algoritmy hvězdičkou v sekci Trénovat
+TapSelectTitle,Ťuknutí vybere
+TapSelectSide,Stěnu
+TapSelectCell,Políčko
+MyWay,Moje cesta
+AppTitle,Rubikova kostka
+MenuSolve,Složit
+MenuTrain,Trénovat
+MenuPlay,Hrát
+Back,Zpět
+Scramble,Zamíchat
+Reset,Od začátku
+Undo,Vrátit tah
+ComingSoon,Už brzy!
+Play,Přehrát
+Pause,Pauza
+Next,Dál
+GuideDone,Složeno! Paráda!
+TableLoading,Načítám řešitele…
+ErrColorCounts,Některé barvy mají moc nebo málo nálepek
+ErrCenters,Všech šest středů musí mít jinou barvu
+ErrImpossiblePiece,"Jedna kostička má barvy, které k sobě nepatří"
+ErrUnsolvable,Skoro! Jedna nálepka vypadá špatně — zkontroluj to
+ShowSolution,Ukaž mi
+Best,Nejlepší
+Average,Průměr (5)
+Attempts,Pokusy
+CameraStarting,Spouštím kameru…
+EnterManually,Zadat ručně
+Capture,Cvak!
+ScanHoldSteady,Drž kostku klidně v rámečku
+ScanTurnLeft,Otoč celou kostku doleva
+ScanTiltUp,Nakloň vršek OD sebe
+LessonsTabCaption,Začni tady
+Replay,Znovu!
+LessonCubeTitle,Poznej kostku
+LessonCubeCenters,Středy se nikdy nehýbou — ukazují barvu každé stěny
+LessonCubeSides,Otoč celou kostku — středy stejně rozhodují
+LessonCubePieces,"Zatoč a kostičky putují — koukej, jak se vrací domů!"
+LessonMovesTitle,Čteme tahy
+LessonMovesR,"R znamená: otoč pravou stěnu jednou, jako hodiny"
+LessonMovesPrime,R' znamená: opačně
+LessonMovesDouble,R2 znamená: dvakrát
+LessonMovesAll,Každá stěna má své písmeno: U F L D …
+LessonDaisyTitle,Kytička
+LessonDaisyGoal,Udělej kytičku: bílé lístky kolem žlutého středu
+LessonDaisyFind,Najdi bílé hrany a zvedni je nahoru
+LessonCrossTitle,Bílý kříž
+LessonCrossTurnDown,Otoč každý lístek dvakrát dolů — z kytičky bude kříž
+LessonCrossDone,Nejdřív srovnej barvu na boku lístku
+LessonCornersTitle,Bílé rohy
+LessonCornersMagic,Kouzelný tah: R' D' R D
+LessonCornersRepeat,"Opakuj ho, dokud roh nesedne"
+LessonMiddleTitle,Prostřední vrstva
+LessonMiddleRight,Pošli hranu doprava
+LessonMiddleLeft,Pošli hranu doleva
+LessonTopTitle,Vršek
+LessonTopCross,Žlutý kříž: F R U R' U' F'
+LessonTopNext,Teď zkus záložku ABC — už to skoro máš!

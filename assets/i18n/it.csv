@@ -1,0 +1,69 @@
+key,text
+Practice,Esercizio
+SettingsTitle,Impostazioni soluzione
+HintModeFull,Guida completa
+HintModePractice,Pausa esercizio
+HintModeOff,Nessun aiuto
+MaxExtraMoves,Max mosse extra
+IDidIt,Ce l'ho fatta!
+NeededHelp,Ho sbirciato
+PracticeYouKnow,Questa la sai!
+SettingsNoTrained,Prima segna gli algoritmi con la stella in Allena
+TapSelectTitle,Il tocco sceglie
+TapSelectSide,La faccia
+TapSelectCell,La casella
+MyWay,A modo mio
+AppTitle,Cubo di Rubik
+MenuSolve,Risolvi
+MenuTrain,Allena
+MenuPlay,Gioca
+Back,Indietro
+Scramble,Mescola
+Reset,Ricomincia
+Undo,Annulla
+ComingSoon,Presto!
+Play,Avvia
+Pause,Pausa
+Next,Avanti
+GuideDone,Risolto! Bravo!
+TableLoading,Carico il risolutore…
+ErrColorCounts,Alcuni colori hanno troppi o troppo pochi adesivi
+ErrCenters,I sei centri devono avere colori tutti diversi
+ErrImpossiblePiece,Un pezzo ha colori che non stanno insieme
+ErrUnsolvable,Quasi! Un adesivo sembra sbagliato — ricontrolla
+ShowSolution,Mostrami
+Best,Record
+Average,Media (5)
+Attempts,Tentativi
+CameraStarting,Accendo la fotocamera…
+EnterManually,Scrivilo tu
+Capture,Scatta!
+ScanHoldSteady,Tieni il cubo fermo nel quadrato
+ScanTurnLeft,Gira tutto il cubo verso sinistra
+ScanTiltUp,Inclina la parte di sopra LONTANO da te
+LessonsTabCaption,Inizia qui
+Replay,Ancora!
+LessonCubeTitle,Conosci il cubo
+LessonCubeCenters,I centri non si muovono mai — danno il colore a ogni faccia
+LessonCubeSides,Gira tutto il cubo — comandano sempre i centri
+LessonCubePieces,"Gira, e i pezzi viaggiano — guardali tornare a casa!"
+LessonMovesTitle,Leggere le mosse
+LessonMovesR,"R vuol dire: gira la faccia destra una volta, come l'orologio"
+LessonMovesPrime,R' vuol dire: dall'altra parte
+LessonMovesDouble,R2 vuol dire: due volte
+LessonMovesAll,Ogni faccia ha la sua lettera: U F L D …
+LessonDaisyTitle,La margherita
+LessonDaisyGoal,Fai un fiore: petali bianchi intorno al centro giallo
+LessonDaisyFind,Trova gli spigoli bianchi e portali su
+LessonCrossTitle,La croce bianca
+LessonCrossTurnDown,Gira ogni petalo due volte in giù — il fiore diventa croce
+LessonCrossDone,Fai combaciare il colore di lato prima di girare
+LessonCornersTitle,Angoli bianchi
+LessonCornersMagic,La mossa magica: R' D' R D
+LessonCornersRepeat,Ripetila finché l'angolo non va a posto
+LessonMiddleTitle,Lo strato di mezzo
+LessonMiddleRight,Manda lo spigolo a destra
+LessonMiddleLeft,Manda lo spigolo a sinistra
+LessonTopTitle,La faccia di sopra
+LessonTopCross,Croce gialla: F R U R' U' F'
+LessonTopNext,Ora prova la scheda ABC — ci sei quasi!

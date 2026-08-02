@@ -1,0 +1,69 @@
+key,text
+Practice,練習
+SettingsTitle,解法設定
+HintModeFull,完整指引
+HintModePractice,練習暫停
+HintModeOff,關閉
+MaxExtraMoves,最多額外步數
+IDidIt,我做到了！
+NeededHelp,我偷看了
+PracticeYouKnow,你會這個！
+SettingsNoTrained,先到「訓練」用星星標記公式
+TapSelectTitle,點一下選擇
+TapSelectSide,整面
+TapSelectCell,單格
+MyWay,我的路線
+AppTitle,魔術方塊
+MenuSolve,還原
+MenuTrain,訓練
+MenuPlay,遊戲
+Back,返回
+Scramble,打亂
+Reset,重來
+Undo,上一步
+ComingSoon,快來了！
+Play,播放
+Pause,暫停
+Next,下一步
+GuideDone,完成了！你好棒！
+TableLoading,載入解法中…
+ErrColorCounts,有些顏色的貼紙太多或太少
+ErrCenters,六個中心貼紙的顏色必須都不一樣
+ErrImpossiblePiece,有一塊的顏色不可能湊在一起
+ErrUnsolvable,快好了！有一張貼紙看起來不對—再檢查一次
+ShowSolution,看解法
+Best,最佳
+Average,平均(5)
+Attempts,次數
+CameraStarting,相機啟動中…
+EnterManually,手動輸入
+Capture,拍！
+ScanHoldSteady,把方塊穩穩放在框框裡
+ScanTurnLeft,把整個方塊往左轉
+ScanTiltUp,把上面往「外」倒，遠離你
+LessonsTabCaption,從這裡開始
+Replay,再一次！
+LessonCubeTitle,認識方塊
+LessonCubeCenters,中心塊永遠不動—它就是每一面的顏色
+LessonCubeSides,轉動整個方塊—還是中心塊說了算
+LessonCubePieces,轉一轉，小塊會旅行—看它們回家！
+LessonMovesTitle,看懂轉法
+LessonMovesR,R 就是：把右面像時鐘那樣轉一次
+LessonMovesPrime,R' 就是：反過來轉
+LessonMovesDouble,R2 就是：轉兩次
+LessonMovesAll,每一面都有自己的字母：U F L D …
+LessonDaisyTitle,小花
+LessonDaisyGoal,做出一朵花：白色花瓣圍著黃色中心
+LessonDaisyFind,找到白色邊塊，把它們送上去
+LessonCrossTitle,白色十字
+LessonCrossTurnDown,把每片花瓣往下轉兩次—小花變十字
+LessonCrossDone,轉之前，先讓花瓣側面的顏色對上
+LessonCornersTitle,白色角塊
+LessonCornersMagic,魔法步驟：R' D' R D
+LessonCornersRepeat,一直重複，直到角塊乖乖歸位
+LessonMiddleTitle,中間層
+LessonMiddleRight,把邊塊送到右邊
+LessonMiddleLeft,把邊塊送到左邊
+LessonTopTitle,頂面
+LessonTopCross,黃色十字：F R U R' U' F'
+LessonTopNext,現在去試試 ABC 分頁—你快成功了！

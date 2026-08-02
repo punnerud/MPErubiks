@@ -1,0 +1,69 @@
+key,text
+Practice,Øv
+SettingsTitle,Løsningsvalg
+HintModeFull,Full hjelp
+HintModePractice,Øvestopp
+HintModeOff,Av
+MaxExtraMoves,Maks ekstra trekk
+IDidIt,Jeg klarte det!
+NeededHelp,Trengte en titt
+PracticeYouKnow,Denne kan du!
+SettingsNoTrained,Merk algoritmer med stjerne i Tren først
+TapSelectTitle,Trykk velger
+TapSelectSide,Siden
+TapSelectCell,Ruten
+MyWay,Min vei
+AppTitle,Rubiks kube
+MenuSolve,Løs
+MenuTrain,Tren
+MenuPlay,Lek
+Back,Tilbake
+Scramble,Bland
+Reset,Nullstill
+Undo,Angre
+ComingSoon,Kommer snart!
+Play,Spill av
+Pause,Pause
+Next,Neste
+GuideDone,Løst! Kjempebra!
+TableLoading,Laster løseren…
+ErrColorCounts,Noen farger har for mange eller for få klistremerker
+ErrCenters,De seks midt-klistremerkene må ha ulike farger
+ErrImpossiblePiece,En brikke har farger som ikke hører sammen
+ErrUnsolvable,Nesten! Ett klistremerke ser feil ut — sjekk igjen
+ShowSolution,Vis meg
+Best,Beste
+Average,Snitt (5)
+Attempts,Forsøk
+CameraStarting,Starter kameraet…
+EnterManually,Skriv inn selv
+Capture,Knips!
+ScanHoldSteady,Hold kuben rolig i ruten
+ScanTurnLeft,Snu hele kuben mot venstre
+ScanTiltUp,Vipp toppen FRA deg
+LessonsTabCaption,Start her
+Replay,En gang til!
+LessonCubeTitle,Bli kjent med kuben
+LessonCubeCenters,Midtene sitter fast — de viser fargen til hver side
+LessonCubeSides,Snurr hele kuben — midtene bestemmer fortsatt
+LessonCubePieces,"Vri, og brikkene reiser — se, de kommer hjem igjen!"
+LessonMovesTitle,Slik leser du trekk
+LessonMovesR,"R betyr: snu høyre side én gang, med klokka"
+LessonMovesPrime,R' betyr: motsatt vei
+LessonMovesDouble,R2 betyr: to ganger
+LessonMovesAll,Hver side har sin bokstav: U F L D …
+LessonDaisyTitle,Blomsten
+LessonDaisyGoal,Lag en blomst: hvite blader rundt den gule midten
+LessonDaisyFind,Finn hvite kanter og løft dem opp
+LessonCrossTitle,Det hvite korset
+LessonCrossTurnDown,Snu hvert blad ned to ganger — blomst blir kors
+LessonCrossDone,Fargen på siden må stemme før du snur
+LessonCornersTitle,Hvite hjørner
+LessonCornersMagic,Trylletrekket: R' D' R D
+LessonCornersRepeat,Gjenta til hjørnet sitter riktig
+LessonMiddleTitle,Midtlaget
+LessonMiddleRight,Send kanten til høyre
+LessonMiddleLeft,Send kanten til venstre
+LessonTopTitle,Toppen
+LessonTopCross,Gult kors: F R U R' U' F'
+LessonTopNext,Prøv ABC-fanen nå — du er nesten i mål!

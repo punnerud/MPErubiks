@@ -1,0 +1,69 @@
+key,text
+Practice,Practicar
+SettingsTitle,Ajustos de solució
+HintModeFull,Guia completa
+HintModePractice,Pausa de pràctica
+HintModeOff,Sense ajuda
+MaxExtraMoves,Màx. moviments extra
+IDidIt,Ho he fet!
+NeededHelp,He mirat
+PracticeYouKnow,Aquesta te la saps!
+SettingsNoTrained,Primer marca algorismes amb l'estrella a Entrenar
+TapSelectTitle,Tocar selecciona
+TapSelectSide,La cara
+TapSelectCell,La casella
+MyWay,El meu camí
+AppTitle,Cub de Rubik
+MenuSolve,Resoldre
+MenuTrain,Entrenar
+MenuPlay,Jugar
+Back,Enrere
+Scramble,Barrejar
+Reset,Reiniciar
+Undo,Desfer
+ComingSoon,Ben aviat!
+Play,Reproduir
+Pause,Pausa
+Next,Següent
+GuideDone,Resolt! Molt bé!
+TableLoading,Carregant el solucionador…
+ErrColorCounts,Alguns colors tenen massa o massa poques enganxines
+ErrCenters,Els sis centres han de tenir colors diferents
+ErrImpossiblePiece,Una peça té colors que no van junts
+ErrUnsolvable,Gairebé! Una enganxina sembla equivocada — torna-ho a mirar
+ShowSolution,Mostra-m'ho
+Best,Millor
+Average,Mitjana (5)
+Attempts,Intents
+CameraStarting,Engegant la càmera…
+EnterManually,Escriure-ho
+Capture,Foto!
+ScanHoldSteady,Aguanta el cub quiet dins del quadrat
+ScanTurnLeft,Gira tot el cub cap a l'esquerra
+ScanTiltUp,Inclina la part de dalt LLUNY de tu
+LessonsTabCaption,Comença aquí
+Replay,Un altre cop!
+LessonCubeTitle,Coneix el cub
+LessonCubeCenters,Els centres no es mouen mai — marquen el color de cada cara
+LessonCubeSides,Gira tot el cub — els centres continuen manant
+LessonCubePieces,"Gira, i les peces viatgen — mira com tornen a casa!"
+LessonMovesTitle,Llegir els moviments
+LessonMovesR,"R vol dir: gira la cara dreta un cop, com un rellotge"
+LessonMovesPrime,R' vol dir: a l'inrevés
+LessonMovesDouble,R2 vol dir: dos cops
+LessonMovesAll,Cada cara té la seva lletra: U F L D …
+LessonDaisyTitle,La margarida
+LessonDaisyGoal,Fes una flor: pètals blancs al voltant del centre groc
+LessonDaisyFind,Busca les arestes blanques i puja-les a dalt
+LessonCrossTitle,La creu blanca
+LessonCrossTurnDown,Gira cada pètal dos cops cap avall — la flor es torna creu
+LessonCrossDone,Fes coincidir el color del costat abans de girar
+LessonCornersTitle,Cantonades blanques
+LessonCornersMagic,El moviment màgic: R' D' R D
+LessonCornersRepeat,Repeteix-ho fins que la cantonada quedi bé
+LessonMiddleTitle,La capa del mig
+LessonMiddleRight,Envia l'aresta a la dreta
+LessonMiddleLeft,Envia l'aresta a l'esquerra
+LessonTopTitle,La cara de dalt
+LessonTopCross,Creu groga: F R U R' U' F'
+LessonTopNext,Ara prova la pestanya ABC — ja gairebé ho tens!

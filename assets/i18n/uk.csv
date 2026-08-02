@@ -1,0 +1,69 @@
+key,text
+Practice,Практика
+SettingsTitle,Налаштування розв’язку
+HintModeFull,Повна підказка
+HintModePractice,Пауза на практику
+HintModeOff,Вимкнено
+MaxExtraMoves,Макс. зайвих ходів
+IDidIt,Вийшло!
+NeededHelp,Довелося підглянути
+PracticeYouKnow,Це ти вже знаєш!
+SettingsNoTrained,Спочатку познач зірочкою алгоритми в розділі Тренуйся
+TapSelectTitle,Дотик вибирає
+TapSelectSide,Сторону
+TapSelectCell,Квадратик
+MyWay,Мій шлях
+AppTitle,Кубик Рубіка
+MenuSolve,Збери
+MenuTrain,Тренуйся
+MenuPlay,Грай
+Back,Назад
+Scramble,Перемішай
+Reset,Спочатку
+Undo,Скасувати
+ComingSoon,Скоро буде!
+Play,Старт
+Pause,Пауза
+Next,Далі
+GuideDone,Готово! Молодець!
+TableLoading,Завантажую розв’язувач…
+ErrColorCounts,У деяких кольорів забагато або замало наклейок
+ErrCenters,Усі шість центрів мають бути різного кольору
+ErrImpossiblePiece,"Одна деталь має кольори, які не бувають разом"
+ErrUnsolvable,Майже! Одна наклейка не така — перевір ще раз
+ShowSolution,Покажи
+Best,Рекорд
+Average,Ao5
+Attempts,Спроби
+CameraStarting,Вмикаю камеру…
+EnterManually,Ввести вручну
+Capture,Клац!
+ScanHoldSteady,Тримай кубик рівно в квадраті
+ScanTurnLeft,Поверни весь кубик ліворуч
+ScanTiltUp,Нахили верх ВІД себе
+LessonsTabCaption,Почни тут
+Replay,Ще раз!
+LessonCubeTitle,Знайомся з кубиком
+LessonCubeCenters,Центри ніколи не рухаються — вони показують колір кожної сторони
+LessonCubeSides,Крути весь кубик — центри все одно головні
+LessonCubePieces,"Крутни, і деталі мандрують — дивись, як вони вертаються додому!"
+LessonMovesTitle,Читаємо ходи
+LessonMovesR,"R означає: поверни праву сторону один раз, як годинник"
+LessonMovesPrime,R' означає: у другий бік
+LessonMovesDouble,R2 означає: двічі
+LessonMovesAll,Кожна сторона має свою літеру: U F L D …
+LessonDaisyTitle,Ромашка
+LessonDaisyGoal,Зроби квітку: білі пелюстки навколо жовтого центру
+LessonDaisyFind,Знайди білі ребра і підніми їх угору
+LessonCrossTitle,Білий хрест
+LessonCrossTurnDown,Поверни кожну пелюстку двічі вниз — квітка стане хрестом
+LessonCrossDone,Перед поворотом зістав бічний колір пелюстки
+LessonCornersTitle,Білі кути
+LessonCornersMagic,Чарівний хід: R' D' R D
+LessonCornersRepeat,"Повторюй, поки кут не стане на місце"
+LessonMiddleTitle,Середній шар
+LessonMiddleRight,Відправ ребро праворуч
+LessonMiddleLeft,Відправ ребро ліворуч
+LessonTopTitle,Верх
+LessonTopCross,Жовтий хрест: F R U R' U' F'
+LessonTopNext,Тепер спробуй вкладку ABC — уже майже все!

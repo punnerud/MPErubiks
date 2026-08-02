@@ -114,7 +114,27 @@ Three combinations that made the scanner work on real phones:
   mapping. The scanned cube is finally rotated + relabeled so every color
   sits on its standard face — the display speaks the physical cube's colors.
 
-## 6. Small disciplines worth naming
+## 6. Fonts sized to the text, fetched when chosen [C]
+
+**Problem.** Supporting Chinese, Japanese and Korean means glyphs the UI
+font lacks. A full Noto CJK is ~10 MB — more than the whole app — and
+bundling it taxes every user, including the ones who only ever read Norwegian.
+
+**Mechanism.** The translations are the input to the font build: for each
+CJK language, `tools/fetch_font_subsets.py` collects the ~230 distinct
+characters that language's UI actually uses and asks Google's font API for a
+subset containing exactly those (`text=`), served as TTF to a legacy
+user-agent because egui reads TTF, not woff2. Result: 38–94 KB per language
+(253 KB for all four), redistributable under Noto's OFL. At runtime the
+subset is fetched only when the user opens the language picker, and
+installed as the LOWEST-priority fallback so Latin text keeps the default
+font's shapes. Adding a script costs other users nothing.
+
+**Provenance.** Font subsetting is [T]; deriving the subset from the app's
+own translation files, and treating "which glyphs does this product need"
+as a build-time question, is the combination.
+
+## 7. Small disciplines worth naming
 
 - **Derived, never stored, UI gates [I-ish].** The practice-stop gate is a
   pure function of `(mode, cursor, segment_ids, revealed)` — no stored flag
@@ -122,6 +142,12 @@ Three combinations that made the scanner work on real phones:
   (auto-snap re-arming, guide done-state).
 - **Live screenshots as documentation [C].** The README's images *are* the
   screenshot tests; they regenerate with the code and cannot rot.
+- **Translation as a fan-out, verification as a test [C].** 30 agents each
+  own one language and write one CSV; correctness is enforced mechanically
+  afterwards (every key present in every language, RFC 4180 round-trip,
+  unique codes, English fallback never empty). One agent noticed the English
+  source itself had a duplicated scan instruction — a bug the fan-out
+  surfaced for free.
 - **Field-data eval as a test [C].** Real uploaded captures with hand-labeled
   ground truth run as a gated cargo test with a no-regression assert — the
   classifier's accuracy (87/90) is a number in CI, not a feeling. The night
@@ -129,7 +155,7 @@ Three combinations that made the scanner work on real phones:
   exactly nine stickers per class and form a legal cube through the grid
   tables.
 
-## 7. Negative results
+## 8. Negative results
 
 Measured, then rejected — kept because the numbers are the point.
 

@@ -1,0 +1,69 @@
+key,text
+Practice,Практика
+SettingsTitle,Настройки сборки
+HintModeFull,Полная подсказка
+HintModePractice,Пауза на практику
+HintModeOff,Выключено
+MaxExtraMoves,Макс. лишних ходов
+IDidIt,Получилось!
+NeededHelp,Пришлось подсмотреть
+PracticeYouKnow,Это ты уже знаешь!
+SettingsNoTrained,Сначала отметь звёздочкой алгоритмы в разделе «Тренируйся»
+TapSelectTitle,Касание выбирает
+TapSelectSide,Сторону
+TapSelectCell,Квадратик
+MyWay,Мой путь
+AppTitle,Кубик Рубика
+MenuSolve,Собери
+MenuTrain,Тренируйся
+MenuPlay,Играй
+Back,Назад
+Scramble,Перемешай
+Reset,Сначала
+Undo,Отменить
+ComingSoon,Скоро будет!
+Play,Старт
+Pause,Пауза
+Next,Дальше
+GuideDone,Готово! Молодец!
+TableLoading,Загружаю решатель…
+ErrColorCounts,У каких-то цветов слишком много или слишком мало наклеек
+ErrCenters,Все шесть центров должны быть разного цвета
+ErrImpossiblePiece,"У одной детали цвета, которых не бывает вместе"
+ErrUnsolvable,Почти! Одна наклейка не та — проверь ещё раз
+ShowSolution,Покажи
+Best,Рекорд
+Average,Ao5
+Attempts,Попытки
+CameraStarting,Включаю камеру…
+EnterManually,Ввести вручную
+Capture,Щёлк!
+ScanHoldSteady,Держи кубик ровно в квадрате
+ScanTurnLeft,Поверни весь кубик влево
+ScanTiltUp,Наклони верх ОТ себя
+LessonsTabCaption,Начни тут
+Replay,Ещё раз!
+LessonCubeTitle,Знакомься с кубиком
+LessonCubeCenters,Центры никогда не двигаются — они показывают цвет каждой стороны
+LessonCubeSides,Крути весь кубик — центры всё равно главные
+LessonCubePieces,"Крутни, и детали отправятся в путь — смотри, как они возвращаются домой!"
+LessonMovesTitle,Читаем ходы
+LessonMovesR,"R значит: поверни правую сторону один раз, как часы"
+LessonMovesPrime,R' значит: в другую сторону
+LessonMovesDouble,R2 значит: два раза
+LessonMovesAll,У каждой стороны своя буква: U F L D …
+LessonDaisyTitle,Ромашка
+LessonDaisyGoal,Сделай цветок: белые лепестки вокруг жёлтого центра
+LessonDaisyFind,Найди белые рёбра и подними их наверх
+LessonCrossTitle,Белый крест
+LessonCrossTurnDown,Поверни каждый лепесток вниз два раза — цветок станет крестом
+LessonCrossDone,Перед поворотом подгони боковой цвет лепестка
+LessonCornersTitle,Белые углы
+LessonCornersMagic,Волшебный ход: R' D' R D
+LessonCornersRepeat,"Повторяй, пока угол не встанет на место"
+LessonMiddleTitle,Средний слой
+LessonMiddleRight,Отправь ребро вправо
+LessonMiddleLeft,Отправь ребро влево
+LessonTopTitle,Верх
+LessonTopCross,Жёлтый крест: F R U R' U' F'
+LessonTopNext,Теперь попробуй вкладку ABC — ты почти у цели!

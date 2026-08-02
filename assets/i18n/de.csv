@@ -1,0 +1,69 @@
+key,text
+Practice,Üben
+SettingsTitle,Lösungs-Einstellungen
+HintModeFull,Volle Hilfe
+HintModePractice,Übungs-Stopp
+HintModeOff,Aus
+MaxExtraMoves,Max. Extra-Züge
+IDidIt,Geschafft!
+NeededHelp,Musste gucken
+PracticeYouKnow,Das kannst du!
+SettingsNoTrained,Markiere Algorithmen zuerst mit dem Stern in Trainieren
+TapSelectTitle,Tippen wählt
+TapSelectSide,Die Seite
+TapSelectCell,Das Feld
+MyWay,Mein Weg
+AppTitle,Zauberwürfel
+MenuSolve,Lösen
+MenuTrain,Trainieren
+MenuPlay,Spielen
+Back,Zurück
+Scramble,Mischen
+Reset,Zurücksetzen
+Undo,Rückgängig
+ComingSoon,Kommt bald!
+Play,Abspielen
+Pause,Pause
+Next,Weiter
+GuideDone,Gelöst! Super gemacht!
+TableLoading,Löser wird geladen…
+ErrColorCounts,Manche Farben haben zu viele oder zu wenige Aufkleber
+ErrCenters,Die sechs Mittelfelder müssen alle eine andere Farbe haben
+ErrImpossiblePiece,"Ein Stein hat Farben, die nicht zusammengehören"
+ErrUnsolvable,Fast! Ein Aufkleber sieht falsch aus — schau nochmal
+ShowSolution,Zeig mir
+Best,Beste
+Average,Ø (5)
+Attempts,Versuche
+CameraStarting,Kamera startet…
+EnterManually,Eintippen
+Capture,Klick!
+ScanHoldSteady,Halte den Würfel ruhig im Quadrat
+ScanTurnLeft,Drehe den ganzen Würfel nach links
+ScanTiltUp,Kippe die Oberseite WEG von dir
+LessonsTabCaption,Hier starten
+Replay,Nochmal!
+LessonCubeTitle,Lerne den Würfel kennen
+LessonCubeCenters,Die Mitten bewegen sich nie — sie zeigen die Farbe jeder Seite
+LessonCubeSides,Dreh den ganzen Würfel — die Mitten bestimmen trotzdem
+LessonCubePieces,"Dreh, und die Steine wandern — sieh, wie sie heimkommen!"
+LessonMovesTitle,Züge lesen
+LessonMovesR,"R heißt: die rechte Seite einmal drehen, wie eine Uhr"
+LessonMovesPrime,R' heißt: andersherum
+LessonMovesDouble,R2 heißt: zweimal
+LessonMovesAll,Jede Seite hat ihren eigenen Buchstaben: U F L D …
+LessonDaisyTitle,Die Blume
+LessonDaisyGoal,Mach eine Blume: weiße Blütenblätter um die gelbe Mitte
+LessonDaisyFind,Finde die weißen Kanten und heb sie nach oben
+LessonCrossTitle,Das weiße Kreuz
+LessonCrossTurnDown,Dreh jedes Blütenblatt zweimal nach unten — die Blume wird zum Kreuz
+LessonCrossDone,"Die Farbe an der Seite muss passen, bevor du drehst"
+LessonCornersTitle,Weiße Ecken
+LessonCornersMagic,Der Zauberzug: R' D' R D
+LessonCornersRepeat,"Wiederhole ihn, bis die Ecke richtig sitzt"
+LessonMiddleTitle,Die mittlere Ebene
+LessonMiddleRight,Schick die Kante nach rechts
+LessonMiddleLeft,Schick die Kante nach links
+LessonTopTitle,Die Oberseite
+LessonTopCross,Gelbes Kreuz: F R U R' U' F'
+LessonTopNext,Probier jetzt den ABC-Tab — fast geschafft!

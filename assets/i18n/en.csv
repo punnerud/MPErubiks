@@ -1,0 +1,69 @@
+key,text
+Practice,Practice
+SettingsTitle,Solution settings
+HintModeFull,Full guide
+HintModePractice,Practice stop
+HintModeOff,Off
+MaxExtraMoves,Max extra moves
+IDidIt,I did it!
+NeededHelp,Needed a peek
+PracticeYouKnow,You know this one!
+SettingsNoTrained,Mark algorithms with the star in Train first
+TapSelectTitle,Tap selects
+TapSelectSide,The side
+TapSelectCell,The cell
+MyWay,My way
+AppTitle,Rubik's Cube
+MenuSolve,Solve
+MenuTrain,Train
+MenuPlay,Play
+Back,Back
+Scramble,Scramble
+Reset,Reset
+Undo,Undo
+ComingSoon,Coming soon!
+Play,Play
+Pause,Pause
+Next,Next
+GuideDone,Solved! Great job!
+TableLoading,Loading solver…
+ErrColorCounts,Some colors have too many or too few stickers
+ErrCenters,The six middle stickers must all be different colors
+ErrImpossiblePiece,One piece has colors that don't belong together
+ErrUnsolvable,Almost! One sticker looks wrong — check again
+ShowSolution,Show me
+Best,Best
+Average,Avg (5)
+Attempts,Tries
+CameraStarting,Starting camera…
+EnterManually,Type it in
+Capture,Snap!
+ScanHoldSteady,Hold the cube steady in the square
+ScanTurnLeft,Turn the whole cube to the left
+ScanTiltUp,Tilt the top AWAY from you
+LessonsTabCaption,Start here
+Replay,Again!
+LessonCubeTitle,Meet the cube
+LessonCubeCenters,The middles never move — they show each side's color
+LessonCubeSides,Spin the whole cube — the middles still decide
+LessonCubePieces,"Twist, and the pieces travel — watch them come home!"
+LessonMovesTitle,Reading moves
+LessonMovesR,"R means: turn the right side once, like a clock"
+LessonMovesPrime,R' means: the other way
+LessonMovesDouble,R2 means: twice
+LessonMovesAll,Every side has its own letter: U F L D …
+LessonDaisyTitle,The daisy
+LessonDaisyGoal,Make a flower: white petals around the yellow middle
+LessonDaisyFind,Find white edges and lift them up
+LessonCrossTitle,The white cross
+LessonCrossTurnDown,Turn each petal down twice — flower becomes cross
+LessonCrossDone,Match the petal's side color before you turn
+LessonCornersTitle,White corners
+LessonCornersMagic,The magic move: R' D' R D
+LessonCornersRepeat,Repeat it until the corner sits right
+LessonMiddleTitle,The middle layer
+LessonMiddleRight,Send the edge to the right
+LessonMiddleLeft,Send the edge to the left
+LessonTopTitle,The top
+LessonTopCross,Yellow cross: F R U R' U' F'
+LessonTopNext,Now try the ABC tab — you're almost there!

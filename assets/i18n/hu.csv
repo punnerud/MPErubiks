@@ -1,0 +1,69 @@
+key,text
+Practice,Gyakorlás
+SettingsTitle,Megoldás beállításai
+HintModeFull,Teljes segítség
+HintModePractice,Gyakorló szünet
+HintModeOff,Ki
+MaxExtraMoves,Max. extra lépés
+IDidIt,Sikerült!
+NeededHelp,Lestem egy kicsit
+PracticeYouKnow,Ezt már tudod!
+SettingsNoTrained,Előbb csillagozd meg az algoritmusokat az Edzés fülön
+TapSelectTitle,A koppintás kijelöli
+TapSelectSide,Az oldalt
+TapSelectCell,A mezőt
+MyWay,Az én utam
+AppTitle,Rubik-kocka
+MenuSolve,Kirakás
+MenuTrain,Edzés
+MenuPlay,Játék
+Back,Vissza
+Scramble,Keverés
+Reset,Elölről
+Undo,Visszavonás
+ComingSoon,Hamarosan!
+Play,Indítás
+Pause,Szünet
+Next,Tovább
+GuideDone,Kirakva! Ügyes vagy!
+TableLoading,Megoldó betöltése…
+ErrColorCounts,Néhány színből túl sok vagy túl kevés matrica van
+ErrCenters,A hat középső matricának mind más színűnek kell lennie
+ErrImpossiblePiece,"Az egyik darabon olyan színek vannak, amik nem tartoznak össze"
+ErrUnsolvable,Majdnem! Az egyik matrica rosszul néz ki — nézd meg újra
+ShowSolution,Mutasd meg
+Best,Legjobb
+Average,Ao5
+Attempts,Próbák
+CameraStarting,Kamera indul…
+EnterManually,Beírom
+Capture,Katt!
+ScanHoldSteady,Tartsd a kockát mozdulatlanul a négyzetben
+ScanTurnLeft,Fordítsd az egész kockát balra
+ScanTiltUp,Döntsd a tetejét MAGADTÓL el
+LessonsTabCaption,Kezdd itt
+Replay,Újra!
+LessonCubeTitle,Ismerd meg a kockát
+LessonCubeCenters,A közepek sosem mozdulnak — ők mutatják minden oldal színét
+LessonCubeSides,Forgasd az egész kockát — a közepek akkor is döntenek
+LessonCubePieces,"Csavarj egyet, és a darabok utaznak — nézd, ahogy hazatalálnak!"
+LessonMovesTitle,Lépések olvasása
+LessonMovesR,"Az R azt jelenti: fordítsd a jobb oldalt egyszer, mint az óra"
+LessonMovesPrime,Az R' azt jelenti: a másik irányba
+LessonMovesDouble,Az R2 azt jelenti: kétszer
+LessonMovesAll,Minden oldalnak van saját betűje: U F L D …
+LessonDaisyTitle,A virág
+LessonDaisyGoal,Csinálj egy virágot: fehér szirmok a sárga közép körül
+LessonDaisyFind,Keresd meg a fehér éleket és told fel őket
+LessonCrossTitle,A fehér kereszt
+LessonCrossTurnDown,Fordítsd le minden szirmot kétszer — a virágból kereszt lesz
+LessonCrossDone,Fordítás előtt egyeztesd a szirom oldalsó színét
+LessonCornersTitle,Fehér sarkok
+LessonCornersMagic,A varázslépés: R' D' R D
+LessonCornersRepeat,"Ismételd, amíg a sarok a helyére nem kerül"
+LessonMiddleTitle,A középső réteg
+LessonMiddleRight,Küldd az élt jobbra
+LessonMiddleLeft,Küldd az élt balra
+LessonTopTitle,A felső réteg
+LessonTopCross,Sárga kereszt: F R U R' U' F'
+LessonTopNext,Most próbáld ki az ABC fület — mindjárt kész vagy!

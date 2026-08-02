@@ -414,6 +414,26 @@ fn scan_ui(
     // --- mini rotation guide (top center, overlaid) ---
     mini_guide(app, ui, screen, outer, now);
 
+    // Caption under the grid: reinforcement only — the mini cube and the
+    // arrow carry the instruction for pre-readers.
+    if screen.face_idx < 6 {
+        let side = outer.width().min(outer.height()) * 0.6;
+        let caption = if screen.face_idx == 0 {
+            app.t(TextKey::ScanHoldSteady)
+        } else if MINI_ALGS[screen.face_idx] == "x" {
+            app.t(TextKey::ScanTiltUp)
+        } else {
+            app.t(TextKey::ScanTurnLeft)
+        };
+        ui.painter().text(
+            Pos2::new(outer.center().x, outer.center().y + side / 2.0 + 30.0),
+            egui::Align2::CENTER_CENTER,
+            caption,
+            egui::FontId::proportional(19.0),
+            Color32::from_white_alpha(220),
+        );
+    }
+
     // --- bottom row: restart | force-capture | type it in ---
     let slot = |i: i32| {
         Rect::from_center_size(

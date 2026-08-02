@@ -1,0 +1,69 @@
+key,text
+Practice,Öva
+SettingsTitle,Lösningsinställningar
+HintModeFull,Hela guiden
+HintModePractice,Övningsstopp
+HintModeOff,Av
+MaxExtraMoves,Max extra drag
+IDidIt,Jag klarade det!
+NeededHelp,Fick tjuvkika
+PracticeYouKnow,Den här kan du!
+SettingsNoTrained,Markera algoritmer med stjärnan i Träna först
+TapSelectTitle,Tryck väljer
+TapSelectSide,Sidan
+TapSelectCell,Rutan
+MyWay,Min väg
+AppTitle,Rubiks kub
+MenuSolve,Lös
+MenuTrain,Träna
+MenuPlay,Lek
+Back,Tillbaka
+Scramble,Blanda
+Reset,Börja om
+Undo,Ångra
+ComingSoon,Kommer snart!
+Play,Spela
+Pause,Pausa
+Next,Nästa
+GuideDone,Löst! Bra jobbat!
+TableLoading,Laddar lösaren…
+ErrColorCounts,Några färger har för många eller för få rutor
+ErrCenters,De sex mittrutorna måste ha olika färger
+ErrImpossiblePiece,En bit har färger som inte hör ihop
+ErrUnsolvable,Nästan! En ruta ser fel ut — kolla en gång till
+ShowSolution,Visa mig
+Best,Bäst
+Average,Snitt (5)
+Attempts,Försök
+CameraStarting,Startar kameran…
+EnterManually,Skriv in
+Capture,Knäpp!
+ScanHoldSteady,Håll kuben stilla i rutan
+ScanTurnLeft,Vrid hela kuben åt vänster
+ScanTiltUp,Luta toppen BORT från dig
+LessonsTabCaption,Börja här
+Replay,Igen!
+LessonCubeTitle,Lär känna kuben
+LessonCubeCenters,Mittbitarna flyttar sig aldrig — de visar varje sidas färg
+LessonCubeSides,Snurra hela kuben — mittbitarna bestämmer ändå
+LessonCubePieces,"Vrid, så åker bitarna iväg — se dem hitta hem!"
+LessonMovesTitle,Läsa drag
+LessonMovesR,"R betyder: vrid högra sidan ett steg, som en klocka"
+LessonMovesPrime,R' betyder: åt andra hållet
+LessonMovesDouble,R2 betyder: två gånger
+LessonMovesAll,Varje sida har sin egen bokstav: U F L D …
+LessonDaisyTitle,Blomman
+LessonDaisyGoal,Gör en blomma: vita kronblad runt den gula mitten
+LessonDaisyFind,Leta upp vita kantbitar och lyft upp dem
+LessonCrossTitle,Vita krysset
+LessonCrossTurnDown,Vrid ner varje kronblad två gånger — blomman blir ett kryss
+LessonCrossDone,Matcha kronbladets sidofärg innan du vrider
+LessonCornersTitle,Vita hörnen
+LessonCornersMagic,Trollformeln: R' D' R D
+LessonCornersRepeat,Upprepa tills hörnet sitter rätt
+LessonMiddleTitle,Mittenlagret
+LessonMiddleRight,Skicka kantbiten åt höger
+LessonMiddleLeft,Skicka kantbiten åt vänster
+LessonTopTitle,Toppen
+LessonTopCross,Gult kryss: F R U R' U' F'
+LessonTopNext,Testa ABC-fliken nu — du är nästan framme!

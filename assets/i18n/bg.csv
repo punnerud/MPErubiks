@@ -1,0 +1,69 @@
+key,text
+Practice,Упражнение
+SettingsTitle,Настройки на решението
+HintModeFull,Пълна помощ
+HintModePractice,Пауза за упражнение
+HintModeOff,Изключено
+MaxExtraMoves,Макс. излишни ходове
+IDidIt,Успях!
+NeededHelp,Надникнах
+PracticeYouKnow,Това го знаеш!
+SettingsNoTrained,Първо отбележи алгоритми със звездичка в раздел Тренирай
+TapSelectTitle,Докосването избира
+TapSelectSide,Страната
+TapSelectCell,Квадратчето
+MyWay,Моят път
+AppTitle,Кубчето на Рубик
+MenuSolve,Нареди
+MenuTrain,Тренирай
+MenuPlay,Играй
+Back,Назад
+Scramble,Разбъркай
+Reset,Отначало
+Undo,Отмени
+ComingSoon,Очаквай скоро!
+Play,Старт
+Pause,Пауза
+Next,Напред
+GuideDone,Готово! Браво!
+TableLoading,Зареждам решението…
+ErrColorCounts,Някои цветове имат твърде много или твърде малко стикери
+ErrCenters,Шестте средни стикера трябва да са с различни цветове
+ErrImpossiblePiece,"Едно блокче има цветове, които не вървят заедно"
+ErrUnsolvable,Почти! Един стикер изглежда сгрешен — провери пак
+ShowSolution,Покажи
+Best,Рекорд
+Average,Ao5
+Attempts,Опити
+CameraStarting,Включвам камерата…
+EnterManually,Въведи ръчно
+Capture,Щрак!
+ScanHoldSteady,Дръж кубчето неподвижно в квадрата
+ScanTurnLeft,Завърти цялото кубче наляво
+ScanTiltUp,Наклони върха ДАЛЕЧ от теб
+LessonsTabCaption,Започни тук
+Replay,Още веднъж!
+LessonCubeTitle,Запознай се с кубчето
+LessonCubeCenters,Средните никога не мърдат — те показват цвета на всяка страна
+LessonCubeSides,Завърти цялото кубче — средните пак решават
+LessonCubePieces,Завърти и блокчетата тръгват на път — виж как се прибират у дома!
+LessonMovesTitle,Четем ходовете
+LessonMovesR,"R значи: завърти дясната страна веднъж, като часовник"
+LessonMovesPrime,R' значи: в другата посока
+LessonMovesDouble,R2 значи: два пъти
+LessonMovesAll,Всяка страна има своя буква: U F L D …
+LessonDaisyTitle,Маргаритката
+LessonDaisyGoal,Направи цвете: бели листенца около жълтата среда
+LessonDaisyFind,Намери белите ръбчета и ги вдигни горе
+LessonCrossTitle,Белият кръст
+LessonCrossTurnDown,Завърти всяко листенце два пъти надолу — цветето става кръст
+LessonCrossDone,"Нагласи цвета отстрани на листенцето, преди да завъртиш"
+LessonCornersTitle,Белите ъгли
+LessonCornersMagic,Вълшебният ход: R' D' R D
+LessonCornersRepeat,"Повтаряй, докато ъгълът си дойде на място"
+LessonMiddleTitle,Средният слой
+LessonMiddleRight,Изпрати ръбчето надясно
+LessonMiddleLeft,Изпрати ръбчето наляво
+LessonTopTitle,Върхът
+LessonTopCross,Жълт кръст: F R U R' U' F'
+LessonTopNext,Сега пробвай раздела ABC — почти успя!

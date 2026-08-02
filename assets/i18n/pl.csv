@@ -1,0 +1,69 @@
+key,text
+Practice,Ćwicz
+SettingsTitle,Ustawienia rozwiązania
+HintModeFull,Pełna pomoc
+HintModePractice,Pauza na ćwiczenie
+HintModeOff,Wyłączone
+MaxExtraMoves,Maks. dodatkowych ruchów
+IDidIt,Udało się!
+NeededHelp,Trzeba było zerknąć
+PracticeYouKnow,To już umiesz!
+SettingsNoTrained,Najpierw zaznacz gwiazdką algorytmy w Trenuj
+TapSelectTitle,Dotknięcie wybiera
+TapSelectSide,Ścianę
+TapSelectCell,Kwadracik
+MyWay,Po mojemu
+AppTitle,Kostka Rubika
+MenuSolve,Ułóż
+MenuTrain,Trenuj
+MenuPlay,Graj
+Back,Wróć
+Scramble,Wymieszaj
+Reset,Od nowa
+Undo,Cofnij
+ComingSoon,Już wkrótce!
+Play,Start
+Pause,Pauza
+Next,Dalej
+GuideDone,Ułożona! Świetna robota!
+TableLoading,Wczytuję solver…
+ErrColorCounts,Niektóre kolory mają za dużo lub za mało naklejek
+ErrCenters,Każdy z sześciu środków musi mieć inny kolor
+ErrImpossiblePiece,"Jeden klocek ma kolory, które do siebie nie pasują"
+ErrUnsolvable,Prawie! Jedna naklejka wygląda źle — sprawdź jeszcze raz
+ShowSolution,Pokaż mi
+Best,Rekord
+Average,Ao5
+Attempts,Próby
+CameraStarting,Uruchamiam kamerę…
+EnterManually,Wpisz ręcznie
+Capture,Pstryk!
+ScanHoldSteady,Trzymaj kostkę nieruchomo w kwadracie
+ScanTurnLeft,Obróć całą kostkę w lewo
+ScanTiltUp,Przechyl górę OD siebie
+LessonsTabCaption,Zacznij tu
+Replay,Jeszcze raz!
+LessonCubeTitle,Poznaj kostkę
+LessonCubeCenters,Środki nigdy się nie ruszają — pokazują kolor każdej ściany
+LessonCubeSides,Obróć całą kostkę — środki i tak rządzą
+LessonCubePieces,"Kręć, a klocki wędrują — patrz, jak wracają do domu!"
+LessonMovesTitle,Czytamy ruchy
+LessonMovesR,"R znaczy: obróć prawą ścianę raz, jak zegar"
+LessonMovesPrime,R' znaczy: w drugą stronę
+LessonMovesDouble,R2 znaczy: dwa razy
+LessonMovesAll,Każda ściana ma swoją literę: U F L D …
+LessonDaisyTitle,Stokrotka
+LessonDaisyGoal,Zrób kwiatek: białe płatki wokół żółtego środka
+LessonDaisyFind,Znajdź białe krawędzie i podnieś je do góry
+LessonCrossTitle,Biały krzyż
+LessonCrossTurnDown,Obróć każdy płatek dwa razy w dół — kwiatek zmienia się w krzyż
+LessonCrossDone,"Dopasuj boczny kolor płatka, zanim obrócisz"
+LessonCornersTitle,Białe narożniki
+LessonCornersMagic,Magiczny ruch: R' D' R D
+LessonCornersRepeat,"Powtarzaj, aż narożnik wskoczy na miejsce"
+LessonMiddleTitle,Środkowa warstwa
+LessonMiddleRight,Wyślij krawędź w prawo
+LessonMiddleLeft,Wyślij krawędź w lewo
+LessonTopTitle,Góra
+LessonTopCross,Żółty krzyż: F R U R' U' F'
+LessonTopNext,Teraz spróbuj zakładki ABC — już prawie!

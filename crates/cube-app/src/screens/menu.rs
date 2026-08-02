@@ -47,11 +47,12 @@ pub fn show(app: &mut RubiksApp, ui: &mut Ui) {
             }
         }
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if flags::flag_button(ui, Lang::No, app.i18n.lang == Lang::No) {
-                app.set_lang(Lang::No);
-            }
-            if flags::flag_button(ui, Lang::En, app.i18n.lang == Lang::En) {
-                app.set_lang(Lang::En);
+            // The CURRENT language's flag; tapping it opens the picker.
+            if flags::flag_button(ui, app.i18n.lang, false) {
+                let prev = std::mem::replace(&mut app.screen, crate::app::Screen::Menu);
+                app.screen = crate::app::Screen::Language(
+                    crate::screens::language::LanguageScreen { prev: Box::new(prev) },
+                );
             }
             // Solution settings (gear).
             let (rect, resp) =
